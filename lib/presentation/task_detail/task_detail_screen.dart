@@ -502,52 +502,57 @@ class _TagsEditorState extends ConsumerState<_TagsEditor> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.label_outline,
-                size: 15,
-                color: theme.colorScheme.onSurface.withOpacity(0.5)),
-            const SizedBox(width: 6),
-            Text('Tags', style: theme.textTheme.labelLarge),
-          ],
-        ),
-        ...widget.task.tags.map((tag) => Chip(
-              avatar: Icon(Icons.label,
-                  size: 13, color: theme.colorScheme.primary),
-              label: Text(tag, style: const TextStyle(fontSize: 11.5)),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact,
-              onDeleted: () => _commit(
-                  widget.task.tags.where((t) => t != tag).toList()),
-            )),
-        SizedBox(
-          width: 170,
-          height: 30,
-          child: TextField(
-            controller: _controller,
-            style: const TextStyle(fontSize: 12),
-            decoration: InputDecoration(
-              hintText: 'Add tag, press Enter',
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(vertical: 6),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(
-                    color: theme.colorScheme.outline.withOpacity(0.4)),
+        Icon(Icons.label_outline,
+            size: 15,
+            color: theme.colorScheme.onSurface.withOpacity(0.5)),
+        const SizedBox(width: 6),
+        Text('Tags', style: theme.textTheme.labelLarge),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              ...widget.task.tags.map((tag) => Chip(
+                    avatar: Icon(Icons.label,
+                        size: 13, color: theme.colorScheme.primary),
+                    label: Text(tag, style: const TextStyle(fontSize: 11.5)),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    onDeleted: () => _commit(
+                        widget.task.tags.where((t) => t != tag).toList()),
+                  )),
+              SizedBox(
+                width: 170,
+                height: 30,
+                child: TextField(
+                  controller: _controller,
+                  style: const TextStyle(fontSize: 12),
+                  textAlignVertical: TextAlignVertical.center,
+                  decoration: InputDecoration(
+                    hintText: 'Add tag, press Enter',
+                    isDense: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: BorderSide(
+                          color: theme.colorScheme.outline.withOpacity(0.4)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: BorderSide(
+                          color: theme.colorScheme.outline.withOpacity(0.4)),
+                    ),
+                  ),
+                  onSubmitted: (_) => _add(),
+                ),
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(
-                    color: theme.colorScheme.outline.withOpacity(0.4)),
-              ),
-            ),
-            onSubmitted: (_) => _add(),
+            ],
           ),
         ),
       ],
