@@ -29,6 +29,7 @@ class ReportsScreen extends ConsumerStatefulWidget {
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   ReportPeriod _period = ReportPeriod.weekly;
   DateTime _anchor = DateTime.now();
+  DateTimeRange? _customRange;
   ReportLanguage _lang = ReportLanguage.english;
 
   // AI enhancement (log summaries for the Details column + title
@@ -54,7 +55,20 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     });
     try {
       final service = ref.read(reportServiceProvider);
-      final data = await service.generate(_period, _anchor);
+      final ReportData data;
+      if (_period == ReportPeriod.custom) {
+        final range = _customRange;
+        if (range == null) {
+          setState(() {
+            _generating = false;
+            _error = 'Pick a custom date range first.';
+          });
+          return;
+        }
+        data = await service.generateRange(range.start, range.end);
+      } else {
+        data = await service.generate(_period, _anchor);
+      }
 
       // Optional AI pass: summarize each task's in-period execution logs
       // (Details column) and translate titles into the report language.
@@ -182,6 +196,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   void _shiftAnchor(int direction) {
+    if (_period == ReportPeriod.custom) return;
     setState(() {
       switch (_period) {
         case ReportPeriod.daily:
@@ -192,6 +207,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           _anchor = DateTime(_anchor.year, _anchor.month + direction, 1);
         case ReportPeriod.yearly:
           _anchor = DateTime(_anchor.year + direction, 1, 1);
+        case ReportPeriod.custom:
+          break;
       }
       _data = null;
       _markdown = null;
@@ -214,7 +231,34 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     }
   }
 
+  Future<void> _pickRange() async {
+    final now = DateTime.now();
+    final picked = await showDateRangePicker(
+      context: context,
+      initialDateRange: _customRange ??
+          DateTimeRange(
+            start: now.subtract(const Duration(days: 7)),
+            end: now,
+          ),
+      firstDate: DateTime(2020),
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (picked != null) {
+      setState(() {
+        _customRange = picked;
+        _data = null;
+        _markdown = null;
+      });
+    }
+  }
+
   String get _anchorLabel {
+    if (_period == ReportPeriod.custom) {
+      final range = _customRange;
+      if (range == null) return 'Select range…';
+      final f = DateFormat('yyyy-MM-dd');
+      return '${f.format(range.start)} → ${f.format(range.end)}';
+    }
     final (start, end) = ReportService.rangeFor(_period, _anchor);
     final f = DateFormat('yyyy-MM-dd');
     return '${f.format(start)} → ${f.format(end.subtract(const Duration(days: 1)))}';
@@ -314,16 +358,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     }),
                   ),
                   const SizedBox(width: 16),
-                  // Date navigation
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    tooltip: 'Previous',
-                    onPressed: () => _shiftAnchor(-1),
-                    icon: const Icon(Icons.chevron_left, size: 20),
-                  ),
+                  // Date navigation (prev/next hidden in custom mode)
+                  if (_period != ReportPeriod.custom)
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      tooltip: 'Previous',
+                      onPressed: () => _shiftAnchor(-1),
+                      icon: const Icon(Icons.chevron_left, size: 20),
+                    ),
                   InkWell(
                     borderRadius: BorderRadius.circular(8),
-                    onTap: _pickDate,
+                    onTap: _period == ReportPeriod.custom
+                        ? _pickRange
+                        : _pickDate,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 7),
@@ -334,7 +381,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.calendar_month,
+                          Icon(
+                              _period == ReportPeriod.custom
+                                  ? Icons.date_range
+                                  : Icons.calendar_month,
                               size: 14, color: theme.colorScheme.primary),
                           const SizedBox(width: 6),
                           Text(
@@ -349,12 +399,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       ),
                     ),
                   ),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    tooltip: 'Next',
-                    onPressed: () => _shiftAnchor(1),
-                    icon: const Icon(Icons.chevron_right, size: 20),
-                  ),
+                  if (_period != ReportPeriod.custom)
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      tooltip: 'Next',
+                      onPressed: () => _shiftAnchor(1),
+                      icon: const Icon(Icons.chevron_right, size: 20),
+                    ),
                   const SizedBox(width: 12),
                   // Report language
                   Container(

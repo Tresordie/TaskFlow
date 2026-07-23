@@ -14,14 +14,17 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
   final _tagController = TextEditingController();
+  final _subStepController = TextEditingController();
   Priority _priority = Priority.p2Medium;
   final List<String> _tags = [];
+  final List<String> _subSteps = [];
 
   @override
   void dispose() {
     _titleController.dispose();
     _descController.dispose();
     _tagController.dispose();
+    _subStepController.dispose();
     super.dispose();
   }
 
@@ -108,6 +111,46 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                     .toList(),
               ),
             ],
+            const SizedBox(height: 16),
+
+            // Sub-tasks
+            Text('Sub-tasks',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _subStepController,
+                    decoration: const InputDecoration(
+                      hintText: 'e.g. Check torque spec, Run ATE',
+                    ),
+                    onSubmitted: (_) => _addSubStep(),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: _addSubStep,
+                ),
+              ],
+            ),
+            if (_subSteps.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: _subSteps
+                    .map((s) => Chip(
+                          avatar: const Icon(Icons.checklist, size: 15),
+                          label: Text(s),
+                          onDeleted: () =>
+                              setState(() => _subSteps.remove(s)),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                        ))
+                    .toList(),
+              ),
+            ],
           ],
         ),
       ),
@@ -132,6 +175,14 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
     }
   }
 
+  void _addSubStep() {
+    final step = _subStepController.text.trim();
+    if (step.isNotEmpty) {
+      setState(() => _subSteps.add(step));
+      _subStepController.clear();
+    }
+  }
+
   void _createTask() {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
@@ -143,6 +194,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
               : _descController.text.trim(),
           priority: _priority,
           tags: _tags,
+          subSteps: _subSteps,
         );
     Navigator.of(context).pop();
   }

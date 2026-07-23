@@ -221,7 +221,7 @@ class _ActivityTaskItem extends StatelessWidget {
                   child: Text(
                     task.title,
                     style: theme.textTheme.titleMedium?.copyWith(
-                      fontSize: 13,
+                      fontSize: 14.5,
                       decoration:
                           isCompleted ? TextDecoration.lineThrough : null,
                       color: isCompleted

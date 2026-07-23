@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
@@ -28,6 +29,8 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _projectController;
+  final _subStepController = TextEditingController();
+  late List<SubStep> _subSteps;
   late Priority _priority;
   DateTime? _dueDate;
 
@@ -38,6 +41,7 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
     _descriptionController =
         TextEditingController(text: widget.task.description ?? '');
     _projectController = TextEditingController(text: widget.task.project);
+    _subSteps = List<SubStep>.from(widget.task.subSteps);
     _priority = widget.task.priority;
     _dueDate = widget.task.dueDate;
   }
@@ -47,6 +51,7 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
     _titleController.dispose();
     _descriptionController.dispose();
     _projectController.dispose();
+    _subStepController.dispose();
     super.dispose();
   }
 
@@ -59,7 +64,8 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
         constraints: const BoxConstraints(maxWidth: 520),
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(
+          child: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -215,6 +221,70 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
                   );
                 }).toList(),
               ),
+              const SizedBox(height: 16),
+
+              // Sub-tasks section
+              Text('Sub-tasks', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 8),
+              if (_subSteps.isNotEmpty)
+                ..._subSteps.map((step) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        children: [
+                          Icon(
+                            step.completed
+                                ? Icons.check_circle
+                                : Icons.radio_button_unchecked,
+                            size: 16,
+                            color: step.completed
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.onSurface
+                                    .withOpacity(0.35),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              step.title,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.85),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              Icons.close,
+                              size: 14,
+                              color: theme.colorScheme.onSurface
+                                  .withOpacity(0.4),
+                            ),
+                            tooltip: 'Remove sub-task',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () =>
+                                setState(() => _subSteps.remove(step)),
+                          ),
+                        ],
+                      ),
+                    )),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _subStepController,
+                      decoration: const InputDecoration(
+                        hintText: 'Add a sub-task and press Enter',
+                        isDense: true,
+                      ),
+                      onSubmitted: (_) => _addSubStep(),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add, size: 18),
+                    onPressed: _addSubStep,
+                  ),
+                ],
+              ),
               const SizedBox(height: 24),
 
               // Actions
@@ -233,6 +303,7 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
                 ],
               ),
             ],
+            ),
           ),
         ),
       ),
@@ -251,9 +322,25 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
     task.project = _projectController.text.trim();
     task.priority = _priority;
     task.dueDate = _dueDate;
+    task.subSteps = _subSteps;
 
     ref.read(taskListProvider.notifier).updateTask(task);
     Navigator.pop(context);
+  }
+
+  void _addSubStep() {
+    final text = _subStepController.text.trim();
+    if (text.isEmpty) return;
+    setState(() {
+      _subSteps = [
+        ..._subSteps,
+        SubStep()
+          ..uid = const Uuid().v4()
+          ..title = text
+          ..completed = false,
+      ];
+    });
+    _subStepController.clear();
   }
 
   Future<void> _pickDueDate() async {

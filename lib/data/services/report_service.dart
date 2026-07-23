@@ -13,7 +13,8 @@ enum ReportPeriod {
   daily,
   weekly,
   monthly,
-  yearly;
+  yearly,
+  custom;
 
   String get label {
     switch (this) {
@@ -25,6 +26,8 @@ enum ReportPeriod {
         return 'Monthly';
       case ReportPeriod.yearly:
         return 'Yearly';
+      case ReportPeriod.custom:
+        return 'Custom';
     }
   }
 }
@@ -99,6 +102,9 @@ class ReportData {
         return DateFormat('yyyy-MM').format(anchor);
       case ReportPeriod.yearly:
         return DateFormat('yyyy').format(anchor);
+      case ReportPeriod.custom:
+        final f = DateFormat('yyyy-MM-dd');
+        return '${f.format(start)}_${f.format(end.subtract(const Duration(days: 1)))}';
     }
   }
 
@@ -146,6 +152,8 @@ class _L {
         return _zh ? '月报' : 'Monthly';
       case ReportPeriod.yearly:
         return _zh ? '年报' : 'Yearly';
+      case ReportPeriod.custom:
+        return _zh ? '自定义' : 'Custom';
     }
   }
 
@@ -186,6 +194,8 @@ class _L {
         return _zh ? '下月计划' : 'Plan for Next Month';
       case ReportPeriod.yearly:
         return _zh ? '明年计划' : 'Plan for Next Year';
+      case ReportPeriod.custom:
+        return _zh ? '下期计划' : 'Plan for Next Period';
     }
   }
 
@@ -242,11 +252,31 @@ class ReportService {
       case ReportPeriod.yearly:
         final s = DateTime(anchor.year, 1, 1);
         return (s, DateTime(anchor.year + 1, 1, 1));
+      case ReportPeriod.custom:
+        // Custom ranges are passed explicitly to generateRange(); this
+        // fallback (the anchor's single day) is never used in practice.
+        final s = DateTime(anchor.year, anchor.month, anchor.day);
+        return (s, s.add(const Duration(days: 1)));
     }
   }
 
-  Future<ReportData> generate(ReportPeriod period, DateTime anchor) async {
+  Future<ReportData> generate(ReportPeriod period, DateTime anchor) {
     final (start, end) = rangeFor(period, anchor);
+    return _build(period, start, end);
+  }
+
+  /// Generates a report over an explicit [start, end] date range (the
+  /// "Custom" period). Both bounds are inclusive calendar days — the end
+  /// day is extended to cover its full 24h before aggregation.
+  Future<ReportData> generateRange(DateTime start, DateTime end) {
+    final s = DateTime(start.year, start.month, start.day);
+    final e = DateTime(end.year, end.month, end.day)
+        .add(const Duration(days: 1));
+    return _build(ReportPeriod.custom, s, e);
+  }
+
+  Future<ReportData> _build(
+      ReportPeriod period, DateTime start, DateTime end) async {
     final all = await _repo.getAllTasks();
 
     bool inRange(DateTime? t) =>

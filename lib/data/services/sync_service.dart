@@ -181,20 +181,46 @@ class SyncNotifier extends StateNotifier<SyncState> {
     await _persist();
   }
 
-  /// Automatic direction: if the sync file was modified after the last
-  /// sync, pull it; otherwise push the local state.
+  /// Three-step sync for multi-device use:
+  ///   1. Pull — read the remote snapshot from Drive (if it exists)
+  ///   2. Merge — upsert those tasks into the local DB (by uid)
+  ///   3. Push — write the merged local state back to Drive
+  ///
+  /// Unlike the old either/or logic, this guarantees the shared file
+  /// always converges to the union of every device's tasks, so nothing
+  /// is clobbered when two machines sync around the same time.
   Future<void> syncNow() async {
     if (!state.configured) {
       state = state.copyWith(lastMessage: 'No sync folder configured.');
       return;
     }
-    final file = File(_syncFilePath);
-    final last = state.lastSyncAt;
-    if (file.existsSync() &&
-        (last == null || file.lastModifiedSync().isAfter(last))) {
-      await pull();
-    } else {
-      await push();
+    state = state.copyWith(busy: true);
+    try {
+      final file = File(_syncFilePath);
+      var pulled = 0;
+
+      // Steps 1 + 2: pull remote snapshot and merge into local DB.
+      if (file.existsSync()) {
+        pulled = await _backup.restoreSnapshot(await file.readAsString(),
+            merge: true);
+      }
+
+      // Step 3: push the merged local state back so Drive holds the union.
+      if (!file.parent.existsSync()) {
+        file.parent.createSync(recursive: true);
+      }
+      await file.writeAsString(await _backup.buildSnapshot());
+
+      state = state.copyWith(
+        busy: false,
+        lastSyncAt: DateTime.now(),
+        lastMessage: pulled > 0
+            ? 'Synced · pulled $pulled task(s), merged & pushed to Drive.'
+            : 'Synced · already up to date, pushed local state to Drive.',
+      );
+    } catch (e) {
+      state = state.copyWith(busy: false, lastMessage: 'Sync failed: $e');
     }
+    await _persist();
   }
 }
