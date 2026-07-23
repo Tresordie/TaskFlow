@@ -12,9 +12,10 @@ class TaskBoardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final groupedTasks = ref.watch(groupedTasksProvider);
+    final groupedTasks = ref.watch(groupedTasksByModeProvider);
     final tasksAsync = ref.watch(taskListProvider);
     final filter = ref.watch(taskFilterProvider);
+    final groupMode = ref.watch(taskGroupModeProvider);
     final today = DateFormat('EEEE, MMM d').format(DateTime.now());
     final theme = Theme.of(context);
 
@@ -125,7 +126,65 @@ class TaskBoardScreen extends ConsumerWidget {
           child: _QuickAddBar(),
         ),
 
-        // Task list grouped by priority
+        // Group-by selector
+        Padding(
+          padding: const EdgeInsets.fromLTRB(28, 0, 28, 6),
+          child: Row(
+            children: [
+              Icon(Icons.group_work_outlined,
+                  size: 14,
+                  color: theme.colorScheme.onSurface.withOpacity(0.45)),
+              const SizedBox(width: 6),
+              Text(
+                'Group by:',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: theme.colorScheme.onSurface.withOpacity(0.55),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ...TaskGroupMode.values.map((mode) {
+                final isActive = groupMode == mode;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 5),
+                  child: GestureDetector(
+                    onTap: () => ref.read(taskGroupModeProvider.notifier).state =
+                        mode,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? theme.colorScheme.primary.withOpacity(0.12)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: isActive
+                              ? theme.colorScheme.primary.withOpacity(0.5)
+                              : theme.colorScheme.outline.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Text(
+                        mode.label,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight:
+                              isActive ? FontWeight.w600 : FontWeight.w400,
+                          color: isActive
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+
+        // Task list grouped by selected mode
         Expanded(
           child: tasksAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -141,7 +200,7 @@ class TaskBoardScreen extends ConsumerWidget {
                 children: [
                   for (final entry in groupedTasks.entries)
                     if (entry.value.isNotEmpty) ...[
-                      _PrioritySectionHeader(priority: entry.key),
+                      _GroupSectionHeader(label: entry.key),
                       const SizedBox(height: 8),
                       ...entry.value.asMap().entries.map(
                             (e) => Padding(
@@ -450,14 +509,14 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
   }
 }
 
-class _PrioritySectionHeader extends StatelessWidget {
-  final Priority priority;
+class _GroupSectionHeader extends StatelessWidget {
+  final String label;
 
-  const _PrioritySectionHeader({required this.priority});
+  const _GroupSectionHeader({required this.label});
 
   @override
   Widget build(BuildContext context) {
-    final color = AppColors.priorityColor(priority.index);
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Row(
@@ -466,16 +525,17 @@ class _PrioritySectionHeader extends StatelessWidget {
             width: 8,
             height: 8,
             decoration: BoxDecoration(
-              color: color,
+              color: theme.colorScheme.primary,
               shape: BoxShape.circle,
             ),
           ),
           const SizedBox(width: 8),
           Text(
-            priority.label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: color,
-                ),
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

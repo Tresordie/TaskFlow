@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -23,6 +24,7 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
 
   bool _parsing = false;
   bool _creating = false;
+  bool _previewMode = false;
   String? _error;
   List<ParsedTask> _results = [];
 
@@ -152,7 +154,7 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Notes input
+          // Notes input with Write / Preview tabs
           Container(
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
@@ -161,21 +163,86 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                 color: theme.colorScheme.outline.withOpacity(0.25),
               ),
             ),
-            child: TextField(
-              controller: _notesController,
-              maxLines: 8,
-              minLines: 5,
-              style: const TextStyle(fontSize: 13, height: 1.5),
-              decoration: InputDecoration(
-                hintText:
-                    'e.g. Today\'s PVT line review: 1) Metro battery connector torque spec needs re-check (2.5 N·m), station 3 failed 2 units...\n\nMarkdown / plain text / mixed languages all fine.',
-                hintStyle: TextStyle(
-                  fontSize: 13,
-                  color: theme.colorScheme.onSurface.withOpacity(0.35),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Tab bar
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 10, 0),
+                  child: Row(
+                    children: [
+                      _InputTab(
+                        label: 'Write',
+                        icon: Icons.edit_note,
+                        active: !_previewMode,
+                        onTap: () => setState(() => _previewMode = false),
+                      ),
+                      const SizedBox(width: 4),
+                      _InputTab(
+                        label: 'Preview',
+                        icon: Icons.visibility_outlined,
+                        active: _previewMode,
+                        onTap: () => setState(() => _previewMode = true),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'Markdown supported',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          color:
+                              theme.colorScheme.onSurface.withOpacity(0.35),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.all(14),
-              ),
+                // Content area
+                if (_previewMode)
+                  Container(
+                    constraints: const BoxConstraints(minHeight: 120, maxHeight: 260),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    child: _notesController.text.trim().isEmpty
+                        ? Text(
+                            'Nothing to preview yet…',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: theme.colorScheme.onSurface
+                                  .withOpacity(0.35),
+                            ),
+                          )
+                        : MarkdownBody(
+                            data: _notesController.text,
+                            selectable: true,
+                            styleSheet: MarkdownStyleSheet.fromTheme(theme)
+                                .copyWith(
+                              p: const TextStyle(fontSize: 13, height: 1.5),
+                            ),
+                          ),
+                  )
+                else
+                  TextField(
+                    controller: _notesController,
+                    maxLines: 8,
+                    minLines: 5,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      height: 1.5,
+                      fontFamily: 'Consolas',
+                    ),
+                    decoration: InputDecoration(
+                      hintText:
+                          'e.g. Today\'s PVT line review: 1) Metro battery connector torque spec needs re-check (2.5 N·m), station 3 failed 2 units...\n\nMarkdown / plain text / mixed languages all fine.',
+                      hintStyle: TextStyle(
+                        fontSize: 13,
+                        fontFamily: 'Consolas',
+                        color: theme.colorScheme.onSurface.withOpacity(0.35),
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.all(14),
+                    ),
+                  ),
+              ],
             ),
           ),
           const SizedBox(height: 12),
@@ -510,6 +577,60 @@ class _ParsedTaskCard extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _InputTab extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _InputTab({
+    required this.label,
+    required this.icon,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: active
+              ? theme.colorScheme.primary.withOpacity(0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: 14,
+                color: active
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurface.withOpacity(0.45)),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                color: active
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurface.withOpacity(0.55),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

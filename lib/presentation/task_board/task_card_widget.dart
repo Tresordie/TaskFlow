@@ -18,6 +18,7 @@ class TaskCard extends ConsumerStatefulWidget {
 
 class _TaskCardState extends ConsumerState<TaskCard> {
   bool _isHovered = false;
+  bool _isDragOver = false;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +28,98 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     final theme = Theme.of(context);
     final palette = theme.colorScheme;
 
+    return DragTarget<Task>(
+      onWillAcceptWithDetails: (details) {
+        final accept = details.data.id != task.id;
+        if (accept && !_isDragOver) setState(() => _isDragOver = true);
+        return accept;
+      },
+      onLeave: (_) => setState(() => _isDragOver = false),
+      onAcceptWithDetails: (details) {
+        setState(() => _isDragOver = false);
+        _convertToSubStep(details.data);
+      },
+      builder: (context, candidateData, rejectedData) {
+        return Draggable<Task>(
+          data: task,
+          dragAnchorStrategy: pointerDragAnchorStrategy,
+          feedback: Material(
+            elevation: 6,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: 260,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: palette.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: palette.primary.withOpacity(0.4)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.subdirectory_arrow_right,
+                      size: 14, color: palette.primary),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      task.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: palette.onSurface),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          childWhenDragging: Opacity(
+            opacity: 0.35,
+            child: Container(
+              height: 56,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: palette.outline.withOpacity(0.4),
+                  style: BorderStyle.solid,
+                ),
+              ),
+            ),
+          ),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: _isDragOver
+                  ? Border.all(
+                      color: palette.primary,
+                      width: 2,
+                    )
+                  : null,
+              boxShadow: _isDragOver
+                  ? [
+                      BoxShadow(
+                        color: palette.primary.withOpacity(0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: _buildCard(
+                theme, palette, task, priorityColor, isCompleted),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCard(ThemeData theme, ColorScheme palette, Task task,
+      Color priorityColor, bool isCompleted) {
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -193,6 +286,21 @@ class _TaskCardState extends ConsumerState<TaskCard> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _convertToSubStep(Task dragged) {
+    final target = widget.task;
+    final notifier = ref.read(taskListProvider.notifier);
+    notifier.addSubStep(target.id, dragged.title);
+    notifier.deleteTask(dragged.id);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            '"${dragged.title}" → sub-step of "${target.title}"'),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
       ),
     );
   }

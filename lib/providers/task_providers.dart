@@ -72,6 +72,72 @@ final groupedTasksProvider =
   return grouped;
 });
 
+// ─── Group-by mode ───────────────────────────────────────────────────────────
+
+enum TaskGroupMode {
+  priority('Priority'),
+  status('Status'),
+  project('Project'),
+  tag('Tag'),
+  none('None');
+
+  final String label;
+  const TaskGroupMode(this.label);
+}
+
+final taskGroupModeProvider =
+    StateProvider<TaskGroupMode>((ref) => TaskGroupMode.priority);
+
+/// Generic grouping: returns an ordered map of group-label → tasks.
+final groupedTasksByModeProvider =
+    Provider<Map<String, List<Task>>>((ref) {
+  final tasks = ref.watch(filteredTaskListProvider);
+  final mode = ref.watch(taskGroupModeProvider);
+
+  switch (mode) {
+    case TaskGroupMode.none:
+      return {'All Tasks': tasks};
+
+    case TaskGroupMode.priority:
+      final grouped = <String, List<Task>>{};
+      for (final p in Priority.values) {
+        final list = tasks.where((t) => t.priority == p).toList();
+        if (list.isNotEmpty) grouped[p.label] = list;
+      }
+      return grouped;
+
+    case TaskGroupMode.status:
+      final grouped = <String, List<Task>>{};
+      for (final s in TaskStatus.values) {
+        final list = tasks.where((t) => t.status == s).toList();
+        if (list.isNotEmpty) grouped[s.label] = list;
+      }
+      return grouped;
+
+    case TaskGroupMode.project:
+      final grouped = <String, List<Task>>{};
+      for (final task in tasks) {
+        final key =
+            (task.project.isEmpty) ? 'No Project' : task.project;
+        (grouped[key] ??= []).add(task);
+      }
+      return grouped;
+
+    case TaskGroupMode.tag:
+      final grouped = <String, List<Task>>{};
+      for (final task in tasks) {
+        if (task.tags.isEmpty) {
+          (grouped['No Tag'] ??= []).add(task);
+        } else {
+          for (final tag in task.tags) {
+            (grouped[tag] ??= []).add(task);
+          }
+        }
+      }
+      return grouped;
+  }
+});
+
 class TaskFilter {
   final TaskStatus? status;
   final Priority? priority;
