@@ -112,9 +112,13 @@ class SyncNotifier extends StateNotifier<SyncState> {
         Platform.environment['HOME'] ??
         '';
     if (home.isEmpty) return null;
-    final candidates = [
+    final candidates = <String>[
+      // macOS: Google Drive for Desktop FUSE mount
+      '/Volumes/GoogleDrive',
+      '/Volumes/Google Drive',
       p.join(home, 'Google Drive'),
       p.join(home, 'GoogleDrive'),
+      // Windows
       'C:\\Google Drive',
       'D:\\Google Drive',
       p.join(home, 'OneDrive', 'Google Drive'),
