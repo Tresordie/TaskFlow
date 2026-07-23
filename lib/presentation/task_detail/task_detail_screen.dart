@@ -328,15 +328,37 @@ class _MetaItem extends StatelessWidget {
   }
 }
 
-class _SubStepsSection extends ConsumerWidget {
+class _SubStepsSection extends ConsumerStatefulWidget {
   final Task task;
 
   const _SubStepsSection({required this.task});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SubStepsSection> createState() => _SubStepsSectionState();
+}
+
+class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
+  final _addController = TextEditingController();
+
+  @override
+  void dispose() {
+    _addController.dispose();
+    super.dispose();
+  }
+
+  void _addSubStep() {
+    final text = _addController.text.trim();
+    if (text.isEmpty) return;
+    ref.read(taskListProvider.notifier).addSubStep(widget.task.id, text);
+    _addController.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final task = widget.task;
     final completedCount =
         task.subSteps.where((s) => s.completed).length;
+    final theme = Theme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -345,12 +367,12 @@ class _SubStepsSection extends ConsumerWidget {
           children: [
             Text(
               'Checklist',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: theme.textTheme.titleMedium,
             ),
             const SizedBox(width: 8),
             Text(
               '$completedCount/${task.subSteps.length}',
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: theme.textTheme.bodyMedium,
             ),
           ],
         ),
@@ -396,6 +418,43 @@ class _SubStepsSection extends ConsumerWidget {
                 ),
               ),
             )),
+        // Inline add sub-step input
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(
+            children: [
+              Icon(Icons.add_circle_outline,
+                  size: 18, color: theme.colorScheme.primary.withOpacity(0.6)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _addController,
+                  style: const TextStyle(fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'Add sub-step…',
+                    hintStyle: TextStyle(
+                      fontSize: 13,
+                      color: theme.colorScheme.onSurface.withOpacity(0.35),
+                    ),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                  ),
+                  onSubmitted: (_) => _addSubStep(),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.add, size: 18,
+                    color: theme.colorScheme.primary),
+                tooltip: 'Add sub-step',
+                onPressed: _addSubStep,
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

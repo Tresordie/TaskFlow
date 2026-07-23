@@ -251,6 +251,7 @@ class _QuickAddBar extends ConsumerStatefulWidget {
 class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
   final _controller = TextEditingController();
   final _projectController = TextEditingController();
+  final _tagController = TextEditingController();
   Priority _priority = Priority.p2Medium;
   DateTime? _dueDate;
   bool _expanded = false;
@@ -259,6 +260,7 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
   void dispose() {
     _controller.dispose();
     _projectController.dispose();
+    _tagController.dispose();
     super.dispose();
   }
 
@@ -438,6 +440,40 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
                     ),
                   ],
                   const Spacer(),
+                  // Tags input (comma-separated)
+                  SizedBox(
+                    width: 150,
+                    height: 30,
+                    child: TextField(
+                      controller: _tagController,
+                      style: const TextStyle(fontSize: 12),
+                      decoration: InputDecoration(
+                        hintText: 'Tags (a, b)',
+                        prefixIcon: Icon(Icons.label_outline,
+                            size: 14,
+                            color:
+                                theme.colorScheme.onSurface.withOpacity(0.5)),
+                        prefixIconConstraints: const BoxConstraints(
+                            minWidth: 30, minHeight: 0),
+                        isDense: true,
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 6),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          borderSide: BorderSide(
+                              color: theme.colorScheme.outline
+                                  .withOpacity(0.4)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          borderSide: BorderSide(
+                              color: theme.colorScheme.outline
+                                  .withOpacity(0.4)),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   // Project name input (sticky across quick-adds)
                   SizedBox(
                     width: 170,
@@ -494,13 +530,20 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
   void _addTask() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    final tags = _tagController.text
+        .split(',')
+        .map((t) => t.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
     ref.read(taskListProvider.notifier).createTask(
           title: text,
           priority: _priority,
           dueDate: _dueDate,
+          tags: tags,
           project: _projectController.text.trim(),
         );
     _controller.clear();
+    _tagController.clear();
     setState(() {
       _priority = Priority.p2Medium;
       _dueDate = null;
