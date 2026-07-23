@@ -158,13 +158,12 @@ class _TaskDetailContent extends ConsumerWidget {
                             label:
                                 'Done ${DateFormat('MMM d, yyyy · HH:mm').format(task.completedAt!)}',
                           ),
-                        ...task.tags.map((tag) => _MetaItem(
-                              icon: Icons.label_outline,
-                              label: tag,
-                            )),
                       ],
                     );
                   }),
+                  const SizedBox(height: 10),
+                  // Editable tags
+                  _TagsEditor(task: task),
                 ],
               ),
             ),
@@ -453,6 +452,102 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
                 constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Inline tag editor on the task detail page: removable chips plus a
+/// comma-separated input (Enter to add). Every change is persisted
+/// immediately via [TaskListNotifier.updateTask].
+class _TagsEditor extends ConsumerStatefulWidget {
+  final Task task;
+
+  const _TagsEditor({required this.task});
+
+  @override
+  ConsumerState<_TagsEditor> createState() => _TagsEditorState();
+}
+
+class _TagsEditorState extends ConsumerState<_TagsEditor> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _commit(List<String> tags) {
+    widget.task.tags = tags;
+    ref.read(taskListProvider.notifier).updateTask(widget.task);
+  }
+
+  void _add() {
+    final raw = _controller.text.trim();
+    _controller.clear();
+    if (raw.isEmpty) return;
+    final additions = raw
+        .split(',')
+        .map((t) => t.trim())
+        .where((t) => t.isNotEmpty && !widget.task.tags.contains(t))
+        .toList();
+    if (additions.isEmpty) return;
+    _commit([...widget.task.tags, ...additions]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.label_outline,
+                size: 15,
+                color: theme.colorScheme.onSurface.withOpacity(0.5)),
+            const SizedBox(width: 6),
+            Text('Tags', style: theme.textTheme.labelLarge),
+          ],
+        ),
+        ...widget.task.tags.map((tag) => Chip(
+              avatar: Icon(Icons.label,
+                  size: 13, color: theme.colorScheme.primary),
+              label: Text(tag, style: const TextStyle(fontSize: 11.5)),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+              onDeleted: () => _commit(
+                  widget.task.tags.where((t) => t != tag).toList()),
+            )),
+        SizedBox(
+          width: 170,
+          height: 30,
+          child: TextField(
+            controller: _controller,
+            style: const TextStyle(fontSize: 12),
+            decoration: InputDecoration(
+              hintText: 'Add tag, press Enter',
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 6),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(
+                    color: theme.colorScheme.outline.withOpacity(0.4)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(
+                    color: theme.colorScheme.outline.withOpacity(0.4)),
+              ),
+            ),
+            onSubmitted: (_) => _add(),
           ),
         ),
       ],

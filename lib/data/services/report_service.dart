@@ -40,11 +40,45 @@ enum ReportLanguage {
   String get label => this == ReportLanguage.english ? 'English' : '中文';
 }
 
+/// Optional task filter applied before report aggregation. A null field
+/// means "all" for that dimension.
+class ReportFilter {
+  final String? project;
+  final String? tag;
+  final TaskStatus? status;
+  final Priority? priority;
+
+  const ReportFilter({this.project, this.tag, this.status, this.priority});
+
+  bool get isActive =>
+      project != null || tag != null || status != null || priority != null;
+
+  bool matches(Task t) {
+    if (project != null && t.project.trim() != project) return false;
+    if (tag != null && !t.tags.contains(tag)) return false;
+    if (status != null && t.status != status) return false;
+    if (priority != null && t.priority != priority) return false;
+    return true;
+  }
+
+  /// Compact human-readable summary, shown in the report meta line.
+  String describe() {
+    final parts = <String>[
+      if (project != null) 'project: $project',
+      if (tag != null) 'tag: #$tag',
+      if (status != null) 'status: ${status!.label}',
+      if (priority != null) 'priority: ${priority!.shortLabel}',
+    ];
+    return parts.join(' · ');
+  }
+}
+
 /// Aggregated snapshot of everything that happened inside a period.
 class ReportData {
   final ReportPeriod period;
   final DateTime start; // inclusive
   final DateTime end; // exclusive
+  final ReportFilter filter;
   final List<Task> completed;
   final List<Task> inProgress;
   final List<Task> planned; // created in period, still planned
@@ -61,6 +95,7 @@ class ReportData {
     required this.period,
     required this.start,
     required this.end,
+    this.filter = const ReportFilter(),
     required this.completed,
     required this.inProgress,
     required this.planned,
@@ -162,6 +197,7 @@ class _L {
 
   String get period => _zh ? '周期' : 'Period';
   String get prepared => _zh ? '生成于' : 'Prepared';
+  String get filters => _zh ? '筛选' : 'Filters';
 
   String get statusDashboard => _zh ? '状态仪表盘' : 'Status Dashboard';
   String get project => _zh ? '项目' : 'Project';
@@ -260,24 +296,34 @@ class ReportService {
     }
   }
 
-  Future<ReportData> generate(ReportPeriod period, DateTime anchor) {
+  Future<ReportData> generate(
+    ReportPeriod period,
+    DateTime anchor, {
+    ReportFilter filter = const ReportFilter(),
+  }) {
     final (start, end) = rangeFor(period, anchor);
-    return _build(period, start, end);
+    return _build(period, start, end, filter);
   }
 
   /// Generates a report over an explicit [start, end] date range (the
   /// "Custom" period). Both bounds are inclusive calendar days — the end
   /// day is extended to cover its full 24h before aggregation.
-  Future<ReportData> generateRange(DateTime start, DateTime end) {
+  Future<ReportData> generateRange(
+    DateTime start,
+    DateTime end, {
+    ReportFilter filter = const ReportFilter(),
+  }) {
     final s = DateTime(start.year, start.month, start.day);
     final e = DateTime(end.year, end.month, end.day)
         .add(const Duration(days: 1));
-    return _build(ReportPeriod.custom, s, e);
+    return _build(ReportPeriod.custom, s, e, filter);
   }
 
-  Future<ReportData> _build(
-      ReportPeriod period, DateTime start, DateTime end) async {
-    final all = await _repo.getAllTasks();
+  Future<ReportData> _build(ReportPeriod period, DateTime start, DateTime end,
+      ReportFilter filter) async {
+    final all = (await _repo.getAllTasks())
+        .where(filter.matches)
+        .toList();
 
     bool inRange(DateTime? t) =>
         t != null && !t.isBefore(start) && t.isBefore(end);
@@ -344,6 +390,7 @@ class ReportService {
       period: period,
       start: start,
       end: end,
+      filter: filter,
       completed: completed,
       inProgress: inProgress,
       planned: planned,
@@ -419,7 +466,8 @@ class ReportService {
 
     b.writeln('# ${l.reportTitle(d.period)}${d.titlePrefix}');
     b.writeln(
-        '**${l.period}:** ${d.rangeLabel} | **${l.prepared}:** ${DateFormat('yyyy-MM-dd').format(DateTime.now())}');
+        '**${l.period}:** ${d.rangeLabel} | **${l.prepared}:** ${DateFormat('yyyy-MM-dd').format(DateTime.now())}'
+        '${d.filter.isActive ? ' | **${l.filters}:** ${d.filter.describe()}' : ''}');
     b.writeln();
     b.writeln('---');
     b.writeln();
@@ -891,7 +939,7 @@ class ReportService {
     // Shared opening: title, meta line and the Status Dashboard table
     // header. Identical for both documents — only the wrapper differs.
     final innerHead = '''<h1 style="$h1S">$title</h1>
-<div class="meta" style="$metaS">${l.period}: ${d.rangeLabel} · ${l.prepared} ${DateFormat('yyyy-MM-dd').format(DateTime.now())}</div>
+<div class="meta" style="$metaS">${l.period}: ${d.rangeLabel} · ${l.prepared} ${DateFormat('yyyy-MM-dd').format(DateTime.now())}${d.filter.isActive ? ' · ${l.filters}: ${esc(d.filter.describe())}' : ''}</div>
 
 <h2 style="$h2S">1. ${l.statusDashboard}</h2>
 $tableOpen

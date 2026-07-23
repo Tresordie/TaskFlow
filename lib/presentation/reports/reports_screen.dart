@@ -32,6 +32,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   DateTimeRange? _customRange;
   ReportLanguage _lang = ReportLanguage.english;
 
+  // Task filters applied before aggregation (null = all).
+  String? _fProject;
+  String? _fTag;
+  TaskStatus? _fStatus;
+  Priority? _fPriority;
+
   // AI enhancement (log summaries for the Details column + title
   // translation into the report language) is ON by default — it only
   // actually runs when an AI endpoint is configured in Settings.
@@ -55,6 +61,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     });
     try {
       final service = ref.read(reportServiceProvider);
+      final filter = ReportFilter(
+        project: _fProject,
+        tag: _fTag,
+        status: _fStatus,
+        priority: _fPriority,
+      );
       final ReportData data;
       if (_period == ReportPeriod.custom) {
         final range = _customRange;
@@ -65,9 +77,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           });
           return;
         }
-        data = await service.generateRange(range.start, range.end);
+        data = await service.generateRange(range.start, range.end,
+            filter: filter);
       } else {
-        data = await service.generate(_period, _anchor);
+        data = await service.generate(_period, _anchor, filter: filter);
       }
 
       // Optional AI pass: summarize each task's in-period execution logs
@@ -264,6 +277,162 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return '${f.format(start)} → ${f.format(end.subtract(const Duration(days: 1)))}';
   }
 
+  /// Filter row under the main controls: narrow the report down to one
+  /// project / tag / status / priority before aggregation (null = all).
+  Widget _buildFilterRow(ThemeData theme) {
+    final tasks = ref.watch(taskListProvider).valueOrNull ?? const <Task>[];
+    final projects = tasks
+        .map((t) => t.project.trim())
+        .where((p) => p.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    final tags = tasks.expand((t) => t.tags).toSet().toList()..sort();
+
+    Widget dropdown<T>({
+      required String label,
+      required IconData icon,
+      required T? value,
+      required List<T> options,
+      required String Function(T) optionLabel,
+      required ValueChanged<T?> onChanged,
+    }) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: value != null
+                ? theme.colorScheme.primary.withOpacity(0.5)
+                : theme.colorScheme.outline.withOpacity(0.35),
+          ),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<T?>(
+            value: value,
+            isDense: true,
+            icon: const Icon(Icons.arrow_drop_down, size: 16),
+            hint: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon,
+                    size: 13,
+                    color: theme.colorScheme.onSurface.withOpacity(0.5)),
+                const SizedBox(width: 5),
+                Text(label, style: const TextStyle(fontSize: 12)),
+              ],
+            ),
+            items: [
+              DropdownMenuItem<T?>(
+                value: null,
+                child: Text('All',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color:
+                            theme.colorScheme.onSurface.withOpacity(0.6))),
+              ),
+              for (final o in options)
+                DropdownMenuItem<T?>(
+                  value: o,
+                  child:
+                      Text(optionLabel(o), style: const TextStyle(fontSize: 12)),
+                ),
+            ],
+            onChanged: onChanged,
+          ),
+        ),
+      );
+    }
+
+    void clearReport() => setState(() {
+          _data = null;
+          _markdown = null;
+        });
+
+    final active =
+        _fProject != null || _fTag != null || _fStatus != null || _fPriority != null;
+
+    return Row(
+      children: [
+        Icon(Icons.filter_list,
+            size: 15, color: theme.colorScheme.onSurface.withOpacity(0.5)),
+        const SizedBox(width: 8),
+        Text('Filter:',
+            style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12)),
+        const SizedBox(width: 8),
+        dropdown<String>(
+          label: 'Project',
+          icon: Icons.folder_outlined,
+          value: _fProject,
+          options: projects,
+          optionLabel: (p) => p,
+          onChanged: (v) {
+            setState(() => _fProject = v);
+            clearReport();
+          },
+        ),
+        const SizedBox(width: 8),
+        dropdown<String>(
+          label: 'Tag',
+          icon: Icons.label_outline,
+          value: _fTag,
+          options: tags,
+          optionLabel: (t) => '#$t',
+          onChanged: (v) {
+            setState(() => _fTag = v);
+            clearReport();
+          },
+        ),
+        const SizedBox(width: 8),
+        dropdown<TaskStatus>(
+          label: 'Status',
+          icon: Icons.track_changes,
+          value: _fStatus,
+          options: TaskStatus.values,
+          optionLabel: (s) => s.label,
+          onChanged: (v) {
+            setState(() => _fStatus = v);
+            clearReport();
+          },
+        ),
+        const SizedBox(width: 8),
+        dropdown<Priority>(
+          label: 'Priority',
+          icon: Icons.flag_outlined,
+          value: _fPriority,
+          options: Priority.values,
+          optionLabel: (p) => p.label,
+          onChanged: (v) {
+            setState(() => _fPriority = v);
+            clearReport();
+          },
+        ),
+        if (active) ...[
+          const SizedBox(width: 8),
+          TextButton.icon(
+            onPressed: () {
+              setState(() {
+                _fProject = null;
+                _fTag = null;
+                _fStatus = null;
+                _fPriority = null;
+              });
+              clearReport();
+            },
+            icon: const Icon(Icons.clear, size: 13),
+            label: const Text('Clear', style: TextStyle(fontSize: 12)),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -332,7 +501,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               border: Border.all(
                   color: theme.colorScheme.outline.withOpacity(0.25)),
             ),
-            child: LayoutBuilder(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LayoutBuilder(
               builder: (context, constraints) {
                 final controls = <Widget>[
                   // Period selector
@@ -514,6 +686,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         ),
                       );
               },
+            ),
+                const SizedBox(height: 10),
+                _buildFilterRow(theme),
+              ],
             ),
           ),
 

@@ -252,6 +252,8 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
   final _controller = TextEditingController();
   final _projectController = TextEditingController();
   final _tagController = TextEditingController();
+  final _subStepController = TextEditingController();
+  final List<String> _subSteps = [];
   Priority _priority = Priority.p2Medium;
   DateTime? _dueDate;
   bool _expanded = false;
@@ -261,6 +263,7 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
     _controller.dispose();
     _projectController.dispose();
     _tagController.dispose();
+    _subStepController.dispose();
     super.dispose();
   }
 
@@ -344,7 +347,10 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
           if (_expanded)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                 children: [
                   // Priority selector
                   Text('Priority:',
@@ -509,6 +515,76 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
                   ),
                 ],
               ),
+                  // Sub-tasks row
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Row(
+                      children: [
+                        Icon(Icons.checklist,
+                            size: 15,
+                            color:
+                                theme.colorScheme.onSurface.withOpacity(0.5)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: SizedBox(
+                            height: 30,
+                            child: TextField(
+                              controller: _subStepController,
+                              style: const TextStyle(fontSize: 12),
+                              decoration: InputDecoration(
+                                hintText:
+                                    'Sub-task, press Enter to add (repeatable)',
+                                isDense: true,
+                                contentPadding:
+                                    const EdgeInsets.symmetric(vertical: 6),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                  borderSide: BorderSide(
+                                      color: theme.colorScheme.outline
+                                          .withOpacity(0.4)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                  borderSide: BorderSide(
+                                      color: theme.colorScheme.outline
+                                          .withOpacity(0.4)),
+                                ),
+                              ),
+                              onSubmitted: (_) => _addSubStep(),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add, size: 16),
+                          visualDensity: VisualDensity.compact,
+                          onPressed: _addSubStep,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_subSteps.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: _subSteps
+                            .map((s) => Chip(
+                                  avatar: const Icon(Icons.checklist,
+                                      size: 13),
+                                  label: Text(s,
+                                      style: const TextStyle(fontSize: 11)),
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  visualDensity: VisualDensity.compact,
+                                  onDeleted: () =>
+                                      setState(() => _subSteps.remove(s)),
+                                ))
+                            .toList(),
+                      ),
+                    ),
+                ],
+              ),
             ),
         ],
       ),
@@ -540,15 +616,24 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
           priority: _priority,
           dueDate: _dueDate,
           tags: tags,
+          subSteps: _subSteps,
           project: _projectController.text.trim(),
         );
     _controller.clear();
     _tagController.clear();
     setState(() {
+      _subSteps.clear();
       _priority = Priority.p2Medium;
       _dueDate = null;
       _expanded = false;
     });
+  }
+
+  void _addSubStep() {
+    final text = _subStepController.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _subSteps.add(text));
+    _subStepController.clear();
   }
 }
 
