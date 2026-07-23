@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
 import '../shared/task_date_meta.dart';
+import '../shared/task_tag_project_meta.dart';
 
 class TimelineScreen extends ConsumerStatefulWidget {
   const TimelineScreen({super.key});
@@ -331,6 +332,11 @@ class _TimelineItem extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 6),
+                    if (task.project.trim().isNotEmpty ||
+                        task.tags.isNotEmpty) ...[
+                      TaskTagProjectMeta(task: task),
+                      const SizedBox(height: 4),
+                    ],
                     TaskDateMeta(task: task),
                     // Sub-step progress
                     if (task.subSteps.isNotEmpty) ...[

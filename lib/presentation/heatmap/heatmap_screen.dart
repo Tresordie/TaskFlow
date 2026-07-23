@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
 import '../shared/task_date_meta.dart';
+import '../shared/task_tag_project_meta.dart';
 
 /// GitHub-style contribution heatmap showing daily task volume for the year.
 class HeatmapScreen extends ConsumerWidget {
@@ -240,6 +241,13 @@ class _ActivityTaskItem extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
+            if (task.project.trim().isNotEmpty || task.tags.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.only(left: 18),
+                child: TaskTagProjectMeta(task: task, compact: true),
+              ),
+              const SizedBox(height: 4),
+            ],
             Padding(
               padding: const EdgeInsets.only(left: 18),
               child: TaskDateMeta(task: task, compact: true),
