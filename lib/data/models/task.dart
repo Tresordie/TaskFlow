@@ -171,8 +171,64 @@ enum EntryType {
 
 @embedded
 class SubStep {
+  /// Maximum nesting depth (0-based). 0/1/2 => up to 3 levels of sub-tasks.
+  /// Isar 3.1.0 cannot nest embedded objects inside embedded objects, so
+  /// nesting is stored flat via [parentUid] adjacency + cached [depth].
+  static const int maxDepth = 2;
+
   late String uid;
   late String title;
   bool completed = false;
   DateTime? completedAt;
+
+  /// uid of the parent sub-step, or null for a top-level sub-step.
+  String? parentUid;
+
+  /// Cached nesting depth: 0 = top-level, 1 = child, 2 = grandchild.
+  int depth = 0;
+}
+
+/// Returns [steps] in visual (DFS pre-order) order: each sub-step is
+/// followed by its descendants, so the UI can render a flat list as an
+/// indented tree. Orphans (parentUid pointing to a missing step) are
+/// treated as top-level. The original list is not modified.
+List<SubStep> subStepsInDisplayOrder(List<SubStep> steps) {
+  final childrenOf = <String?, List<SubStep>>{};
+  final uids = steps.map((s) => s.uid).toSet();
+  for (final step in steps) {
+    final parent =
+        step.parentUid != null && uids.contains(step.parentUid)
+            ? step.parentUid
+            : null;
+    childrenOf.putIfAbsent(parent, () => []).add(step);
+  }
+
+  final ordered = <SubStep>[];
+  void visit(String? parentUid) {
+    for (final step in childrenOf[parentUid] ?? const <SubStep>[]) {
+      ordered.add(step);
+      visit(step.uid);
+    }
+  }
+
+  visit(null);
+  return ordered;
+}
+
+/// Returns the uids of [step] plus all of its descendants within [steps].
+/// Used so deleting a sub-step also removes its children.
+Set<String> subStepDescendantUids(List<SubStep> steps, SubStep step) {
+  final result = <String>{step.uid};
+  var grew = true;
+  while (grew) {
+    grew = false;
+    for (final s in steps) {
+      if (s.parentUid != null &&
+          result.contains(s.parentUid) &&
+          result.add(s.uid)) {
+        grew = true;
+      }
+    }
+  }
+  return result;
 }

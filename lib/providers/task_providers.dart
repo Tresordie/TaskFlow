@@ -266,8 +266,15 @@ class TaskListNotifier extends StateNotifier<AsyncValue<List<Task>>> {
     await loadTasks();
   }
 
-  Future<void> addSubStep(int taskId, String title) async {
-    await _repo.addSubStep(taskId, title);
+  Future<void> addSubStep(int taskId, String title,
+      {String? parentUid}) async {
+    await _repo.addSubStep(taskId, title, parentUid: parentUid);
+    await loadTasks();
+  }
+
+  Future<void> renameSubStep(
+      int taskId, String subStepUid, String newTitle) async {
+    await _repo.renameSubStep(taskId, subStepUid, newTitle);
     await loadTasks();
   }
 

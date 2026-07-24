@@ -34,6 +34,13 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
   late Priority _priority;
   DateTime? _dueDate;
 
+  /// Per-step title editors, keyed by sub-step uid (created lazily).
+  final Map<String, TextEditingController> _stepControllers = {};
+
+  /// uid of the sub-step that an inline "add child" field is open for.
+  String? _addingChildUid;
+  final _addChildController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -41,7 +48,18 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
     _descriptionController =
         TextEditingController(text: widget.task.description ?? '');
     _projectController = TextEditingController(text: widget.task.project);
-    _subSteps = List<SubStep>.from(widget.task.subSteps);
+    // Deep copy: a shallow List.from would share SubStep instances with
+    // the live task, leaking in-place edits even when Cancel is pressed.
+    _subSteps = [
+      for (final s in widget.task.subSteps)
+        SubStep()
+          ..uid = s.uid
+          ..title = s.title
+          ..completed = s.completed
+          ..completedAt = s.completedAt
+          ..parentUid = s.parentUid
+          ..depth = s.depth,
+    ];
     _priority = widget.task.priority;
     _dueDate = widget.task.dueDate;
   }
@@ -52,7 +70,16 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
     _descriptionController.dispose();
     _projectController.dispose();
     _subStepController.dispose();
+    _addChildController.dispose();
+    for (final c in _stepControllers.values) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  TextEditingController _controllerFor(SubStep step) {
+    return _stepControllers.putIfAbsent(
+        step.uid, () => TextEditingController(text: step.title));
   }
 
   @override
@@ -223,50 +250,12 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
               ),
               const SizedBox(height: 16),
 
-              // Sub-tasks section
+              // Sub-tasks section (nested, max 3 levels)
               Text('Sub-tasks', style: theme.textTheme.labelLarge),
               const SizedBox(height: 8),
               if (_subSteps.isNotEmpty)
-                ..._subSteps.map((step) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        children: [
-                          Icon(
-                            step.completed
-                                ? Icons.check_circle
-                                : Icons.radio_button_unchecked,
-                            size: 16,
-                            color: step.completed
-                                ? theme.colorScheme.primary
-                                : theme.colorScheme.onSurface
-                                    .withOpacity(0.35),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              step.title,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: theme.colorScheme.onSurface
-                                    .withOpacity(0.85),
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              Icons.close,
-                              size: 14,
-                              color: theme.colorScheme.onSurface
-                                  .withOpacity(0.4),
-                            ),
-                            tooltip: 'Remove sub-task',
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () =>
-                                setState(() => _subSteps.remove(step)),
-                          ),
-                        ],
-                      ),
-                    )),
+                ...subStepsInDisplayOrder(_subSteps)
+                    .map((step) => _buildSubStepRow(theme, step)),
               Row(
                 children: [
                   Expanded(
@@ -314,6 +303,8 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
 
+    _syncTitles();
+
     final task = widget.task;
     task.title = title;
     task.description = _descriptionController.text.trim().isEmpty
@@ -326,6 +317,163 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
 
     ref.read(taskListProvider.notifier).updateTask(task);
     Navigator.pop(context);
+  }
+
+  /// Copies edited titles from the per-step controllers back into the
+  /// sub-step objects. Empty edits keep the previous title.
+  void _syncTitles() {
+    for (final step in _subSteps) {
+      final controller = _stepControllers[step.uid];
+      if (controller == null) continue;
+      final text = controller.text.trim();
+      if (text.isNotEmpty) step.title = text;
+    }
+  }
+
+  Widget _buildSubStepRow(ThemeData theme, SubStep step) {
+    final canNest = step.depth < SubStep.maxDepth;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(bottom: 2, left: step.depth * 22.0),
+          child: Row(
+            children: [
+              Icon(
+                step.completed
+                    ? Icons.check_circle
+                    : Icons.radio_button_unchecked,
+                size: 16,
+                color: step.completed
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurface.withOpacity(0.35),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _controllerFor(step),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color:
+                        theme.colorScheme.onSurface.withOpacity(0.85),
+                  ),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+              if (canNest)
+                IconButton(
+                  icon: Icon(
+                    Icons.add,
+                    size: 14,
+                    color:
+                        theme.colorScheme.onSurface.withOpacity(0.4),
+                  ),
+                  tooltip: 'Add nested sub-task',
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 26, minHeight: 26),
+                  onPressed: () => setState(() {
+                    _addingChildUid =
+                        _addingChildUid == step.uid ? null : step.uid;
+                    _addChildController.clear();
+                  }),
+                ),
+              IconButton(
+                icon: Icon(
+                  Icons.close,
+                  size: 14,
+                  color: theme.colorScheme.onSurface.withOpacity(0.4),
+                ),
+                tooltip: 'Remove sub-task (and its children)',
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints:
+                    const BoxConstraints(minWidth: 26, minHeight: 26),
+                onPressed: () => _removeStep(step),
+              ),
+            ],
+          ),
+        ),
+        if (_addingChildUid == step.uid)
+          Padding(
+            padding: EdgeInsets.only(
+                left: (step.depth + 1) * 22.0 + 4, bottom: 2),
+            child: Row(
+              children: [
+                Icon(Icons.subdirectory_arrow_right,
+                    size: 13,
+                    color: theme.colorScheme.primary.withOpacity(0.5)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: TextField(
+                    controller: _addChildController,
+                    autofocus: true,
+                    style: const TextStyle(fontSize: 13),
+                    decoration: const InputDecoration(
+                      hintText: 'Add nested sub-task…',
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 8),
+                    ),
+                    onSubmitted: (_) => _addChildStep(step),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 14),
+                  tooltip: 'Close',
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 26, minHeight: 26),
+                  onPressed: () =>
+                      setState(() => _addingChildUid = null),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _addChildStep(SubStep parent) {
+    final text = _addChildController.text.trim();
+    if (text.isEmpty || parent.depth >= SubStep.maxDepth) return;
+    setState(() {
+      _subSteps = [
+        ..._subSteps,
+        SubStep()
+          ..uid = const Uuid().v4()
+          ..title = text
+          ..completed = false
+          ..parentUid = parent.uid
+          ..depth = parent.depth + 1,
+      ];
+    });
+    _addChildController.clear();
+  }
+
+  /// Removes [step] together with all of its descendants.
+  void _removeStep(SubStep step) {
+    final doomed = subStepDescendantUids(_subSteps, step);
+    setState(() {
+      _subSteps = [
+        for (final s in _subSteps)
+          if (!doomed.contains(s.uid)) s,
+      ];
+      if (_addingChildUid != null && doomed.contains(_addingChildUid!)) {
+        _addingChildUid = null;
+      }
+      for (final uid in doomed) {
+        _stepControllers.remove(uid)?.dispose();
+      }
+    });
   }
 
   void _addSubStep() {

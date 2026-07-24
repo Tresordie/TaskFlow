@@ -767,4 +767,58 @@ void main() {
       );
     });
   });
+
+  group('Nested sub-steps (max 3 levels)', () {
+    SubStep step(String uid, {String? parent, int depth = 0}) =>
+        SubStep()
+          ..uid = uid
+          ..title = 'step $uid'
+          ..parentUid = parent
+          ..depth = depth;
+
+    test('maxDepth allows exactly 3 levels (0, 1, 2)', () {
+      expect(SubStep.maxDepth, 2);
+    });
+
+    test('display order is DFS: children follow their parent', () {
+      // Flat storage order: children are appended at the end as they are
+      // created, so visual order must be rebuilt via parentUid links.
+      final steps = [
+        step('a'),
+        step('b'),
+        step('a1', parent: 'a', depth: 1),
+        step('a2', parent: 'a', depth: 1),
+        step('a1x', parent: 'a1', depth: 2),
+        step('b1', parent: 'b', depth: 1),
+      ];
+      final ordered =
+          subStepsInDisplayOrder(steps).map((s) => s.uid).toList();
+      expect(ordered, ['a', 'a1', 'a1x', 'a2', 'b', 'b1']);
+    });
+
+    test('orphans (missing parent) fall back to top level', () {
+      final steps = [
+        step('a'),
+        step('x', parent: 'ghost', depth: 1),
+      ];
+      final ordered =
+          subStepsInDisplayOrder(steps).map((s) => s.uid).toList();
+      expect(ordered, ['a', 'x']);
+    });
+
+    test('descendant uids include the step and all nested children', () {
+      final steps = [
+        step('a'),
+        step('b'),
+        step('a1', parent: 'a', depth: 1),
+        step('a1x', parent: 'a1', depth: 2),
+        step('b1', parent: 'b', depth: 1),
+      ];
+      final a = steps.firstWhere((s) => s.uid == 'a');
+      expect(subStepDescendantUids(steps, a), {'a', 'a1', 'a1x'});
+
+      final a1 = steps.firstWhere((s) => s.uid == 'a1');
+      expect(subStepDescendantUids(steps, a1), {'a1', 'a1x'});
+    });
+  });
 }

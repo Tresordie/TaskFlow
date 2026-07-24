@@ -209,10 +209,22 @@ class TaskRepository {
     await isar.writeTxn(() => isar.tasks.put(task));
   }
 
-  Future<void> addSubStep(int taskId, String title) async {
+  /// Appends a sub-step. When [parentUid] is given the new sub-step is
+  /// nested under that parent (depth = parent.depth + 1); adds are
+  /// silently rejected once the parent is already at [SubStep.maxDepth]
+  /// so nesting never exceeds 3 levels.
+  Future<void> addSubStep(int taskId, String title,
+      {String? parentUid}) async {
     final isar = await AppDatabase.instance;
     final task = await isar.tasks.get(taskId);
     if (task == null) return;
+
+    SubStep? parent;
+    if (parentUid != null) {
+      parent =
+          task.subSteps.where((s) => s.uid == parentUid).firstOrNull;
+      if (parent == null || parent.depth >= SubStep.maxDepth) return;
+    }
 
     // Same fixed-length list constraint as executionLog above.
     task.subSteps = [
@@ -220,9 +232,30 @@ class TaskRepository {
       SubStep()
         ..uid = _uuid.v4()
         ..title = title
-        ..completed = false,
+        ..completed = false
+        ..parentUid = parent?.uid
+        ..depth = parent == null ? 0 : parent.depth + 1,
     ];
 
+    _touch(task);
+    await isar.writeTxn(() => isar.tasks.put(task));
+  }
+
+  /// Renames an existing sub-step. Empty/whitespace titles are ignored.
+  Future<void> renameSubStep(
+      int taskId, String subStepUid, String newTitle) async {
+    final trimmed = newTitle.trim();
+    if (trimmed.isEmpty) return;
+
+    final isar = await AppDatabase.instance;
+    final task = await isar.tasks.get(taskId);
+    if (task == null) return;
+
+    final step =
+        task.subSteps.where((s) => s.uid == subStepUid).firstOrNull;
+    if (step == null || step.title == trimmed) return;
+
+    step.title = trimmed;
     _touch(task);
     await isar.writeTxn(() => isar.tasks.put(task));
   }

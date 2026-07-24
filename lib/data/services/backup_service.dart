@@ -71,6 +71,8 @@ class BackupService {
               'title': s.title,
               'completed': s.completed,
               'completedAt': s.completedAt?.toIso8601String(),
+              'parentUid': s.parentUid,
+              'depth': s.depth,
             },
         ],
       };
@@ -154,7 +156,10 @@ class BackupService {
             ..uid = (raw['uid'] as String?) ?? ''
             ..title = (raw['title'] as String?) ?? ''
             ..completed = (raw['completed'] as bool?) ?? false
-            ..completedAt = _parseDate(raw['completedAt']),
+            ..completedAt = _parseDate(raw['completedAt'])
+            ..parentUid = raw['parentUid'] as String?
+            ..depth = ((raw['depth'] as num?)?.toInt() ?? 0)
+                .clamp(0, SubStep.maxDepth),
     ];
 
     return t;

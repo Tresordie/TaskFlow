@@ -333,9 +333,19 @@ class _SubStepsSection extends ConsumerStatefulWidget {
 class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
   final _addController = TextEditingController();
 
+  /// uid of the sub-step whose title is being edited inline.
+  String? _editingUid;
+  final _editController = TextEditingController();
+
+  /// uid of the sub-step that an inline "add child" field is open for.
+  String? _addingChildUid;
+  final _addChildController = TextEditingController();
+
   @override
   void dispose() {
     _addController.dispose();
+    _editController.dispose();
+    _addChildController.dispose();
     super.dispose();
   }
 
@@ -346,12 +356,40 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
     _addController.clear();
   }
 
+  void _startEdit(SubStep step) {
+    setState(() {
+      _editingUid = step.uid;
+      _editController.text = step.title;
+    });
+  }
+
+  void _commitEdit() {
+    final uid = _editingUid;
+    final text = _editController.text.trim();
+    if (uid != null && text.isNotEmpty) {
+      ref
+          .read(taskListProvider.notifier)
+          .renameSubStep(widget.task.id, uid, text);
+    }
+    setState(() => _editingUid = null);
+  }
+
+  void _addChild(SubStep parent) {
+    final text = _addChildController.text.trim();
+    if (text.isEmpty) return;
+    ref
+        .read(taskListProvider.notifier)
+        .addSubStep(widget.task.id, text, parentUid: parent.uid);
+    _addChildController.clear();
+  }
+
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
     final completedCount =
         task.subSteps.where((s) => s.completed).length;
     final theme = Theme.of(context);
+    final ordered = subStepsInDisplayOrder(task.subSteps);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,48 +408,8 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
           ],
         ),
         const SizedBox(height: 8),
-        ...task.subSteps.map((step) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(6),
-                onTap: () => ref
-                    .read(taskListProvider.notifier)
-                    .toggleSubStep(task.id, step.uid),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 4, vertical: 6),
-                  child: Row(
-                    children: [
-                      Icon(
-                        step.completed
-                            ? Icons.check_box
-                            : Icons.check_box_outline_blank,
-                        size: 18,
-                        color: step.completed
-                            ? AppColors.success
-                            : AppColors.lightTextSecondary,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          step.title,
-                          style: TextStyle(
-                            fontSize: 14,
-                            decoration: step.completed
-                                ? TextDecoration.lineThrough
-                                : null,
-                            color: step.completed
-                                ? AppColors.lightTextSecondary
-                                : null,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            )),
-        // Inline add sub-step input
+        ...ordered.map((step) => _buildStepRow(theme, task, step)),
+        // Inline add sub-step input (top level)
         Padding(
           padding: const EdgeInsets.only(top: 6),
           child: Row(
@@ -448,6 +446,172 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildStepRow(ThemeData theme, Task task, SubStep step) {
+    final isEditing = _editingUid == step.uid;
+    final canNest = step.depth < SubStep.maxDepth;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(bottom: 4, left: step.depth * 24.0),
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: Row(
+              children: [
+                // Checkbox — tap to toggle completion
+                InkWell(
+                  borderRadius: BorderRadius.circular(4),
+                  onTap: () => ref
+                      .read(taskListProvider.notifier)
+                      .toggleSubStep(task.id, step.uid),
+                  child: Padding(
+                    padding: const EdgeInsets.all(2),
+                    child: Icon(
+                      step.completed
+                          ? Icons.check_box
+                          : Icons.check_box_outline_blank,
+                      size: 18,
+                      color: step.completed
+                          ? AppColors.success
+                          : AppColors.lightTextSecondary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: isEditing
+                      ? Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _editController,
+                                autofocus: true,
+                                style: const TextStyle(fontSize: 14),
+                                decoration: const InputDecoration(
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 8),
+                                  border: OutlineInputBorder(),
+                                ),
+                                onSubmitted: (_) => _commitEdit(),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.check,
+                                  size: 16,
+                                  color: theme.colorScheme.primary),
+                              tooltip: 'Save',
+                              onPressed: _commitEdit,
+                              visualDensity: VisualDensity.compact,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                  minWidth: 28, minHeight: 28),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, size: 16),
+                              tooltip: 'Cancel',
+                              onPressed: () =>
+                                  setState(() => _editingUid = null),
+                              visualDensity: VisualDensity.compact,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                  minWidth: 28, minHeight: 28),
+                            ),
+                          ],
+                        )
+                      : InkWell(
+                          borderRadius: BorderRadius.circular(4),
+                          onTap: () => _startEdit(step),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 2, vertical: 4),
+                            child: Text(
+                              step.title,
+                              style: TextStyle(
+                                fontSize: 14,
+                                decoration: step.completed
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                                color: step.completed
+                                    ? AppColors.lightTextSecondary
+                                    : null,
+                              ),
+                            ),
+                          ),
+                        ),
+                ),
+                // Add nested sub-step (max 3 levels)
+                if (canNest && !isEditing)
+                  IconButton(
+                    icon: Icon(Icons.add,
+                        size: 15,
+                        color: theme.colorScheme.onSurface
+                            .withOpacity(0.35)),
+                    tooltip: 'Add nested sub-step',
+                    onPressed: () => setState(() {
+                      _addingChildUid =
+                          _addingChildUid == step.uid ? null : step.uid;
+                      _addChildController.clear();
+                    }),
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(minWidth: 26, minHeight: 26),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        // Inline "add child" field, indented one level below its parent
+        if (_addingChildUid == step.uid)
+          Padding(
+            padding: EdgeInsets.only(
+                left: (step.depth + 1) * 24.0 + 6, bottom: 4),
+            child: Row(
+              children: [
+                Icon(Icons.subdirectory_arrow_right,
+                    size: 14,
+                    color: theme.colorScheme.primary.withOpacity(0.5)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: TextField(
+                    controller: _addChildController,
+                    autofocus: true,
+                    style: const TextStyle(fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: 'Add nested sub-step…',
+                      hintStyle: TextStyle(
+                        fontSize: 13,
+                        color:
+                            theme.colorScheme.onSurface.withOpacity(0.35),
+                      ),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 8),
+                      border: const OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) => _addChild(step),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 15),
+                  tooltip: 'Close',
+                  onPressed: () =>
+                      setState(() => _addingChildUid = null),
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 26, minHeight: 26),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }

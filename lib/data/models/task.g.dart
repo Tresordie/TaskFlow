@@ -3719,13 +3719,23 @@ const SubStepSchema = Schema(
       name: r'completedAt',
       type: IsarType.dateTime,
     ),
-    r'title': PropertySchema(
+    r'depth': PropertySchema(
       id: 2,
+      name: r'depth',
+      type: IsarType.long,
+    ),
+    r'parentUid': PropertySchema(
+      id: 3,
+      name: r'parentUid',
+      type: IsarType.string,
+    ),
+    r'title': PropertySchema(
+      id: 4,
       name: r'title',
       type: IsarType.string,
     ),
     r'uid': PropertySchema(
-      id: 3,
+      id: 5,
       name: r'uid',
       type: IsarType.string,
     )
@@ -3742,6 +3752,12 @@ int _subStepEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  {
+    final value = object.parentUid;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.title.length * 3;
   bytesCount += 3 + object.uid.length * 3;
   return bytesCount;
@@ -3755,8 +3771,10 @@ void _subStepSerialize(
 ) {
   writer.writeBool(offsets[0], object.completed);
   writer.writeDateTime(offsets[1], object.completedAt);
-  writer.writeString(offsets[2], object.title);
-  writer.writeString(offsets[3], object.uid);
+  writer.writeLong(offsets[2], object.depth);
+  writer.writeString(offsets[3], object.parentUid);
+  writer.writeString(offsets[4], object.title);
+  writer.writeString(offsets[5], object.uid);
 }
 
 SubStep _subStepDeserialize(
@@ -3768,8 +3786,10 @@ SubStep _subStepDeserialize(
   final object = SubStep();
   object.completed = reader.readBool(offsets[0]);
   object.completedAt = reader.readDateTimeOrNull(offsets[1]);
-  object.title = reader.readString(offsets[2]);
-  object.uid = reader.readString(offsets[3]);
+  object.depth = reader.readLong(offsets[2]);
+  object.parentUid = reader.readStringOrNull(offsets[3]);
+  object.title = reader.readString(offsets[4]);
+  object.uid = reader.readString(offsets[5]);
   return object;
 }
 
@@ -3785,8 +3805,12 @@ P _subStepDeserializeProp<P>(
     case 1:
       return (reader.readDateTimeOrNull(offset)) as P;
     case 2:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 3:
+      return (reader.readStringOrNull(offset)) as P;
+    case 4:
+      return (reader.readString(offset)) as P;
+    case 5:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -3870,6 +3894,205 @@ extension SubStepQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStep, SubStep, QAfterFilterCondition> depthEqualTo(
+      int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'depth',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStep, SubStep, QAfterFilterCondition> depthGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'depth',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStep, SubStep, QAfterFilterCondition> depthLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'depth',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStep, SubStep, QAfterFilterCondition> depthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'depth',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStep, SubStep, QAfterFilterCondition> parentUidIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'parentUid',
+      ));
+    });
+  }
+
+  QueryBuilder<SubStep, SubStep, QAfterFilterCondition> parentUidIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'parentUid',
+      ));
+    });
+  }
+
+  QueryBuilder<SubStep, SubStep, QAfterFilterCondition> parentUidEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'parentUid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStep, SubStep, QAfterFilterCondition> parentUidGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'parentUid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStep, SubStep, QAfterFilterCondition> parentUidLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'parentUid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStep, SubStep, QAfterFilterCondition> parentUidBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'parentUid',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStep, SubStep, QAfterFilterCondition> parentUidStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'parentUid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStep, SubStep, QAfterFilterCondition> parentUidEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'parentUid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStep, SubStep, QAfterFilterCondition> parentUidContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'parentUid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStep, SubStep, QAfterFilterCondition> parentUidMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'parentUid',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStep, SubStep, QAfterFilterCondition> parentUidIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'parentUid',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SubStep, SubStep, QAfterFilterCondition> parentUidIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'parentUid',
+        value: '',
       ));
     });
   }
