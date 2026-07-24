@@ -471,15 +471,23 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
     // The inline add-child field goes AFTER the parent's whole subtree so
     // existing children render above it and a new child lands right above
     // the input instead of below the whole sibling group.
-    final fieldAfter = _addingChildUid == null
+    final addingUid = _addingChildUid;
+    final fieldAfter = addingUid == null
         ? -1
-        : subStepSubtreeEndIndex(ordered, _addingChildUid!);
+        : subStepSubtreeEndIndex(ordered, addingUid);
+    // The field must attach to the step the user tapped "+" on — NOT to
+    // ordered[fieldAfter], which is the subtree's last descendant (using
+    // it would indent the field one level too deep and nest new children
+    // under the wrong parent).
+    final parent = addingUid == null
+        ? null
+        : ordered.where((s) => s.uid == addingUid).firstOrNull;
 
     final rows = <Widget>[];
     for (var i = 0; i < ordered.length; i++) {
       rows.add(_buildStepRow(theme, task, ordered[i]));
-      if (i == fieldAfter) {
-        rows.add(_buildAddChildField(theme, ordered[i]));
+      if (i == fieldAfter && parent != null) {
+        rows.add(_buildAddChildField(theme, parent));
       }
     }
     return rows;
@@ -620,7 +628,7 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
     return wrapWithTreeGuides(
       content,
       depth: step.depth,
-      guideColor: theme.dividerColor.withOpacity(0.5),
+      guideColor: treeGuideColor(theme),
     );
   }
 
@@ -670,7 +678,7 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
     return wrapWithTreeGuides(
       content,
       depth: parent.depth + 1,
-      guideColor: theme.dividerColor.withOpacity(0.5),
+      guideColor: treeGuideColor(theme),
     );
   }
 }

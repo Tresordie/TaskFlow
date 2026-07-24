@@ -102,6 +102,76 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+      'add-child field nests one level below the tapped parent, not the last descendant',
+      (tester) async {
+    // Regression (v1.4.11): when "+" was tapped on a row that already had
+    // children, the inline field attached to the subtree's LAST descendant
+    // — rendering one level too deep and nesting new children under the
+    // wrong parent.
+    // Desktop-like surface: the default 800x600 test window is too short
+    // for the detail screen and would squeeze the Execution Log section.
+    await tester.binding.setSurfaceSize(const Size(1280, 1024));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final task = Task()
+      ..id = 1
+      ..uid = 'nest'
+      ..title = 'Nested checklist'
+      ..status = TaskStatus.inProgress
+      ..createdAt = DateTime(2026, 7, 22, 9, 0);
+    task.subSteps = [
+      SubStep()
+        ..uid = 'p'
+        ..title = 'parent step'
+        ..depth = 0,
+      SubStep()
+        ..uid = 'c'
+        ..title = 'child step'
+        ..depth = 1
+        ..parentUid = 'p',
+    ];
+
+    final notifier = _CapturingTasks([task]);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          taskListProvider.overrideWith((ref) => notifier),
+        ],
+        child: const MaterialApp(home: TaskDetailScreen(taskId: 1)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Tap "+" on the PARENT row (first in DFS order).
+    final addButtons = find.byTooltip('Add nested sub-step');
+    expect(addButtons, findsNWidgets(2));
+    await tester.tap(addButtons.first);
+    await tester.pumpAndSettle();
+
+    final field = find.byWidgetPredicate((w) =>
+        w is TextField &&
+        w.decoration?.hintText == 'Add nested sub-step…');
+    expect(field, findsOneWidget);
+
+    // The field must sit exactly one indent level below the parent —
+    // aligned with the existing child row — not a full extra level down.
+    final parentLeft = tester.getTopLeft(find.text('parent step')).dx;
+    final childLeft = tester.getTopLeft(find.text('child step')).dx;
+    final fieldLeft = tester.getTopLeft(field).dx;
+    final oneLevel = childLeft - parentLeft;
+    expect(
+      (fieldLeft - parentLeft - oneLevel).abs(),
+      lessThan((fieldLeft - parentLeft - 2 * oneLevel).abs()),
+      reason: 'field should be ~one indent level deep, not two',
+    );
+
+    // Submitting must attach the new child to the tapped parent.
+    await tester.enterText(field, 'new child');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(notifier.lastParentUid, 'p');
+  });
 }
 
 /// Serves a fixed task list without ever opening the Isar database (the
@@ -113,4 +183,18 @@ class _StaticTasks extends TaskListNotifier {
 
   @override
   Future<void> loadTasks() async {} // no DB in widget tests
+}
+
+/// Like [_StaticTasks] but records the parentUid passed to addSubStep so
+/// tests can assert which parent a nested sub-step attaches to.
+class _CapturingTasks extends _StaticTasks {
+  _CapturingTasks(super.tasks);
+
+  String? lastParentUid;
+
+  @override
+  Future<void> addSubStep(int taskId, String title,
+      {String? parentUid}) async {
+    lastParentUid = parentUid;
+  }
 }

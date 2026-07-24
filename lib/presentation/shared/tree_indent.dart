@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+/// Guide-line color for nested sub-step trees: the theme's palette
+/// border color (tuned per light/dark theme), slightly softened.
+Color treeGuideColor(ThemeData theme) =>
+    (theme.dividerTheme.color ?? theme.dividerColor).withOpacity(0.7);
+
 /// Wraps [child] with [depth] levels of vertical indent guide lines so a
 /// flat sub-step list renders as a visual tree. Each level adds a thin
 /// left rail; consecutive sibling rows produce a near-continuous line.
