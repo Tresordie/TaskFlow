@@ -255,3 +255,35 @@ int subStepSubtreeEndIndex(List<SubStep> ordered, String parentUid) {
   }
   return last;
 }
+
+/// Recomputes every sub-step's [SubStep.depth] purely from the
+/// [SubStep.parentUid] chain: a top-level step (no parent, or a parent
+/// that is not present) gets 0, any other step gets parent.depth + 1.
+///
+/// [SubStep.depth] is only a derived cache — the v1.4.9 schema migration
+/// corrupted the persisted values (Isar wrote the sort-encoded default,
+/// flipping the sign bit, so roots read as -2^63 instead of 0), and the
+/// corruption then propagated through `parent.depth + 1`. The stored
+/// depth must therefore never be trusted; always derive it. Mutates
+/// [steps] in place and returns true when any value changed so callers
+/// can persist the repair.
+bool normalizeSubStepDepths(List<SubStep> steps) {
+  final byUid = {for (final s in steps) s.uid: s};
+  var changed = false;
+
+  int depthOf(SubStep s, Set<String> visiting) {
+    final parent = s.parentUid == null ? null : byUid[s.parentUid];
+    if (parent == null) return 0; // top-level or orphan
+    if (!visiting.add(parent.uid)) return 0; // cycle guard
+    return depthOf(parent, visiting) + 1;
+  }
+
+  for (final s in steps) {
+    final correct = depthOf(s, {s.uid});
+    if (s.depth != correct) {
+      s.depth = correct;
+      changed = true;
+    }
+  }
+  return changed;
+}

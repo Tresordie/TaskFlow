@@ -836,5 +836,59 @@ void main() {
       expect(subStepSubtreeEndIndex(ordered, 'b'), 5); // after b1
       expect(subStepSubtreeEndIndex(ordered, 'ghost'), -1);
     });
+
+    test('normalize repairs sign-bit-corrupted depths (v1.4.9 migration)',
+        () {
+      // Regression (v1.4.12): the v1.4.9 Isar migration wrote the
+      // sort-encoded default for the new depth field, flipping the sign
+      // bit — roots read as (1 << 63) instead of 0, and the corruption
+      // then propagated through `parent.depth + 1`. This is exactly what
+      // was found in the live database (all checklist items rendered
+      // flat). depth must be re-derived from the parentUid chain.
+      final signBit = 1 << 63; // -9223372036854775808 (int64 min)
+      final steps = [
+        step('root', depth: signBit),
+        step('child', parent: 'root', depth: signBit + 1),
+        step('grand', parent: 'child', depth: signBit + 2),
+        step('root2', depth: signBit),
+      ];
+      expect(normalizeSubStepDepths(steps), isTrue);
+      final depthByUid = {for (final s in steps) s.uid: s.depth};
+      expect(depthByUid['root'], 0);
+      expect(depthByUid['child'], 1);
+      expect(depthByUid['grand'], 2);
+      expect(depthByUid['root2'], 0);
+    });
+
+    test('normalize is a no-op when depths already match the chain', () {
+      final steps = [
+        step('a'),
+        step('a1', parent: 'a', depth: 1),
+        step('a1x', parent: 'a1', depth: 2),
+      ];
+      expect(normalizeSubStepDepths(steps), isFalse);
+      expect(steps.map((s) => s.depth).toList(), [0, 1, 2]);
+    });
+
+    test('normalize treats orphans (missing parent) as top level', () {
+      final steps = [
+        step('a'),
+        step('x', parent: 'ghost', depth: 5),
+      ];
+      expect(normalizeSubStepDepths(steps), isTrue);
+      expect(steps.firstWhere((s) => s.uid == 'x').depth, 0);
+    });
+
+    test('normalize survives a corrupted parent cycle without hanging', () {
+      final steps = [
+        step('a', parent: 'b', depth: 0),
+        step('b', parent: 'a', depth: 0),
+      ];
+      normalizeSubStepDepths(steps); // must terminate
+      for (final s in steps) {
+        expect(s.depth, greaterThanOrEqualTo(0));
+        expect(s.depth, lessThanOrEqualTo(SubStep.maxDepth));
+      }
+    });
   });
 }

@@ -14,7 +14,20 @@ class TaskRepository {
 
   Future<List<Task>> getAllTasks() async {
     final isar = await AppDatabase.instance;
-    return isar.tasks.where().sortBySortOrder().findAll();
+    final tasks = await isar.tasks.where().sortBySortOrder().findAll();
+
+    // Self-heal: SubStep.depth is a derived cache over parentUid and the
+    // v1.4.9 migration corrupted the persisted values (sign-bit flipped).
+    // Recompute from the parentUid chain and persist any repair so the
+    // database is fixed on first load and stays correct thereafter.
+    final repaired = <Task>[
+      for (final t in tasks)
+        if (normalizeSubStepDepths(t.subSteps)) t,
+    ];
+    if (repaired.isNotEmpty) {
+      await isar.writeTxn(() => isar.tasks.putAll(repaired));
+    }
+    return tasks;
   }
 
   Future<List<Task>> getTasksByDate(DateTime date) async {
@@ -218,6 +231,11 @@ class TaskRepository {
     final isar = await AppDatabase.instance;
     final task = await isar.tasks.get(taskId);
     if (task == null) return;
+
+    // depth is derived from parentUid — recompute it first so a corrupted
+    // stored value can neither propagate into the new child nor break the
+    // maxDepth guard below.
+    normalizeSubStepDepths(task.subSteps);
 
     SubStep? parent;
     if (parentUid != null) {
