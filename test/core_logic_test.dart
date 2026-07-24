@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:taskflow/core/markdown/line_breaks.dart';
 import 'package:taskflow/data/models/task.dart';
 import 'package:taskflow/data/repositories/task_repository.dart';
 import 'package:taskflow/data/services/ai_service.dart';
@@ -889,6 +890,39 @@ void main() {
         expect(s.depth, greaterThanOrEqualTo(0));
         expect(s.depth, lessThanOrEqualTo(SubStep.maxDepth));
       }
+    });
+  });
+
+  group('hardenMarkdownLineBreaks (log entry newlines)', () {
+    test('single newlines become hard breaks (two trailing spaces)', () {
+      // Regression (v1.4.12): a multi-line log entry collapsed into one
+      // line because Markdown renders a single newline as a space.
+      expect(
+        hardenMarkdownLineBreaks('Bollard\n8/20 - Assembly\n8/20 - Test'),
+        'Bollard  \n8/20 - Assembly  \n8/20 - Test  ',
+      );
+    });
+
+    test('blank lines stay paragraph breaks', () {
+      expect(
+        hardenMarkdownLineBreaks('para one\n\npara two'),
+        'para one  \n\npara two  ',
+      );
+    });
+
+    test('fenced code blocks are left untouched', () {
+      expect(
+        hardenMarkdownLineBreaks('before\n```\ncode line\n```\nafter'),
+        'before  \n```\ncode line\n```\nafter  ',
+      );
+    });
+
+    test('existing hard breaks are not doubled', () {
+      // "a  " already ends a hard break; "b\" uses the backslash form.
+      expect(
+        hardenMarkdownLineBreaks('a  \nb\\\nc'),
+        'a  \nb\\\nc  ',
+      );
     });
   });
 }

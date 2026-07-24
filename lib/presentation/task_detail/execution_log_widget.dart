@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/markdown/latex_support.dart';
+import '../../core/markdown/line_breaks.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/open_folder.dart';
 import '../../data/models/task.dart';
@@ -627,7 +628,7 @@ class _LogEntryItem extends StatelessWidget {
                   if (entry.content.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     MarkdownBody(
-                      data: entry.content,
+                      data: hardenMarkdownLineBreaks(entry.content),
                       styleSheet: _markdownStyleSheet(context),
                       inlineSyntaxes: LatexMarkdown.syntaxes(),
                       builders: LatexMarkdown.builders(
