@@ -39,7 +39,8 @@ enum TaskStatus {
   planned,
   inProgress,
   completed,
-  archived;
+  archived,
+  blocked;
 
   String get label {
     switch (this) {
@@ -51,6 +52,8 @@ enum TaskStatus {
         return 'Completed';
       case TaskStatus.archived:
         return 'Archived';
+      case TaskStatus.blocked:
+        return 'Blocked';
     }
   }
 }

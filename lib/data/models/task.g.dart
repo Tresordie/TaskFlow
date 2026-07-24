@@ -318,12 +318,14 @@ const _TaskstatusEnumValueMap = {
   'inProgress': 1,
   'completed': 2,
   'archived': 3,
+  'blocked': 4,
 };
 const _TaskstatusValueEnumMap = {
   0: TaskStatus.planned,
   1: TaskStatus.inProgress,
   2: TaskStatus.completed,
   3: TaskStatus.archived,
+  4: TaskStatus.blocked,
 };
 
 Id _taskGetId(Task object) {

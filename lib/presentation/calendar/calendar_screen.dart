@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
+import '../../providers/date_nav_providers.dart';
 import '../../providers/task_providers.dart';
 import '../shared/task_date_meta.dart';
 import '../shared/task_tag_project_meta.dart';
@@ -16,33 +17,35 @@ class CalendarScreen extends ConsumerStatefulWidget {
 }
 
 class _CalendarScreenState extends ConsumerState<CalendarScreen> {
+  /// The month currently shown in the grid. Local view state — the
+  /// selected day / range live in [calendarDateNavProvider] so they
+  /// persist across page switches.
   late DateTime _currentMonth;
-  DateTime? _selectedDate;
-  DateTimeRange? _dateRange;
-
-  bool get _rangeMode => _dateRange != null;
 
   @override
   void initState() {
     super.initState();
-    _currentMonth = DateTime(DateTime.now().year, DateTime.now().month);
-    _selectedDate = DateTime.now();
+    final nav = ref.read(calendarDateNavProvider);
+    _currentMonth = DateTime(nav.selectedDate.year, nav.selectedDate.month);
   }
 
-  Future<void> _pickRange() async {
+  void _setNav(DateNavState next) {
+    ref.read(calendarDateNavProvider.notifier).state = next;
+  }
+
+  Future<void> _pickRange(DateNavState nav) async {
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2024),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      initialDateRange: _dateRange ??
+      initialDateRange: nav.dateRange ??
           DateTimeRange(
-            start: _selectedDate ?? DateTime.now(),
-            end: (_selectedDate ?? DateTime.now())
-                .add(const Duration(days: 7)),
+            start: nav.selectedDate,
+            end: nav.selectedDate.add(const Duration(days: 7)),
           ),
     );
     if (picked != null) {
-      setState(() => _dateRange = picked);
+      _setNav(nav.copyWith(dateRange: picked));
     }
   }
 
@@ -50,6 +53,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tasksAsync = ref.watch(taskListProvider);
+    final nav = ref.watch(calendarDateNavProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,7 +85,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               const SizedBox(width: 12),
               Text('Calendar', style: theme.textTheme.headlineLarge),
               const Spacer(),
-              if (_rangeMode) ...[
+              if (nav.rangeMode) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 12, vertical: 6),
@@ -96,8 +100,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                           size: 16, color: theme.colorScheme.primary),
                       const SizedBox(width: 6),
                       Text(
-                        '${DateFormat('MMM d').format(_dateRange!.start)} – '
-                        '${DateFormat('MMM d').format(_dateRange!.end)}',
+                        '${DateFormat('MMM d').format(nav.dateRange!.start)} – '
+                        '${DateFormat('MMM d').format(nav.dateRange!.end)}',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -110,16 +114,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 20),
                   tooltip: 'Edit range',
-                  onPressed: _pickRange,
+                  onPressed: () => _pickRange(nav),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close, size: 20),
                   tooltip: 'Clear range',
-                  onPressed: () => setState(() => _dateRange = null),
+                  onPressed: () => _setNav(nav.copyWith(clearRange: true)),
                 ),
               ] else
                 OutlinedButton.icon(
-                  onPressed: _pickRange,
+                  onPressed: () => _pickRange(nav),
                   icon: const Icon(Icons.date_range, size: 16),
                   label: const Text('Range'),
                 ),
@@ -139,13 +143,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   flex: 3,
                   child: Padding(
                     padding: const EdgeInsets.all(24),
-                    child: _buildCalendar(theme, tasks),
+                    child: _buildCalendar(theme, tasks, nav),
                   ),
                 ),
                 // Selected day tasks
                 Expanded(
                   flex: 2,
-                  child: _buildDayPanel(theme, tasks),
+                  child: _buildDayPanel(theme, tasks, nav),
                 ),
               ],
             ),
@@ -155,7 +159,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     );
   }
 
-  Widget _buildCalendar(ThemeData theme, List<Task> tasks) {
+  Widget _buildCalendar(ThemeData theme, List<Task> tasks, DateNavState nav) {
     final year = _currentMonth.year;
     final month = _currentMonth.month;
     final firstDay = DateTime(year, month, 1);
@@ -232,16 +236,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               final date = DateTime(year, month, day);
               final isToday = _isSameDay(date, DateTime.now());
               final isSelected =
-                  !_rangeMode && _selectedDate != null &&
-                      _isSameDay(date, _selectedDate!);
-              final inRange = _rangeMode && _isInRange(date);
+                  !nav.rangeMode && _isSameDay(date, nav.selectedDate);
+              final inRange = nav.rangeMode && _isInRange(date, nav);
               final count = taskCounts[day] ?? 0;
 
               return GestureDetector(
-                onTap: () => setState(() {
-                  _dateRange = null;
-                  _selectedDate = date;
-                }),
+                onTap: () => _setNav(
+                    nav.copyWith(selectedDate: date, clearRange: true)),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   margin: const EdgeInsets.all(3),
@@ -306,24 +307,21 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     );
   }
 
-  Widget _buildDayPanel(ThemeData theme, List<Task> tasks) {
+  Widget _buildDayPanel(ThemeData theme, List<Task> tasks, DateNavState nav) {
     final String title;
     final List<Task> dayTasks;
     final String emptyLabel;
 
-    if (_rangeMode) {
-      title = '${DateFormat('MMM d').format(_dateRange!.start)} – '
-          '${DateFormat('MMM d, yyyy').format(_dateRange!.end)}';
-      dayTasks = tasks.where((t) => _isInRange(t.createdAt)).toList()
+    if (nav.rangeMode) {
+      title = '${DateFormat('MMM d').format(nav.dateRange!.start)} – '
+          '${DateFormat('MMM d, yyyy').format(nav.dateRange!.end)}';
+      dayTasks = tasks.where((t) => _isInRange(t.createdAt, nav)).toList()
         ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
       emptyLabel = 'No tasks in this range';
     } else {
-      if (_selectedDate == null) {
-        return const Center(child: Text('Select a date'));
-      }
-      title = DateFormat('EEE, MMM d').format(_selectedDate!);
+      title = DateFormat('EEE, MMM d').format(nav.selectedDate);
       dayTasks =
-          tasks.where((t) => _isSameDay(t.createdAt, _selectedDate!)).toList()
+          tasks.where((t) => _isSameDay(t.createdAt, nav.selectedDate)).toList()
             ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
       emptyLabel = 'No tasks on this day';
     }
@@ -375,13 +373,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  bool _isInRange(DateTime date) {
-    if (_dateRange == null) return false;
+  bool _isInRange(DateTime date, DateNavState nav) {
+    if (nav.dateRange == null) return false;
     final d = DateTime(date.year, date.month, date.day);
-    final start = DateTime(
-        _dateRange!.start.year, _dateRange!.start.month, _dateRange!.start.day);
-    final end = DateTime(
-        _dateRange!.end.year, _dateRange!.end.month, _dateRange!.end.day);
+    final start = DateTime(nav.dateRange!.start.year,
+        nav.dateRange!.start.month, nav.dateRange!.start.day);
+    final end = DateTime(nav.dateRange!.end.year, nav.dateRange!.end.month,
+        nav.dateRange!.end.day);
     return !d.isBefore(start) && !d.isAfter(end);
   }
 }

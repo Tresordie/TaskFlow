@@ -233,13 +233,6 @@ class _StatusDropdown extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statusColors = {
-      TaskStatus.planned: AppColors.lightTextSecondary,
-      TaskStatus.inProgress: AppColors.info,
-      TaskStatus.completed: AppColors.success,
-      TaskStatus.archived: AppColors.p3Low,
-    };
-
     return PopupMenuButton<TaskStatus>(
       initialValue: task.status,
       onSelected: (status) {
@@ -248,8 +241,7 @@ class _StatusDropdown extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: (statusColors[task.status] ?? AppColors.primary)
-              .withOpacity(0.1),
+          color: AppColors.statusColor(task.status).withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -259,7 +251,7 @@ class _StatusDropdown extends ConsumerWidget {
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: statusColors[task.status],
+                color: AppColors.statusColor(task.status),
                 shape: BoxShape.circle,
               ),
             ),
@@ -269,12 +261,12 @@ class _StatusDropdown extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: statusColors[task.status],
+                color: AppColors.statusColor(task.status),
               ),
             ),
             const SizedBox(width: 4),
             Icon(Icons.keyboard_arrow_down,
-                size: 16, color: statusColors[task.status]),
+                size: 16, color: AppColors.statusColor(task.status)),
           ],
         ),
       ),
@@ -287,7 +279,7 @@ class _StatusDropdown extends ConsumerWidget {
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: statusColors[s],
+                        color: AppColors.statusColor(s),
                         shape: BoxShape.circle,
                       ),
                     ),

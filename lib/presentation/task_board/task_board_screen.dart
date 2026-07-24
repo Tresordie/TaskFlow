@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
+import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
 import 'task_card_widget.dart';
 
@@ -200,7 +201,10 @@ class TaskBoardScreen extends ConsumerWidget {
                 children: [
                   for (final entry in groupedTasks.entries)
                     if (entry.value.isNotEmpty) ...[
-                      _GroupSectionHeader(label: entry.key),
+                      _GroupSectionHeader(
+                        label: entry.key,
+                        color: _groupColor(groupMode, entry.key, ref, theme),
+                      ),
                       const SizedBox(height: 8),
                       ...entry.value.asMap().entries.map(
                             (e) => Padding(
@@ -229,6 +233,41 @@ class TaskBoardScreen extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  /// Resolves the color for a group header so it matches how the same
+  /// attribute is colored on the task detail page (priority / status use
+  /// their fixed colors; project / tag use the user-assigned color, or a
+  /// muted tone when none is set).
+  Color _groupColor(
+      TaskGroupMode mode, String label, WidgetRef ref, ThemeData theme) {
+    final fallback = theme.colorScheme.primary;
+    final muted = theme.brightness == Brightness.dark
+        ? AppColors.darkBorder
+        : AppColors.lightTextSecondary;
+
+    switch (mode) {
+      case TaskGroupMode.priority:
+        final p =
+            Priority.values.where((p) => p.label == label).firstOrNull;
+        return p == null ? fallback : AppColors.priorityColor(p.index);
+
+      case TaskGroupMode.status:
+        final s =
+            TaskStatus.values.where((s) => s.label == label).firstOrNull;
+        return s == null ? fallback : AppColors.statusColor(s);
+
+      case TaskGroupMode.project:
+        if (label == 'No Project') return muted;
+        return ref.read(colorSettingsProvider).projectColor(label) ?? muted;
+
+      case TaskGroupMode.tag:
+        if (label == 'No Tag') return muted;
+        return ref.read(colorSettingsProvider).tagColor(label) ?? muted;
+
+      case TaskGroupMode.none:
+        return fallback;
+    }
   }
 
   String _describeFilter(TaskFilter f) {
@@ -639,12 +678,14 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
 
 class _GroupSectionHeader extends StatelessWidget {
   final String label;
+  final Color? color;
 
-  const _GroupSectionHeader({required this.label});
+  const _GroupSectionHeader({required this.label, this.color});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final c = color ?? theme.colorScheme.primary;
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Row(
@@ -653,7 +694,7 @@ class _GroupSectionHeader extends StatelessWidget {
             width: 8,
             height: 8,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary,
+              color: c,
               shape: BoxShape.circle,
             ),
           ),
@@ -661,7 +702,7 @@ class _GroupSectionHeader extends StatelessWidget {
           Text(
             label,
             style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.primary,
+              color: c,
               fontWeight: FontWeight.w600,
             ),
           ),

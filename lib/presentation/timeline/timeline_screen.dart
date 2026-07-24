@@ -4,42 +4,18 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
+import '../../providers/date_nav_providers.dart';
 import '../../providers/task_providers.dart';
 import '../shared/task_date_meta.dart';
 import '../shared/task_tag_project_meta.dart';
 
-class TimelineScreen extends ConsumerStatefulWidget {
+class TimelineScreen extends ConsumerWidget {
   const TimelineScreen({super.key});
 
   @override
-  ConsumerState<TimelineScreen> createState() => _TimelineScreenState();
-}
-
-class _TimelineScreenState extends ConsumerState<TimelineScreen> {
-  DateTime _selectedDate = DateTime.now();
-  DateTimeRange? _dateRange;
-
-  bool get _rangeMode => _dateRange != null;
-
-  Future<void> _pickRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2024),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      initialDateRange: _dateRange ??
-          DateTimeRange(
-            start: _selectedDate,
-            end: _selectedDate.add(const Duration(days: 7)),
-          ),
-    );
-    if (picked != null) {
-      setState(() => _dateRange = picked);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final tasksAsync = ref.watch(taskListProvider);
+    final nav = ref.watch(timelineDateNavProvider);
     final theme = Theme.of(context);
 
     return Column(
@@ -59,16 +35,17 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _rangeMode
-                        ? '${DateFormat('MMM d, yyyy').format(_dateRange!.start)} – '
-                            '${DateFormat('MMM d, yyyy').format(_dateRange!.end)}'
-                        : DateFormat('EEEE, MMM d, yyyy').format(_selectedDate),
+                    nav.rangeMode
+                        ? '${DateFormat('MMM d, yyyy').format(nav.dateRange!.start)} – '
+                            '${DateFormat('MMM d, yyyy').format(nav.dateRange!.end)}'
+                        : DateFormat('EEEE, MMM d, yyyy')
+                            .format(nav.selectedDate),
                     style: theme.textTheme.bodyMedium,
                   ),
                 ],
               ),
               const Spacer(),
-              if (_rangeMode) ...[
+              if (nav.rangeMode) ...[
                 // Active range chip
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -84,8 +61,8 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                           size: 16, color: theme.colorScheme.primary),
                       const SizedBox(width: 6),
                       Text(
-                        '${DateFormat('MMM d').format(_dateRange!.start)} – '
-                        '${DateFormat('MMM d').format(_dateRange!.end)}',
+                        '${DateFormat('MMM d').format(nav.dateRange!.start)} – '
+                        '${DateFormat('MMM d').format(nav.dateRange!.end)}',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -98,44 +75,39 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 20),
                   tooltip: 'Edit range',
-                  onPressed: _pickRange,
+                  onPressed: () => _pickRange(context, ref, nav),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close, size: 20),
                   tooltip: 'Clear range',
-                  onPressed: () => setState(() => _dateRange = null),
+                  onPressed: () =>
+                      _setNav(ref, nav.copyWith(clearRange: true)),
                 ),
               ] else ...[
                 // Single-day navigation
                 IconButton(
                   icon: const Icon(Icons.chevron_left),
-                  onPressed: () => setState(
-                      () => _selectedDate = _selectedDate.subtract(
-                          const Duration(days: 1))),
+                  onPressed: () => _setNav(
+                      ref,
+                      nav.copyWith(
+                          selectedDate: nav.selectedDate
+                              .subtract(const Duration(days: 1)))),
                 ),
                 TextButton(
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _selectedDate,
-                      firstDate: DateTime(2024),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                    );
-                    if (picked != null) {
-                      setState(() => _selectedDate = picked);
-                    }
-                  },
+                  onPressed: () => _pickDate(context, ref, nav),
                   child: const Text('Today'),
                 ),
                 IconButton(
                   icon: const Icon(Icons.chevron_right),
-                  onPressed: () => setState(() =>
-                      _selectedDate =
-                          _selectedDate.add(const Duration(days: 1))),
+                  onPressed: () => _setNav(
+                      ref,
+                      nav.copyWith(
+                          selectedDate:
+                              nav.selectedDate.add(const Duration(days: 1)))),
                 ),
                 const SizedBox(width: 8),
                 OutlinedButton.icon(
-                  onPressed: _pickRange,
+                  onPressed: () => _pickRange(context, ref, nav),
                   icon: const Icon(Icons.date_range, size: 16),
                   label: const Text('Range'),
                 ),
@@ -151,7 +123,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
             data: (tasks) {
-              final dayTasks = _filterTasks(tasks);
+              final dayTasks = _filterTasks(tasks, nav);
 
               if (dayTasks.isEmpty) {
                 return Center(
@@ -162,7 +134,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                           size: 48, color: AppColors.lightBorder),
                       const SizedBox(height: 12),
                       Text(
-                        _rangeMode
+                        nav.rangeMode
                             ? 'No tasks in this range'
                             : 'No tasks on this day',
                         style: theme.textTheme.bodyMedium,
@@ -180,19 +152,53 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
     );
   }
 
-  List<Task> _filterTasks(List<Task> tasks) {
+  void _setNav(WidgetRef ref, DateNavState next) {
+    ref.read(timelineDateNavProvider.notifier).state = next;
+  }
+
+  Future<void> _pickDate(
+      BuildContext context, WidgetRef ref, DateNavState nav) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: nav.selectedDate,
+      firstDate: DateTime(2024),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null) {
+      _setNav(ref, nav.copyWith(selectedDate: picked));
+    }
+  }
+
+  Future<void> _pickRange(
+      BuildContext context, WidgetRef ref, DateNavState nav) async {
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2024),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDateRange: nav.dateRange ??
+          DateTimeRange(
+            start: nav.selectedDate,
+            end: nav.selectedDate.add(const Duration(days: 7)),
+          ),
+    );
+    if (picked != null) {
+      _setNav(ref, nav.copyWith(dateRange: picked));
+    }
+  }
+
+  List<Task> _filterTasks(List<Task> tasks, DateNavState nav) {
     return tasks.where((t) {
-      if (_rangeMode) {
-        final start = DateTime(_dateRange!.start.year, _dateRange!.start.month,
-            _dateRange!.start.day);
-        final end = DateTime(_dateRange!.end.year, _dateRange!.end.month,
-            _dateRange!.end.day, 23, 59, 59, 999);
+      if (nav.rangeMode) {
+        final start = DateTime(nav.dateRange!.start.year,
+            nav.dateRange!.start.month, nav.dateRange!.start.day);
+        final end = DateTime(nav.dateRange!.end.year, nav.dateRange!.end.month,
+            nav.dateRange!.end.day, 23, 59, 59, 999);
         return !t.createdAt.isBefore(start) && !t.createdAt.isAfter(end);
       }
-      final taskDay = DateTime(
-          t.createdAt.year, t.createdAt.month, t.createdAt.day);
-      final selected = DateTime(
-          _selectedDate.year, _selectedDate.month, _selectedDate.day);
+      final taskDay =
+          DateTime(t.createdAt.year, t.createdAt.month, t.createdAt.day);
+      final selected = DateTime(nav.selectedDate.year, nav.selectedDate.month,
+          nav.selectedDate.day);
       return taskDay == selected;
     }).toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
@@ -387,15 +393,6 @@ class _TimelineItem extends StatelessWidget {
   }
 
   Color _statusColor(TaskStatus status) {
-    switch (status) {
-      case TaskStatus.planned:
-        return AppColors.lightTextSecondary;
-      case TaskStatus.inProgress:
-        return AppColors.info;
-      case TaskStatus.completed:
-        return AppColors.success;
-      case TaskStatus.archived:
-        return AppColors.p3Low;
-    }
+    return AppColors.statusColor(status);
   }
 }

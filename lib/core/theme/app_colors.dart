@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../data/models/task.dart';
+
 /// Theme palette definitions for TaskFlow.
 /// Each palette provides a complete set of colors for a theme variant.
 class ThemePalette {
@@ -168,6 +170,23 @@ class AppColors {
         return p2Medium;
       default:
         return p3Low;
+    }
+  }
+
+  /// Single source of truth for status colors, shared by the task detail
+  /// page, timeline, and board group headers so they always agree.
+  static Color statusColor(TaskStatus status) {
+    switch (status) {
+      case TaskStatus.planned:
+        return lightTextSecondary;
+      case TaskStatus.inProgress:
+        return info;
+      case TaskStatus.completed:
+        return success;
+      case TaskStatus.archived:
+        return p3Low;
+      case TaskStatus.blocked:
+        return error;
     }
   }
 }
