@@ -283,6 +283,11 @@ class TaskListNotifier extends StateNotifier<AsyncValue<List<Task>>> {
     await loadTasks();
   }
 
+  Future<void> deleteSubStep(int taskId, String subStepUid) async {
+    await _repo.deleteSubStep(taskId, subStepUid);
+    await loadTasks();
+  }
+
   Future<void> reorder(List<int> taskIds) async {
     await _repo.reorderTasks(taskIds);
     await loadTasks();

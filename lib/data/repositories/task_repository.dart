@@ -274,6 +274,26 @@ class TaskRepository {
     }
   }
 
+  /// Deletes a sub-step together with all of its descendants.
+  Future<void> deleteSubStep(int taskId, String subStepUid) async {
+    final isar = await AppDatabase.instance;
+    final task = await isar.tasks.get(taskId);
+    if (task == null) return;
+
+    final step =
+        task.subSteps.where((s) => s.uid == subStepUid).firstOrNull;
+    if (step == null) return;
+
+    final doomed = subStepDescendantUids(task.subSteps, step);
+    task.subSteps = [
+      for (final s in task.subSteps)
+        if (!doomed.contains(s.uid)) s,
+    ];
+
+    _touch(task);
+    await isar.writeTxn(() => isar.tasks.put(task));
+  }
+
   Future<void> reorderTasks(List<int> taskIds) async {
     final isar = await AppDatabase.instance;
     await isar.writeTxn(() async {

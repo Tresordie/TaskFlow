@@ -92,6 +92,20 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: mode.brightness,
+      // Segoe UI is the Windows system font (excellent Latin rendering);
+      // when unavailable Flutter falls back to bundled Roboto. The
+      // fallback chain gives CJK glyphs a consistent modern sans
+      // (YaHei on Windows, PingFang/Hiragino on macOS) so mixed
+      // Chinese/English text renders evenly.
+      fontFamily: 'Segoe UI',
+      fontFamilyFallback: const [
+        'Microsoft YaHei UI',
+        'Microsoft YaHei',
+        'PingFang SC',
+        'Hiragino Sans GB',
+        'Noto Sans SC',
+        'sans-serif',
+      ],
       // Use the surface color for the scaffold background so the window
       // background matches the content panels and title bar. This removes the
       // visible two-color "layered" frame (bg vs surface) around the content.

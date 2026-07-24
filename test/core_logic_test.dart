@@ -820,5 +820,21 @@ void main() {
       final a1 = steps.firstWhere((s) => s.uid == 'a1');
       expect(subStepDescendantUids(steps, a1), {'a1', 'a1x'});
     });
+
+    test('subtree end index places the add-child field after all kids', () {
+      final ordered = subStepsInDisplayOrder([
+        step('a'),
+        step('b'),
+        step('a1', parent: 'a', depth: 1),
+        step('a2', parent: 'a', depth: 1),
+        step('a1x', parent: 'a1', depth: 2),
+        step('b1', parent: 'b', depth: 1),
+      ]);
+      // DFS order: a, a1, a1x, a2, b, b1
+      expect(subStepSubtreeEndIndex(ordered, 'a'), 3); // after a2
+      expect(subStepSubtreeEndIndex(ordered, 'a1'), 2); // after a1x
+      expect(subStepSubtreeEndIndex(ordered, 'b'), 5); // after b1
+      expect(subStepSubtreeEndIndex(ordered, 'ghost'), -1);
+    });
   });
 }

@@ -8,6 +8,7 @@ import '../../providers/task_providers.dart';
 import '../../providers/color_settings_provider.dart';
 import '../shared/color_picker_dialog.dart';
 import '../shared/edit_task_dialog.dart';
+import '../shared/tree_indent.dart';
 import 'execution_log_widget.dart';
 
 class TaskDetailScreen extends ConsumerWidget {
@@ -383,6 +384,21 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
     _addChildController.clear();
   }
 
+  void _deleteStep(SubStep step) {
+    final doomed = subStepDescendantUids(widget.task.subSteps, step);
+    setState(() {
+      if (_addingChildUid != null && doomed.contains(_addingChildUid!)) {
+        _addingChildUid = null;
+      }
+      if (_editingUid != null && doomed.contains(_editingUid!)) {
+        _editingUid = null;
+      }
+    });
+    ref
+        .read(taskListProvider.notifier)
+        .deleteSubStep(widget.task.id, step.uid);
+  }
+
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
@@ -408,7 +424,7 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
           ],
         ),
         const SizedBox(height: 8),
-        ...ordered.map((step) => _buildStepRow(theme, task, step)),
+        ..._buildStepRows(theme, task, ordered),
         // Inline add sub-step input (top level)
         Padding(
           padding: const EdgeInsets.only(top: 6),
@@ -450,88 +466,113 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
     );
   }
 
+  List<Widget> _buildStepRows(
+      ThemeData theme, Task task, List<SubStep> ordered) {
+    // The inline add-child field goes AFTER the parent's whole subtree so
+    // existing children render above it and a new child lands right above
+    // the input instead of below the whole sibling group.
+    final fieldAfter = _addingChildUid == null
+        ? -1
+        : subStepSubtreeEndIndex(ordered, _addingChildUid!);
+
+    final rows = <Widget>[];
+    for (var i = 0; i < ordered.length; i++) {
+      rows.add(_buildStepRow(theme, task, ordered[i]));
+      if (i == fieldAfter) {
+        rows.add(_buildAddChildField(theme, ordered[i]));
+      }
+    }
+    return rows;
+  }
+
   Widget _buildStepRow(ThemeData theme, Task task, SubStep step) {
     final isEditing = _editingUid == step.uid;
     final canNest = step.depth < SubStep.maxDepth;
+    final isEmpty = step.title.trim().isEmpty;
+    final subtle = theme.colorScheme.onSurface.withOpacity(0.3);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: EdgeInsets.only(bottom: 4, left: step.depth * 24.0),
-          child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            child: Row(
-              children: [
-                // Checkbox — tap to toggle completion
-                InkWell(
-                  borderRadius: BorderRadius.circular(4),
-                  onTap: () => ref
-                      .read(taskListProvider.notifier)
-                      .toggleSubStep(task.id, step.uid),
-                  child: Padding(
-                    padding: const EdgeInsets.all(2),
-                    child: Icon(
-                      step.completed
-                          ? Icons.check_box
-                          : Icons.check_box_outline_blank,
-                      size: 18,
-                      color: step.completed
-                          ? AppColors.success
-                          : AppColors.lightTextSecondary,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: isEditing
-                      ? Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _editController,
-                                autofocus: true,
-                                style: const TextStyle(fontSize: 14),
-                                decoration: const InputDecoration(
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 8),
-                                  border: OutlineInputBorder(),
-                                ),
-                                onSubmitted: (_) => _commitEdit(),
+    Widget content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      child: Row(
+        children: [
+          // Checkbox — tap to toggle completion
+          InkWell(
+            borderRadius: BorderRadius.circular(4),
+            onTap: () => ref
+                .read(taskListProvider.notifier)
+                .toggleSubStep(task.id, step.uid),
+            child: Padding(
+              padding: const EdgeInsets.all(2),
+              child: Icon(
+                step.completed
+                    ? Icons.check_box
+                    : Icons.check_box_outline_blank,
+                size: 18,
+                color: step.completed
+                    ? AppColors.success
+                    : AppColors.lightTextSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: isEditing
+                ? Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _editController,
+                          autofocus: true,
+                          style: const TextStyle(fontSize: 14),
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 8),
+                            border: OutlineInputBorder(),
+                          ),
+                          onSubmitted: (_) => _commitEdit(),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.check,
+                            size: 16,
+                            color: theme.colorScheme.primary),
+                        tooltip: 'Save',
+                        onPressed: _commitEdit,
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                            minWidth: 28, minHeight: 28),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 16),
+                        tooltip: 'Cancel',
+                        onPressed: () =>
+                            setState(() => _editingUid = null),
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                            minWidth: 28, minHeight: 28),
+                      ),
+                    ],
+                  )
+                : InkWell(
+                    borderRadius: BorderRadius.circular(4),
+                    onTap: () => _startEdit(step),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 2, vertical: 4),
+                      child: isEmpty
+                          ? Text(
+                              '(untitled sub-step)',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontStyle: FontStyle.italic,
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.35),
                               ),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.check,
-                                  size: 16,
-                                  color: theme.colorScheme.primary),
-                              tooltip: 'Save',
-                              onPressed: _commitEdit,
-                              visualDensity: VisualDensity.compact,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                  minWidth: 28, minHeight: 28),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close, size: 16),
-                              tooltip: 'Cancel',
-                              onPressed: () =>
-                                  setState(() => _editingUid = null),
-                              visualDensity: VisualDensity.compact,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                  minWidth: 28, minHeight: 28),
-                            ),
-                          ],
-                        )
-                      : InkWell(
-                          borderRadius: BorderRadius.circular(4),
-                          onTap: () => _startEdit(step),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 2, vertical: 4),
-                            child: Text(
+                            )
+                          : Text(
                               step.title,
                               style: TextStyle(
                                 fontSize: 14,
@@ -543,76 +584,93 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
                                     : null,
                               ),
                             ),
-                          ),
-                        ),
-                ),
-                // Add nested sub-step (max 3 levels)
-                if (canNest && !isEditing)
-                  IconButton(
-                    icon: Icon(Icons.add,
-                        size: 15,
-                        color: theme.colorScheme.onSurface
-                            .withOpacity(0.35)),
-                    tooltip: 'Add nested sub-step',
-                    onPressed: () => setState(() {
-                      _addingChildUid =
-                          _addingChildUid == step.uid ? null : step.uid;
-                      _addChildController.clear();
-                    }),
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(minWidth: 26, minHeight: 26),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        // Inline "add child" field, indented one level below its parent
-        if (_addingChildUid == step.uid)
-          Padding(
-            padding: EdgeInsets.only(
-                left: (step.depth + 1) * 24.0 + 6, bottom: 4),
-            child: Row(
-              children: [
-                Icon(Icons.subdirectory_arrow_right,
-                    size: 14,
-                    color: theme.colorScheme.primary.withOpacity(0.5)),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: TextField(
-                    controller: _addChildController,
-                    autofocus: true,
-                    style: const TextStyle(fontSize: 13),
-                    decoration: InputDecoration(
-                      hintText: 'Add nested sub-step…',
-                      hintStyle: TextStyle(
-                        fontSize: 13,
-                        color:
-                            theme.colorScheme.onSurface.withOpacity(0.35),
-                      ),
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 8),
-                      border: const OutlineInputBorder(),
                     ),
-                    onSubmitted: (_) => _addChild(step),
                   ),
+          ),
+          // Add nested sub-step (max 3 levels)
+          if (canNest && !isEditing)
+            IconButton(
+              icon: Icon(Icons.add, size: 15, color: subtle),
+              tooltip: 'Add nested sub-step',
+              onPressed: () => setState(() {
+                _addingChildUid =
+                    _addingChildUid == step.uid ? null : step.uid;
+                _addChildController.clear();
+              }),
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints:
+                  const BoxConstraints(minWidth: 26, minHeight: 26),
+            ),
+          // Delete sub-step (with its children)
+          if (!isEditing)
+            IconButton(
+              icon: Icon(Icons.close, size: 15, color: subtle),
+              tooltip: 'Remove sub-step',
+              onPressed: () => _deleteStep(step),
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints:
+                  const BoxConstraints(minWidth: 26, minHeight: 26),
+            ),
+        ],
+      ),
+    );
+
+    return wrapWithTreeGuides(
+      content,
+      depth: step.depth,
+      guideColor: theme.dividerColor.withOpacity(0.5),
+    );
+  }
+
+  /// Inline "add child" input, indented one level below [parent] and
+  /// wrapped in the same tree guide lines as its future siblings.
+  Widget _buildAddChildField(ThemeData theme, SubStep parent) {
+    Widget content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      child: Row(
+        children: [
+          Icon(Icons.subdirectory_arrow_right,
+              size: 14,
+              color: theme.colorScheme.primary.withOpacity(0.5)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: TextField(
+              controller: _addChildController,
+              autofocus: true,
+              style: const TextStyle(fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'Add nested sub-step…',
+                hintStyle: TextStyle(
+                  fontSize: 13,
+                  color: theme.colorScheme.onSurface.withOpacity(0.35),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 15),
-                  tooltip: 'Close',
-                  onPressed: () =>
-                      setState(() => _addingChildUid = null),
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints:
-                      const BoxConstraints(minWidth: 26, minHeight: 26),
-                ),
-              ],
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 8),
+                border: const OutlineInputBorder(),
+              ),
+              onSubmitted: (_) => _addChild(parent),
             ),
           ),
-      ],
+          IconButton(
+            icon: const Icon(Icons.close, size: 15),
+            tooltip: 'Close',
+            onPressed: () => setState(() => _addingChildUid = null),
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints:
+                const BoxConstraints(minWidth: 26, minHeight: 26),
+          ),
+        ],
+      ),
+    );
+
+    return wrapWithTreeGuides(
+      content,
+      depth: parent.depth + 1,
+      guideColor: theme.dividerColor.withOpacity(0.5),
     );
   }
 }

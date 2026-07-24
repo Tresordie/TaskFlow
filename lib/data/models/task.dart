@@ -169,6 +169,13 @@ enum EntryType {
   }
 }
 
+/// SCHEMA FREEZE — DO NOT ADD/REMOVE/RETYPE FIELDS OF THIS CLASS.
+/// Isar 3.1.0 cannot reliably auto-migrate embedded objects that live
+/// inside embedded lists: adding [parentUid]/[depth] in v1.4.9 silently
+/// wiped existing sub-step titles the first time the updated app opened
+/// an older database. The same applies to [ExecutionEntry]/[Attachment].
+/// Any future per-item metadata MUST go in a Task-level field (additive
+/// Task properties migrate safely) or a separate collection.
 @embedded
 class SubStep {
   /// Maximum nesting depth (0-based). 0/1/2 => up to 3 levels of sub-tasks.
@@ -231,4 +238,20 @@ Set<String> subStepDescendantUids(List<SubStep> steps, SubStep step) {
     }
   }
   return result;
+}
+
+/// Index (into the DFS-[ordered] list) of the last member of
+/// [parentUid]'s subtree, or -1 when [parentUid] is not present. The
+/// inline "add child" input belongs right AFTER this index, so existing
+/// children render above the field and a newly added child appears
+/// directly above it instead of being pushed below the whole list.
+int subStepSubtreeEndIndex(List<SubStep> ordered, String parentUid) {
+  if (!ordered.any((s) => s.uid == parentUid)) return -1;
+  final parent = ordered.firstWhere((s) => s.uid == parentUid);
+  final subtree = subStepDescendantUids(ordered, parent);
+  var last = -1;
+  for (var i = 0; i < ordered.length; i++) {
+    if (subtree.contains(ordered[i].uid)) last = i;
+  }
+  return last;
 }

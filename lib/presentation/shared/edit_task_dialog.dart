@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
+import 'tree_indent.dart';
 
 /// A dialog for editing an existing task's title, description, priority
 /// and due date.
@@ -253,9 +254,7 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
               // Sub-tasks section (nested, max 3 levels)
               Text('Sub-tasks', style: theme.textTheme.labelLarge),
               const SizedBox(height: 8),
-              if (_subSteps.isNotEmpty)
-                ...subStepsInDisplayOrder(_subSteps)
-                    .map((step) => _buildSubStepRow(theme, step)),
+              if (_subSteps.isNotEmpty) ..._buildSubStepRows(theme),
               Row(
                 children: [
                   Expanded(
@@ -330,115 +329,144 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
     }
   }
 
+  List<Widget> _buildSubStepRows(ThemeData theme) {
+    final ordered = subStepsInDisplayOrder(_subSteps);
+    // The inline add-child field goes AFTER the parent's whole subtree so
+    // existing children render above it and a new child lands right above
+    // the input instead of below the whole sibling group.
+    final fieldAfter = _addingChildUid == null
+        ? -1
+        : subStepSubtreeEndIndex(ordered, _addingChildUid!);
+
+    final rows = <Widget>[];
+    for (var i = 0; i < ordered.length; i++) {
+      rows.add(_buildSubStepRow(theme, ordered[i]));
+      if (i == fieldAfter) {
+        rows.add(_buildAddChildField(theme, ordered[i]));
+      }
+    }
+    return rows;
+  }
+
   Widget _buildSubStepRow(ThemeData theme, SubStep step) {
     final canNest = step.depth < SubStep.maxDepth;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: EdgeInsets.only(bottom: 2, left: step.depth * 22.0),
-          child: Row(
-            children: [
-              Icon(
-                step.completed
-                    ? Icons.check_circle
-                    : Icons.radio_button_unchecked,
-                size: 16,
-                color: step.completed
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurface.withOpacity(0.35),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _controllerFor(step),
-                  style: TextStyle(
-                    fontSize: 13,
-                    color:
-                        theme.colorScheme.onSurface.withOpacity(0.85),
-                  ),
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 6, vertical: 7),
-                    border: InputBorder.none,
-                  ),
-                ),
-              ),
-              if (canNest)
-                IconButton(
-                  icon: Icon(
-                    Icons.add,
-                    size: 14,
-                    color:
-                        theme.colorScheme.onSurface.withOpacity(0.4),
-                  ),
-                  tooltip: 'Add nested sub-task',
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints:
-                      const BoxConstraints(minWidth: 26, minHeight: 26),
-                  onPressed: () => setState(() {
-                    _addingChildUid =
-                        _addingChildUid == step.uid ? null : step.uid;
-                    _addChildController.clear();
-                  }),
-                ),
-              IconButton(
-                icon: Icon(
-                  Icons.close,
-                  size: 14,
-                  color: theme.colorScheme.onSurface.withOpacity(0.4),
-                ),
-                tooltip: 'Remove sub-task (and its children)',
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints:
-                    const BoxConstraints(minWidth: 26, minHeight: 26),
-                onPressed: () => _removeStep(step),
-              ),
-            ],
+    Widget content = Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(
+        children: [
+          Icon(
+            step.completed
+                ? Icons.check_circle
+                : Icons.radio_button_unchecked,
+            size: 16,
+            color: step.completed
+                ? theme.colorScheme.primary
+                : theme.colorScheme.onSurface.withOpacity(0.35),
           ),
-        ),
-        if (_addingChildUid == step.uid)
-          Padding(
-            padding: EdgeInsets.only(
-                left: (step.depth + 1) * 22.0 + 4, bottom: 2),
-            child: Row(
-              children: [
-                Icon(Icons.subdirectory_arrow_right,
-                    size: 13,
-                    color: theme.colorScheme.primary.withOpacity(0.5)),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: TextField(
-                    controller: _addChildController,
-                    autofocus: true,
-                    style: const TextStyle(fontSize: 13),
-                    decoration: const InputDecoration(
-                      hintText: 'Add nested sub-task…',
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 8),
-                    ),
-                    onSubmitted: (_) => _addChildStep(step),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 14),
-                  tooltip: 'Close',
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints:
-                      const BoxConstraints(minWidth: 26, minHeight: 26),
-                  onPressed: () =>
-                      setState(() => _addingChildUid = null),
-                ),
-              ],
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: _controllerFor(step),
+              style: TextStyle(
+                fontSize: 13,
+                color:
+                    theme.colorScheme.onSurface.withOpacity(0.85),
+              ),
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+                border: InputBorder.none,
+              ),
             ),
           ),
-      ],
+          if (canNest)
+            IconButton(
+              icon: Icon(
+                Icons.add,
+                size: 14,
+                color:
+                    theme.colorScheme.onSurface.withOpacity(0.4),
+              ),
+              tooltip: 'Add nested sub-task',
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints:
+                  const BoxConstraints(minWidth: 26, minHeight: 26),
+              onPressed: () => setState(() {
+                _addingChildUid =
+                    _addingChildUid == step.uid ? null : step.uid;
+                _addChildController.clear();
+              }),
+            ),
+          IconButton(
+            icon: Icon(
+              Icons.close,
+              size: 14,
+              color: theme.colorScheme.onSurface.withOpacity(0.4),
+            ),
+            tooltip: 'Remove sub-task (and its children)',
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints:
+                const BoxConstraints(minWidth: 26, minHeight: 26),
+            onPressed: () => _removeStep(step),
+          ),
+        ],
+      ),
+    );
+
+    return wrapWithTreeGuides(
+      content,
+      depth: step.depth,
+      guideColor: theme.dividerColor.withOpacity(0.5),
+    );
+  }
+
+  /// Inline "add child" input, indented one level below [parent] and
+  /// wrapped in the same tree guide lines as its future siblings.
+  Widget _buildAddChildField(ThemeData theme, SubStep parent) {
+    Widget content = Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(
+        children: [
+          Icon(Icons.subdirectory_arrow_right,
+              size: 13,
+              color: theme.colorScheme.primary.withOpacity(0.5)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: TextField(
+              controller: _addChildController,
+              autofocus: true,
+              style: const TextStyle(fontSize: 13),
+              decoration: const InputDecoration(
+                hintText: 'Add nested sub-task…',
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 8),
+              ),
+              onSubmitted: (_) => _addChildStep(parent),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 14),
+            tooltip: 'Close',
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints:
+                const BoxConstraints(minWidth: 26, minHeight: 26),
+            onPressed: () =>
+                setState(() => _addingChildUid = null),
+          ),
+        ],
+      ),
+    );
+
+    return wrapWithTreeGuides(
+      content,
+      depth: parent.depth + 1,
+      guideColor: theme.dividerColor.withOpacity(0.5),
     );
   }
 
