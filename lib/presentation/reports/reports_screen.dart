@@ -235,6 +235,8 @@ class ReportController extends StateNotifier<ReportsState> {
       data: null,
       markdown: null);
 
+  /// Checkbox changes only affect the NEXT generation — the currently
+  /// displayed report is kept until the user presses Generate Report again.
   void toggleTask(String uid, bool checked) {
     final set = Set<String>.from(state.excludedUids);
     if (checked) {
@@ -242,13 +244,13 @@ class ReportController extends StateNotifier<ReportsState> {
     } else {
       set.add(uid);
     }
-    state = state.copyWith(excludedUids: set, data: null, markdown: null);
+    state = state.copyWith(excludedUids: set);
   }
 
   void setAllSelected(bool selected) {
     final all = ref.read(taskListProvider).valueOrNull ?? const <Task>[];
     final set = selected ? <String>{} : tasksInRange(all).map((t) => t.uid).toSet();
-    state = state.copyWith(excludedUids: set, data: null, markdown: null);
+    state = state.copyWith(excludedUids: set);
   }
 
   void setTaskPickerOpen(bool v) => state = state.copyWith(taskPickerOpen: v);

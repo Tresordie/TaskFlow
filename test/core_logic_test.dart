@@ -136,9 +136,9 @@ void main() {
       addTearDown(container.dispose);
       final notifier = container.read(reportControllerProvider.notifier);
 
-      // Simulate picker interactions, then a generated report + user edits.
-      // (toggleTask clears any stale report, so it happens before the
-      // report is "generated".)
+      // Simulate picker interactions plus a generated report + user edits.
+      // Checkbox toggles only affect the next generation, so the report
+      // set afterwards is not disturbed by them.
       notifier.setTaskPickerOpen(false);
       notifier.toggleTask('uid-1', false); // uncheck one task
       notifier.setMarkdown('# Weekly report');
@@ -168,7 +168,8 @@ void main() {
       expect(s.markdown, isNull); // stale report cleared
     });
 
-    test('toggling a task clears the stale report', () {
+    test('toggling a task keeps the displayed report (affects next gen only)',
+        () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(reportControllerProvider.notifier);
@@ -176,8 +177,8 @@ void main() {
       notifier.setMarkdown('# report');
       notifier.toggleTask('uid-x', false);
       final s = container.read(reportControllerProvider);
-      expect(s.markdown, isNull);
       expect(s.excludedUids, {'uid-x'});
+      expect(s.markdown, '# report'); // report kept until Generate is pressed
     });
   });
 
