@@ -154,18 +154,29 @@ void main() {
       expect(s.excludedUids, {'uid-1'});
     });
 
-    test('changing the period clears the stale report', () {
+    test('changing the period keeps the displayed report (next gen only)', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(reportControllerProvider.notifier);
 
       notifier.setMarkdown('# report');
-      expect(container.read(reportControllerProvider).markdown, '# report');
-
       notifier.setPeriod(ReportPeriod.monthly);
       final s = container.read(reportControllerProvider);
       expect(s.period, ReportPeriod.monthly);
-      expect(s.markdown, isNull); // stale report cleared
+      expect(s.markdown, '# report'); // report kept until Generate is pressed
+    });
+
+    test('changing filters keeps the displayed report (next gen only)', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(reportControllerProvider.notifier);
+
+      notifier.setMarkdown('# report');
+      notifier.setFilterProject('Cosmo');
+      notifier.clearFilters();
+      final s = container.read(reportControllerProvider);
+      expect(s.fProject, isNull);
+      expect(s.markdown, '# report'); // report kept until Generate is pressed
     });
 
     test('toggling a task keeps the displayed report (affects next gen only)',

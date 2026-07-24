@@ -187,10 +187,12 @@ class ReportController extends StateNotifier<ReportsState> {
   }
 
   // ------------------------------------------------------------------
-  // Control mutations (each clears a stale report where the old widget did).
+  // Control mutations. Contract: every control (period, date, filters,
+  // selection, language, AI toggle) only configures the NEXT generation.
+  // The displayed report is replaced SOLELY by pressing Generate Report —
+  // no control change clears or regenerates it.
 
-  void setPeriod(ReportPeriod p) =>
-      state = state.copyWith(period: p, data: null, markdown: null);
+  void setPeriod(ReportPeriod p) => state = state.copyWith(period: p);
 
   void shiftAnchor(int direction) {
     if (state.period == ReportPeriod.custom) return;
@@ -208,32 +210,22 @@ class ReportController extends StateNotifier<ReportsState> {
       case ReportPeriod.custom:
         return;
     }
-    state = state.copyWith(anchor: next, data: null, markdown: null);
+    state = state.copyWith(anchor: next);
   }
 
-  void setAnchor(DateTime d) =>
-      state = state.copyWith(anchor: d, data: null, markdown: null);
+  void setAnchor(DateTime d) => state = state.copyWith(anchor: d);
 
   void setCustomRange(DateTimeRange r) =>
-      state = state.copyWith(customRange: r, data: null, markdown: null);
+      state = state.copyWith(customRange: r);
 
   void setLang(ReportLanguage l) => state = state.copyWith(lang: l);
 
-  void setFilterProject(String? v) =>
-      state = state.copyWith(fProject: v, data: null, markdown: null);
-  void setFilterTag(String? v) =>
-      state = state.copyWith(fTag: v, data: null, markdown: null);
-  void setFilterStatus(TaskStatus? v) =>
-      state = state.copyWith(fStatus: v, data: null, markdown: null);
-  void setFilterPriority(Priority? v) =>
-      state = state.copyWith(fPriority: v, data: null, markdown: null);
+  void setFilterProject(String? v) => state = state.copyWith(fProject: v);
+  void setFilterTag(String? v) => state = state.copyWith(fTag: v);
+  void setFilterStatus(TaskStatus? v) => state = state.copyWith(fStatus: v);
+  void setFilterPriority(Priority? v) => state = state.copyWith(fPriority: v);
   void clearFilters() => state = state.copyWith(
-      fProject: null,
-      fTag: null,
-      fStatus: null,
-      fPriority: null,
-      data: null,
-      markdown: null);
+      fProject: null, fTag: null, fStatus: null, fPriority: null);
 
   /// Checkbox changes only affect the NEXT generation — the currently
   /// displayed report is kept until the user presses Generate Report again.
@@ -257,7 +249,6 @@ class ReportController extends StateNotifier<ReportsState> {
   void setUseAiSummary(bool v) => state = state.copyWith(useAiSummary: v);
   void setEditing(bool v) => state = state.copyWith(editing: v);
   void setMarkdown(String v) => state = state.copyWith(markdown: v);
-  void clearReport() => state = state.copyWith(data: null, markdown: null);
 
   // ------------------------------------------------------------------
   // Generate pipeline (moved verbatim from the old widget `_generate`).
@@ -910,7 +901,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         onChanged: (l) {
                           if (l == null || l == s.lang) return;
                           notifier.setLang(l);
-                          if (s.data != null) notifier.generate();
                         },
                       ),
                     ),
@@ -938,10 +928,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       selected: s.useAiSummary,
                       showCheckmark: false,
                       visualDensity: VisualDensity.compact,
-                      onSelected: (v) {
-                        notifier.setUseAiSummary(v);
-                        if (s.data != null) notifier.generate();
-                      },
+                      onSelected: notifier.setUseAiSummary,
                     ),
                   ),
                 ];
