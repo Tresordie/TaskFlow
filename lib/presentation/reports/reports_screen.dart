@@ -11,6 +11,7 @@ import '../../data/repositories/task_repository.dart';
 import '../../data/services/ai_service.dart';
 import '../../data/services/report_service.dart';
 import '../../providers/ai_provider.dart';
+import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
 
 final reportServiceProvider = Provider<ReportService>((ref) {
@@ -281,6 +282,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   /// project / tag / status / priority before aggregation (null = all).
   Widget _buildFilterRow(ThemeData theme) {
     final tasks = ref.watch(taskListProvider).valueOrNull ?? const <Task>[];
+    final colors = ref.watch(colorSettingsProvider);
     final projects = tasks
         .map((t) => t.project.trim())
         .where((p) => p.isNotEmpty)
@@ -296,6 +298,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       required List<T> options,
       required String Function(T) optionLabel,
       required ValueChanged<T?> onChanged,
+      Color? Function(T)? optionColor,
     }) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
@@ -334,8 +337,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               for (final o in options)
                 DropdownMenuItem<T?>(
                   value: o,
-                  child:
-                      Text(optionLabel(o), style: const TextStyle(fontSize: 12)),
+                  child: Text(
+                    optionLabel(o),
+                    style:
+                        TextStyle(fontSize: 12, color: optionColor?.call(o)),
+                  ),
                 ),
             ],
             onChanged: onChanged,
@@ -366,6 +372,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           value: _fProject,
           options: projects,
           optionLabel: (p) => p,
+          optionColor: (p) => colors.projectColor(p),
           onChanged: (v) {
             setState(() => _fProject = v);
             clearReport();
@@ -378,6 +385,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           value: _fTag,
           options: tags,
           optionLabel: (t) => '#$t',
+          optionColor: (t) => colors.tagColor(t),
           onChanged: (v) {
             setState(() => _fTag = v);
             clearReport();

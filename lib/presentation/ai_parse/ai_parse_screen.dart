@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../data/services/ai_service.dart';
 import '../../providers/ai_provider.dart';
+import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
 
 /// Phase 2 — AI note parsing.
@@ -379,7 +380,7 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
   }
 }
 
-class _ParsedTaskCard extends StatelessWidget {
+class _ParsedTaskCard extends ConsumerWidget {
   final ParsedTask task;
 
   const _ParsedTaskCard({required this.task});
@@ -398,8 +399,9 @@ class _ParsedTaskCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final colors = ref.watch(colorSettingsProvider);
     final pColor = _priorityColor(task.priority);
 
     return StatefulBuilder(
@@ -492,21 +494,25 @@ class _ParsedTaskCard extends StatelessWidget {
                     runSpacing: 4,
                     children: [
                       for (final tag in task.tags)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '#$tag',
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              color: theme.colorScheme.primary,
+                        Builder(builder: (context) {
+                          final tagColor =
+                              colors.tagColor(tag) ?? theme.colorScheme.primary;
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: tagColor.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                          ),
-                        ),
+                            child: Text(
+                              '#$tag',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                color: tagColor,
+                              ),
+                            ),
+                          );
+                        }),
                     ],
                   ),
                 ],

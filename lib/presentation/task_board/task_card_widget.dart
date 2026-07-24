@@ -6,6 +6,7 @@ import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
 import '../shared/edit_task_dialog.dart';
 import '../shared/task_date_meta.dart';
+import '../shared/task_tag_project_meta.dart';
 
 class TaskCard extends ConsumerStatefulWidget {
   final Task task;
@@ -208,16 +209,12 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 6),
-                    TaskDateMeta(task: task),
-                    if (task.tags.isNotEmpty) ...[
-                      const SizedBox(height: 7),
-                      Wrap(
-                        spacing: 6,
-                        children: task.tags
-                            .map((tag) => _TagChip(label: tag))
-                            .toList(),
-                      ),
+                    if (task.project.trim().isNotEmpty ||
+                        task.tags.isNotEmpty) ...[
+                      TaskTagProjectMeta(task: task),
+                      const SizedBox(height: 4),
                     ],
+                    TaskDateMeta(task: task),
                   ],
                 ),
               ),
@@ -345,31 +342,5 @@ class _TaskCardState extends ConsumerState<TaskCard> {
         ? TaskStatus.planned
         : TaskStatus.completed;
     ref.read(taskListProvider.notifier).updateStatus(task.id, newStatus);
-  }
-}
-
-class _TagChip extends StatelessWidget {
-  final String label;
-
-  const _TagChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
   }
 }
