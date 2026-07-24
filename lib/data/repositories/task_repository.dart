@@ -6,6 +6,12 @@ import '../models/task.dart';
 class TaskRepository {
   final _uuid = const Uuid();
 
+  /// Stamps [t] with the current modification time. Called by every
+  /// mutation so sync/restore can do last-write-wins merging.
+  void _touch(Task t) {
+    t.updatedAt = DateTime.now().millisecondsSinceEpoch;
+  }
+
   Future<List<Task>> getAllTasks() async {
     final isar = await AppDatabase.instance;
     return isar.tasks.where().sortBySortOrder().findAll();
@@ -67,6 +73,7 @@ class TaskRepository {
       ..priority = priority
       ..status = TaskStatus.planned
       ..createdAt = DateTime.now()
+      ..updatedAt = DateTime.now().millisecondsSinceEpoch
       ..dueDate = dueDate
       ..tags = tags
       ..project = project.trim()
@@ -103,10 +110,16 @@ class TaskRepository {
       }
 
       final existing = await isar.tasks.where().findAll();
-      final byUid = {for (final e in existing) e.uid: e.id};
+      final byUid = {for (final e in existing) e.uid: e};
       for (final t in tasks) {
-        final id = byUid[t.uid];
-        if (id != null) t.id = id; // overwrite in place
+        final local = byUid[t.uid];
+        if (local != null) {
+          // Last-write-wins: a stale snapshot must never overwrite a
+          // locally newer task. Ties keep the local copy (this also
+          // protects upgrades where both sides still carry 0).
+          if (t.updatedAt <= local.updatedAt) continue;
+          t.id = local.id; // overwrite in place
+        }
         await isar.tasks.put(t);
       }
     });
@@ -114,6 +127,7 @@ class TaskRepository {
 
   Future<void> updateTask(Task task) async {
     final isar = await AppDatabase.instance;
+    _touch(task);
     await isar.writeTxn(() => isar.tasks.put(task));
   }
 
@@ -135,6 +149,7 @@ class TaskRepository {
       task.completedAt = DateTime.now();
     }
 
+    _touch(task);
     await isar.writeTxn(() => isar.tasks.put(task));
   }
 
@@ -149,6 +164,7 @@ class TaskRepository {
     // throw. Reassign a new growable list instead.
     task.executionLog = [...task.executionLog, entry];
 
+    _touch(task);
     await isar.writeTxn(() => isar.tasks.put(task));
   }
 
@@ -171,6 +187,7 @@ class TaskRepository {
         if (e.uid == entryUid) updated else e,
     ];
 
+    _touch(task);
     await isar.writeTxn(() => isar.tasks.put(task));
   }
 
@@ -188,6 +205,7 @@ class TaskRepository {
         if (e.uid != entryUid) e,
     ];
 
+    _touch(task);
     await isar.writeTxn(() => isar.tasks.put(task));
   }
 
@@ -205,6 +223,7 @@ class TaskRepository {
         ..completed = false,
     ];
 
+    _touch(task);
     await isar.writeTxn(() => isar.tasks.put(task));
   }
 
@@ -217,6 +236,7 @@ class TaskRepository {
     if (step != null) {
       step.completed = !step.completed;
       step.completedAt = step.completed ? DateTime.now() : null;
+      _touch(task);
       await isar.writeTxn(() => isar.tasks.put(task));
     }
   }
@@ -228,6 +248,7 @@ class TaskRepository {
         final task = await isar.tasks.get(taskIds[i]);
         if (task != null) {
           task.sortOrder = i;
+          _touch(task);
           await isar.tasks.put(task);
         }
       }

@@ -86,6 +86,12 @@ class Task {
   /// Reports group tasks by this field; empty means "General".
   String project = '';
 
+  /// Last modification timestamp (ms since epoch). Touched by every
+  /// repository mutation and used for last-write-wins merging during
+  /// sync/restore so a stale snapshot can never overwrite newer local
+  /// data. Additive property — Isar auto-migrates existing rows to 0.
+  int updatedAt = 0;
+
   int sortOrder = 0;
 
   // Execution log stored as embedded list

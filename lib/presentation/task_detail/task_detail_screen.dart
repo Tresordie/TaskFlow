@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
+import '../../providers/color_settings_provider.dart';
+import '../shared/color_picker_dialog.dart';
 import '../shared/edit_task_dialog.dart';
 import 'execution_log_widget.dart';
 
@@ -498,9 +500,31 @@ class _TagsEditorState extends ConsumerState<_TagsEditor> {
     _commit([...widget.task.tags, ...additions]);
   }
 
+  Future<void> _pickTagColor(String tag, Color? current) async {
+    final picked = await showColorPickerDialog(
+      context,
+      title: 'Tag color · #$tag',
+      current: current,
+    );
+    if (!mounted) return;
+    ref.read(colorSettingsProvider.notifier).setTagColor(tag, picked);
+  }
+
+  Future<void> _pickProjectColor(String project, Color? current) async {
+    final picked = await showColorPickerDialog(
+      context,
+      title: 'Project color · $project',
+      current: current,
+    );
+    if (!mounted) return;
+    ref.read(colorSettingsProvider.notifier).setProjectColor(project, picked);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = ref.watch(colorSettingsProvider);
+    final project = widget.task.project.trim();
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -517,12 +541,21 @@ class _TagsEditorState extends ConsumerState<_TagsEditor> {
             runSpacing: 6,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              ...widget.task.tags.map((tag) => Chip(
-                    avatar: Icon(Icons.label,
-                        size: 13, color: theme.colorScheme.primary),
-                    label: Text(tag, style: const TextStyle(fontSize: 11.5)),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
+              if (project.isNotEmpty)
+                _colorChip(
+                  icon: Icons.folder_outlined,
+                  label: project,
+                  color: colors.projectColor(project),
+                  theme: theme,
+                  onTap: () =>
+                      _pickProjectColor(project, colors.projectColor(project)),
+                ),
+              ...widget.task.tags.map((tag) => _colorChip(
+                    icon: Icons.label,
+                    label: tag,
+                    color: colors.tagColor(tag),
+                    theme: theme,
+                    onTap: () => _pickTagColor(tag, colors.tagColor(tag)),
                     onDeleted: () => _commit(
                         widget.task.tags.where((t) => t != tag).toList()),
                   )),
@@ -556,6 +589,34 @@ class _TagsEditorState extends ConsumerState<_TagsEditor> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Builds a compact chip whose tint follows the user-assigned [color]
+  /// (or the theme default when none). Tapping opens the color picker;
+  /// [onDeleted] (when provided) shows the delete affordance.
+  Widget _colorChip({
+    required IconData icon,
+    required String label,
+    required Color? color,
+    required ThemeData theme,
+    required VoidCallback onTap,
+    VoidCallback? onDeleted,
+  }) {
+    final accent = color ?? theme.colorScheme.primary;
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Chip(
+        avatar: Icon(icon, size: 13, color: accent),
+        label: Text(label,
+            style: TextStyle(fontSize: 11.5, color: accent)),
+        backgroundColor: accent.withOpacity(0.12),
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+        deleteIcon: const Icon(Icons.close, size: 13),
+        onDeleted: onDeleted,
+      ),
     );
   }
 }

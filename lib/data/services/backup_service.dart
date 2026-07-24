@@ -42,6 +42,8 @@ class BackupService {
         'startedAt': t.startedAt?.toIso8601String(),
         'completedAt': t.completedAt?.toIso8601String(),
         'tags': t.tags,
+        'project': t.project,
+        'updatedAt': t.updatedAt,
         'sortOrder': t.sortOrder,
         'executionLog': [
           for (final e in t.executionLog)
@@ -117,6 +119,8 @@ class BackupService {
       ..startedAt = _parseDate(j['startedAt'])
       ..completedAt = _parseDate(j['completedAt'])
       ..tags = _stringList(j['tags'])
+      ..project = (j['project'] as String?) ?? ''
+      ..updatedAt = (j['updatedAt'] as num?)?.toInt() ?? 0
       ..sortOrder = (j['sortOrder'] as num?)?.toInt() ?? 0;
 
     t.executionLog = [
