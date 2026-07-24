@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:taskflow/core/markdown/line_breaks.dart';
 import 'package:taskflow/data/models/task.dart';
 import 'package:taskflow/data/repositories/task_repository.dart';
 import 'package:taskflow/data/services/ai_service.dart';
 import 'package:taskflow/data/services/report_service.dart';
+import 'package:taskflow/presentation/reports/reports_screen.dart';
 import 'package:taskflow/providers/ai_provider.dart';
 import 'package:taskflow/providers/task_providers.dart';
 
@@ -124,6 +126,58 @@ void main() {
         onlyUids: {'b'},
       );
       expect(d.touchedTasks.map((t) => t.uid).toSet(), {'b'});
+    });
+  });
+
+  group('ReportController persists report across widget rebuilds', () {
+    test('report state survives a widget rebuild (navigation away & back)',
+        () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(reportControllerProvider.notifier);
+
+      // Simulate picker interactions, then a generated report + user edits.
+      // (toggleTask clears any stale report, so it happens before the
+      // report is "generated".)
+      notifier.setTaskPickerOpen(false);
+      notifier.toggleTask('uid-1', false); // uncheck one task
+      notifier.setMarkdown('# Weekly report');
+      notifier.setEditing(true);
+
+      // Navigating away disposes the widget; navigating back rebuilds it
+      // and re-reads the same (non-autoDispose) provider — the state must
+      // be exactly as left, NOT reset to defaults.
+      final s = container.read(reportControllerProvider);
+      expect(s.markdown, '# Weekly report');
+      expect(s.editing, isTrue);
+      expect(s.taskPickerOpen, isFalse);
+      expect(s.excludedUids, {'uid-1'});
+    });
+
+    test('changing the period clears the stale report', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(reportControllerProvider.notifier);
+
+      notifier.setMarkdown('# report');
+      expect(container.read(reportControllerProvider).markdown, '# report');
+
+      notifier.setPeriod(ReportPeriod.monthly);
+      final s = container.read(reportControllerProvider);
+      expect(s.period, ReportPeriod.monthly);
+      expect(s.markdown, isNull); // stale report cleared
+    });
+
+    test('toggling a task clears the stale report', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(reportControllerProvider.notifier);
+
+      notifier.setMarkdown('# report');
+      notifier.toggleTask('uid-x', false);
+      final s = container.read(reportControllerProvider);
+      expect(s.markdown, isNull);
+      expect(s.excludedUids, {'uid-x'});
     });
   });
 
