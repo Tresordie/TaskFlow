@@ -10,6 +10,16 @@ import 'package:taskflow/data/services/report_service.dart';
 import 'package:taskflow/providers/ai_provider.dart';
 import 'package:taskflow/providers/task_providers.dart';
 
+/// In-memory [TaskRepository] so report aggregation (_build) can be
+/// unit-tested without opening an Isar database.
+class _FakeRepo extends TaskRepository {
+  final List<Task> _tasks;
+  _FakeRepo(this._tasks);
+
+  @override
+  Future<List<Task>> getAllTasks() async => _tasks;
+}
+
 /// Pure-logic tests (no Isar / plugins required).
 void main() {
   group('ReportService.rangeFor', () {
@@ -62,6 +72,58 @@ void main() {
           ReportPeriod.yearly, DateTime(2026, 7, 21));
       expect(start, DateTime(2026, 1, 1));
       expect(end, DateTime(2027, 1, 1));
+    });
+  });
+
+  group('ReportService.generate onlyUids task selection', () {
+    List<Task> sampleTasks() => [
+          Task()
+            ..uid = 'a'
+            ..title = 'done task'
+            ..status = TaskStatus.completed
+            ..createdAt = DateTime(2026, 7, 13)
+            ..completedAt = DateTime(2026, 7, 15),
+          Task()
+            ..uid = 'b'
+            ..title = 'wip task'
+            ..status = TaskStatus.inProgress
+            ..createdAt = DateTime(2026, 7, 13)
+            ..startedAt = DateTime(2026, 7, 14),
+          Task()
+            ..uid = 'c'
+            ..title = 'planned task'
+            ..status = TaskStatus.planned
+            ..createdAt = DateTime(2026, 7, 14),
+        ];
+
+    test('null onlyUids aggregates every task in range', () async {
+      final svc = ReportService(_FakeRepo(sampleTasks()));
+      final d =
+          await svc.generate(ReportPeriod.weekly, DateTime(2026, 7, 15));
+      expect(d.touchedTasks.map((t) => t.uid).toSet(), {'a', 'b', 'c'});
+    });
+
+    test('onlyUids restricts aggregation to the checked tasks', () async {
+      final svc = ReportService(_FakeRepo(sampleTasks()));
+      final d = await svc.generate(
+        ReportPeriod.weekly,
+        DateTime(2026, 7, 15),
+        onlyUids: {'a', 'c'},
+      );
+      expect(d.touchedTasks.map((t) => t.uid).toSet(), {'a', 'c'});
+      expect(d.completed.map((t) => t.uid), ['a']);
+      expect(d.inProgress, isEmpty); // 'b' was deselected
+      expect(d.planned.map((t) => t.uid), ['c']);
+    });
+
+    test('generateRange honours onlyUids too', () async {
+      final svc = ReportService(_FakeRepo(sampleTasks()));
+      final d = await svc.generateRange(
+        DateTime(2026, 7, 13),
+        DateTime(2026, 7, 19),
+        onlyUids: {'b'},
+      );
+      expect(d.touchedTasks.map((t) => t.uid).toSet(), {'b'});
     });
   });
 
@@ -766,6 +828,25 @@ void main() {
         throwsA(isA<AiServiceException>().having(
             (e) => e.message, 'message', contains('Settings → AI'))),
       );
+    });
+  });
+
+  group('AI enhance prompt language contract', () {
+    test('English prompt demands English output and forbids Chinese', () {
+      final p = AiService.enhancePromptForTest(false);
+      // The English branch must explicitly tell the model to write in
+      // English and never emit Chinese — the digest it receives is usually
+      // Chinese, so without this rule the SUMMARY bullets leaked Chinese.
+      expect(p, contains('English'));
+      expect(p, contains('NEVER output any Chinese characters'));
+      // The English prompt template itself must contain no CJK characters.
+      expect(RegExp(r'[\u4e00-\u9fff]').hasMatch(p), isFalse,
+          reason: 'English prompt must not contain Chinese characters');
+    });
+
+    test('Chinese prompt is written in Chinese', () {
+      final p = AiService.enhancePromptForTest(true);
+      expect(RegExp(r'[\u4e00-\u9fff]').hasMatch(p), isTrue);
     });
   });
 

@@ -39,6 +39,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   TaskStatus? _fStatus;
   Priority? _fPriority;
 
+  // Per-task selection for the report: uids of tasks the user UNCHECKED in
+  // the "tasks created in range" picker. Empty = every task in range is
+  // included (the default, matching the old always-summarize-everything
+  // behaviour). Keyed by stable Task.uid, not the mutable Isar id.
+  final Set<String> _excludedUids = {};
+  bool _taskPickerOpen = true;
+
   // AI enhancement (log summaries for the Details column + title
   // translation into the report language) is ON by default — it only
   // actually runs when an AI endpoint is configured in Settings.
@@ -68,6 +75,15 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         status: _fStatus,
         priority: _fPriority,
       );
+      // Checkbox selection: null = every task in range; otherwise only the
+      // checked ones (tasks in range minus the excluded uids).
+      final Set<String>? onlyUids = _excludedUids.isEmpty
+          ? null
+          : _tasksInRange(
+                  ref.read(taskListProvider).valueOrNull ?? const <Task>[])
+              .where((t) => !_excludedUids.contains(t.uid))
+              .map((t) => t.uid)
+              .toSet();
       final ReportData data;
       if (_period == ReportPeriod.custom) {
         final range = _customRange;
@@ -79,9 +95,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           return;
         }
         data = await service.generateRange(range.start, range.end,
-            filter: filter);
+            filter: filter, onlyUids: onlyUids);
       } else {
-        data = await service.generate(_period, _anchor, filter: filter);
+        data = await service.generate(_period, _anchor,
+            filter: filter, onlyUids: onlyUids);
       }
 
       // Optional AI pass: summarize each task's in-period execution logs
@@ -278,6 +295,32 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return '${f.format(start)} → ${f.format(end.subtract(const Duration(days: 1)))}';
   }
 
+  /// The active [start, end) range, mirroring how generate()/generateRange()
+  /// resolve it (the custom end day is extended to cover its full 24h).
+  (DateTime, DateTime) get _currentRange {
+    if (_period == ReportPeriod.custom) {
+      final r = _customRange;
+      if (r == null) {
+        final now = DateTime.now();
+        return (DateTime(now.year, now.month, now.day),
+            DateTime(now.year, now.month, now.day));
+      }
+      final s = DateTime(r.start.year, r.start.month, r.start.day);
+      final e = DateTime(r.end.year, r.end.month, r.end.day)
+          .add(const Duration(days: 1));
+      return (s, e);
+    }
+    return ReportService.rangeFor(_period, _anchor);
+  }
+
+  /// Tasks created inside the current range — the checkbox picker's list.
+  List<Task> _tasksInRange(List<Task> allTasks) {
+    final (start, end) = _currentRange;
+    return allTasks
+        .where((t) => !t.createdAt.isBefore(start) && t.createdAt.isBefore(end))
+        .toList();
+  }
+
   /// Filter row under the main controls: narrow the report down to one
   /// project / tag / status / priority before aggregation (null = all).
   Widget _buildFilterRow(ThemeData theme) {
@@ -439,6 +482,150 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         ],
       ],
     );
+  }
+
+  /// Per-task picker: lists the tasks created inside the current date range
+  /// with a checkbox each, so the user chooses which tasks Generate Report
+  /// summarizes. Everything is selected by default (empty exclusion set).
+  Widget _buildTaskSelection(ThemeData theme) {
+    final allTasks = ref.watch(taskListProvider).valueOrNull ?? const <Task>[];
+    final inRange = _tasksInRange(allTasks);
+    final selectedCount =
+        inRange.where((t) => !_excludedUids.contains(t.uid)).length;
+    final allSelected =
+        inRange.isNotEmpty && selectedCount == inRange.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.fact_check_outlined,
+                size: 15,
+                color: theme.colorScheme.onSurface.withOpacity(0.5)),
+            const SizedBox(width: 8),
+            Text(
+              inRange.isEmpty
+                  ? 'Tasks: none created in this range'
+                  : 'Tasks: $selectedCount of ${inRange.length} selected',
+              style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
+            ),
+            const Spacer(),
+            if (inRange.isNotEmpty) ...[
+              TextButton(
+                onPressed: () => _setAllSelected(inRange, !allSelected),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: Text(allSelected ? 'Deselect all' : 'Select all',
+                    style: const TextStyle(fontSize: 12)),
+              ),
+              const SizedBox(width: 2),
+              InkWell(
+                borderRadius: BorderRadius.circular(6),
+                onTap: () =>
+                    setState(() => _taskPickerOpen = !_taskPickerOpen),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    _taskPickerOpen
+                        ? Icons.expand_less
+                        : Icons.expand_more,
+                    size: 16,
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        if (_taskPickerOpen && inRange.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 168),
+            child: Scrollbar(
+              child: ListView(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                children: [
+                  for (final t in inRange) _taskSelectionRow(theme, t),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _taskSelectionRow(ThemeData theme, Task t) {
+    final checked = !_excludedUids.contains(t.uid);
+    return InkWell(
+      onTap: () => _toggleTask(t.uid, !checked),
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+        child: Row(
+          children: [
+            Checkbox(
+              value: checked,
+              onChanged: (v) => _toggleTask(t.uid, v ?? true),
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            Expanded(
+              child: Text(
+                t.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: checked
+                      ? theme.colorScheme.onSurface
+                      : theme.colorScheme.onSurface.withOpacity(0.45),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              t.status.label,
+              style: TextStyle(
+                fontSize: 10.5,
+                color: theme.colorScheme.onSurface.withOpacity(0.45),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _toggleTask(String uid, bool checked) {
+    setState(() {
+      if (checked) {
+        _excludedUids.remove(uid);
+      } else {
+        _excludedUids.add(uid);
+      }
+      // The generated report no longer reflects the new selection.
+      _data = null;
+      _markdown = null;
+    });
+  }
+
+  void _setAllSelected(List<Task> inRange, bool selected) {
+    setState(() {
+      if (selected) {
+        _excludedUids.clear();
+      } else {
+        _excludedUids.addAll(inRange.map((t) => t.uid));
+      }
+      _data = null;
+      _markdown = null;
+    });
   }
 
   @override
@@ -697,6 +884,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             ),
                 const SizedBox(height: 10),
                 _buildFilterRow(theme),
+                const SizedBox(height: 10),
+                _buildTaskSelection(theme),
               ],
             ),
           ),

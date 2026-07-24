@@ -300,9 +300,10 @@ class ReportService {
     ReportPeriod period,
     DateTime anchor, {
     ReportFilter filter = const ReportFilter(),
+    Set<String>? onlyUids,
   }) {
     final (start, end) = rangeFor(period, anchor);
-    return _build(period, start, end, filter);
+    return _build(period, start, end, filter, onlyUids);
   }
 
   /// Generates a report over an explicit [start, end] date range (the
@@ -312,17 +313,21 @@ class ReportService {
     DateTime start,
     DateTime end, {
     ReportFilter filter = const ReportFilter(),
+    Set<String>? onlyUids,
   }) {
     final s = DateTime(start.year, start.month, start.day);
     final e = DateTime(end.year, end.month, end.day)
         .add(const Duration(days: 1));
-    return _build(ReportPeriod.custom, s, e, filter);
+    return _build(ReportPeriod.custom, s, e, filter, onlyUids);
   }
 
+  /// [onlyUids] restricts aggregation to the tasks whose uid is in the set
+  /// (the Reports screen's per-task checkbox selection); null = every task.
   Future<ReportData> _build(ReportPeriod period, DateTime start, DateTime end,
-      ReportFilter filter) async {
+      ReportFilter filter, Set<String>? onlyUids) async {
     final all = (await _repo.getAllTasks())
         .where(filter.matches)
+        .where((t) => onlyUids == null || onlyUids.contains(t.uid))
         .toList();
 
     bool inRange(DateTime? t) =>

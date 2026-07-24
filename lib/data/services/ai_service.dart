@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:intl/intl.dart';
+import 'package:meta/meta.dart';
 
 import '../models/task.dart';
 
@@ -230,7 +231,10 @@ Rules:
           'SUMMARY:\n'
           '- <point 1>\n'
           '- <point 2>\n'
-          'Rules: under SUMMARY, give 1-3 bullet points summarizing the '
+          'Rules: write the TITLE and EVERY SUMMARY bullet in English. The '
+          'task information below may be in Chinese — translate it into '
+          'English; NEVER output any Chinese characters. Under SUMMARY, '
+          'give 1-3 bullet points summarizing the '
           "task's execution logs inside the reporting period (for completed "
           'tasks, summarize WHAT was accomplished); each point on its own '
           'line starting with "- ", complete and self-contained — NEVER cut '
@@ -238,6 +242,11 @@ Rules:
           'there are no logs in the period, summarize the current task '
           'state. Output nothing except the TITLE line and the SUMMARY '
           'bullets — no extra prose, quotes or markdown.';
+
+  /// Exposed for tests so the language contract of the enhance prompt can
+  /// be asserted without making a network call.
+  @visibleForTesting
+  static String enhancePromptForTest(bool chinese) => _enhancePrompt(chinese);
 
   /// Compact plain-text digest of a task fed to the summarizer. Includes
   /// EVERY execution-log entry inside the report period ([periodEntries]).
