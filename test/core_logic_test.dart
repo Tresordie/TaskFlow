@@ -1072,4 +1072,40 @@ void main() {
       );
     });
   });
+
+  group('TaskRepository.buildNewTask snapshot (quick-add sub-task race)', () {
+    // Regression (v1.4.18): the Today quick-add bar passed its live
+    // _subSteps list into the unawaited createTask() future and cleared it
+    // synchronously right after. The repository read the list only after
+    // its first await — by then it was empty, so sub-tasks never reached
+    // the database and the detail page showed nothing.
+
+    test('sub-steps survive the caller clearing its list afterwards', () {
+      final repo = TaskRepository();
+      final live = ['torque check', 'brake bleed'];
+      // Synchronous entry point, exactly as createTask() invokes it
+      // before its first await.
+      final task = repo.buildNewTask(title: 'Bike prep', subSteps: live, sortOrder: 1);
+      live.clear(); // UI clears immediately (future not awaited)
+      expect(task.subSteps.map((s) => s.title).toList(),
+          ['torque check', 'brake bleed']);
+      expect(task.subSteps.every((s) => !s.completed), isTrue);
+      expect(task.subSteps.every((s) => s.uid.isNotEmpty), isTrue);
+    });
+
+    test('tags survive the caller clearing its list afterwards', () {
+      final repo = TaskRepository();
+      final liveTags = ['lyft', 'oak'];
+      final task = repo.buildNewTask(title: 'T', tags: liveTags, sortOrder: 1);
+      liveTags.clear();
+      expect(task.tags, ['lyft', 'oak']);
+    });
+
+    test('blank sub-steps are dropped and titles trimmed', () {
+      final repo = TaskRepository();
+      final task = repo.buildNewTask(
+          title: 'T', subSteps: [' step A ', '', '   '], sortOrder: 1);
+      expect(task.subSteps.map((s) => s.title).toList(), ['step A']);
+    });
+  });
 }

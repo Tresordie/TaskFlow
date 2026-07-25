@@ -650,12 +650,15 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
         .map((t) => t.trim())
         .where((t) => t.isNotEmpty)
         .toList();
+    // Snapshot the live list: createTask is async and not awaited here,
+    // while _subSteps is cleared synchronously below. Passing the live
+    // list would let the repository read an already-empty list.
     ref.read(taskListProvider.notifier).createTask(
           title: text,
           priority: _priority,
           dueDate: _dueDate,
           tags: tags,
-          subSteps: _subSteps,
+          subSteps: List<String>.of(_subSteps),
           project: _projectController.text.trim(),
         );
     _controller.clear();

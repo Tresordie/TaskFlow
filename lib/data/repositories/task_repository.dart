@@ -1,4 +1,5 @@
 import 'package:isar/isar.dart';
+import 'package:meta/meta.dart';
 import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
 import '../models/task.dart';
@@ -64,6 +65,49 @@ class TaskRepository {
     return isar.tasks.get(id);
   }
 
+  /// Synchronously builds the [Task] entity for a new task.
+  ///
+  /// [tags] and [subSteps] are snapshot-copied immediately, so a caller
+  /// may clear its own lists the moment the async [createTask] future is
+  /// fired (unawaited) without racing the persistence layer.
+  @visibleForTesting
+  Task buildNewTask({
+    required String title,
+    String? description,
+    Priority priority = Priority.p2Medium,
+    List<String> tags = const [],
+    List<String> subSteps = const [],
+    DateTime? dueDate,
+    String project = '',
+    required int sortOrder,
+  }) {
+    // Defensive copies: snapshot before any async gap can interleave
+    // with caller-side mutation (see [createTask]).
+    final safeTags = List<String>.of(tags);
+    final safeSubSteps = List<String>.of(subSteps);
+
+    return Task()
+      ..uid = _uuid.v4()
+      ..title = title
+      ..description = description
+      ..priority = priority
+      ..status = TaskStatus.planned
+      ..createdAt = DateTime.now()
+      ..updatedAt = DateTime.now().millisecondsSinceEpoch
+      ..dueDate = dueDate
+      ..tags = safeTags
+      ..project = project.trim()
+      ..sortOrder = sortOrder
+      ..subSteps = [
+        for (final s in safeSubSteps)
+          if (s.trim().isNotEmpty)
+            SubStep()
+              ..uid = _uuid.v4()
+              ..title = s.trim()
+              ..completed = false,
+      ];
+  }
+
   Future<int> createTask({
     required String title,
     String? description,
@@ -73,32 +117,26 @@ class TaskRepository {
     DateTime? dueDate,
     String project = '',
   }) async {
+    // Build synchronously at the entry point — BEFORE the first await —
+    // so the defensive copies inside [buildNewTask] are taken while the
+    // caller's lists are still intact. (Callers such as the quick-add bar
+    // clear their lists right after firing this future without awaiting.)
+    final task = buildNewTask(
+      title: title,
+      description: description,
+      priority: priority,
+      tags: tags,
+      subSteps: subSteps,
+      dueDate: dueDate,
+      project: project,
+      sortOrder: 0, // placeholder, patched below
+    );
+
     final isar = await AppDatabase.instance;
 
     // Get max sort order
     final allTasks = await isar.tasks.where().sortBySortOrderDesc().findFirst();
-    final nextOrder = (allTasks?.sortOrder ?? 0) + 1;
-
-    final task = Task()
-      ..uid = _uuid.v4()
-      ..title = title
-      ..description = description
-      ..priority = priority
-      ..status = TaskStatus.planned
-      ..createdAt = DateTime.now()
-      ..updatedAt = DateTime.now().millisecondsSinceEpoch
-      ..dueDate = dueDate
-      ..tags = tags
-      ..project = project.trim()
-      ..sortOrder = nextOrder
-      ..subSteps = [
-        for (final s in subSteps)
-          if (s.trim().isNotEmpty)
-            SubStep()
-              ..uid = _uuid.v4()
-              ..title = s.trim()
-              ..completed = false,
-      ];
+    task.sortOrder = (allTasks?.sortOrder ?? 0) + 1;
 
     return isar.writeTxn(() => isar.tasks.put(task));
   }

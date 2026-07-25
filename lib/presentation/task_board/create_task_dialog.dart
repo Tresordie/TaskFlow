@@ -187,14 +187,16 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
 
+    // Snapshot the live lists: createTask is async and not awaited;
+    // guard against any future clear-before-read race.
     ref.read(taskListProvider.notifier).createTask(
           title: title,
           description: _descController.text.trim().isEmpty
               ? null
               : _descController.text.trim(),
           priority: _priority,
-          tags: _tags,
-          subSteps: _subSteps,
+          tags: List<String>.of(_tags),
+          subSteps: List<String>.of(_subSteps),
         );
     Navigator.of(context).pop();
   }
