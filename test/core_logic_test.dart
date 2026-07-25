@@ -1,14 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:taskflow/core/markdown/line_breaks.dart';
 import 'package:taskflow/data/models/task.dart';
+import 'package:taskflow/data/models/work_log.dart';
 import 'package:taskflow/data/repositories/task_repository.dart';
 import 'package:taskflow/data/services/ai_service.dart';
 import 'package:taskflow/data/services/report_service.dart';
 import 'package:taskflow/presentation/reports/reports_screen.dart';
+import 'package:taskflow/presentation/shared/markdown_input.dart';
+import 'package:taskflow/presentation/shared/suggestion_field.dart';
 import 'package:taskflow/providers/ai_provider.dart';
 import 'package:taskflow/providers/task_providers.dart';
 
@@ -1106,6 +1110,169 @@ void main() {
       final task = repo.buildNewTask(
           title: 'T', subSteps: [' step A ', '', '   '], sortOrder: 1);
       expect(task.subSteps.map((s) => s.title).toList(), ['step A']);
+    });
+  });
+
+  group('filterSuggestions (Project/Tags autocomplete)', () {
+    const options = ['Cosmo', 'Monolith', 'Oak'];
+
+    test('empty query returns all options', () {
+      expect(filterSuggestions(options, ''), options);
+      expect(filterSuggestions(options, '   '), options);
+    });
+
+    test('case-insensitive substring match', () {
+      expect(filterSuggestions(options, 'co'), ['Cosmo']);
+      expect(filterSuggestions(options, 'O'), ['Cosmo', 'Monolith', 'Oak']);
+    });
+
+    test('exact match is excluded so the dropdown hides', () {
+      expect(filterSuggestions(options, 'oak'), isEmpty);
+    });
+
+    test('caps the result list at 8 entries', () {
+      final many = List.generate(20, (i) => 'tag$i');
+      expect(filterSuggestions(many, 'tag').length, 8);
+    });
+  });
+
+  group('MarkdownInput (Execution Log formatting)', () {
+    TextEditingController ctl(String text, {int? base, int? extent}) {
+      final c = TextEditingController(text: text);
+      if (base != null) {
+        c.selection = TextSelection(
+            baseOffset: base, extentOffset: extent ?? base);
+      }
+      return c;
+    }
+
+    test('wrapSelection wraps the current selection', () {
+      final c = ctl('hello world', base: 0, extent: 5);
+      MarkdownInput.wrapSelection(c, '**', '**');
+      expect(c.text, '**hello** world');
+    });
+
+    test('wrapSelection with no selection inserts the pair', () {
+      final c = ctl('ab', base: 1);
+      MarkdownInput.wrapSelection(c, '`', '`');
+      expect(c.text, 'a``b');
+      expect(c.selection.baseOffset, 2);
+    });
+
+    test('prefixLines prefixes the current line only', () {
+      final c = ctl('line one\nline two', base: 2);
+      MarkdownInput.prefixLines(c, '- ');
+      expect(c.text, '- line one\nline two');
+    });
+
+    test('indent / outdent are inverse operations', () {
+      final c = ctl('task\n  sub', base: 0, extent: 9);
+      MarkdownInput.indent(c);
+      expect(c.text, '  task\n    sub');
+      c.selection = const TextSelection(baseOffset: 0, extentOffset: 14);
+      MarkdownInput.outdent(c);
+      expect(c.text, 'task\n  sub');
+    });
+
+    test('outdent removes a single leading space', () {
+      final c = ctl(' x', base: 1);
+      MarkdownInput.outdent(c);
+      expect(c.text, 'x');
+    });
+  });
+
+  group('Work Log AI prompt + format helpers', () {
+    test('formatWorkLogRecords numbers records and separates them', () {
+      final out = AiService.formatWorkLogRecords([
+        (timestamp: DateTime(2026, 7, 21, 9, 0).millisecondsSinceEpoch,
+            content: 'first'),
+        (timestamp: DateTime(2026, 7, 21, 10, 30).millisecondsSinceEpoch,
+            content: 'second'),
+      ]);
+      expect(out, contains('[1]'));
+      expect(out, contains('[2]'));
+      expect(out, contains('first'));
+      expect(out, contains('second'));
+      expect(out, contains('\n\n---\n\n'));
+    });
+
+    test('Chinese system prompt asks for a Chinese summary', () {
+      final p = AiService.workLogSystemPrompt(
+          outputChinese: true, dateRange: '2026-07-21');
+      expect(p, contains('工作总结'));
+      expect(p, contains('2026-07-21'));
+    });
+
+    test('non-Chinese user prompt forbids leaking the input language', () {
+      final p = AiService.workLogUserPrompt(
+        recordsText: '记录',
+        dateRange: '2026-07-21',
+        inputLang: 'zh',
+        outputLang: 'en',
+      );
+      expect(p, contains('ENTIRELY in English'));
+      expect(p, contains('Do NOT write any Chinese'));
+    });
+
+    test('autoFormatResult collapses blank lines and trims edges', () {
+      expect(AiService.autoFormatResult('\n\na  \n\n\n\nb\n\n'), 'a\n\nb');
+    });
+  });
+
+  group('WorkLog models JSON round-trip', () {
+    test('WorkLogRecord survives toJson/fromJson', () {
+      final r = WorkLogRecord(id: 'r1', content: 'did X', timestamp: 123456);
+      final back = WorkLogRecord.fromJson(r.toJson());
+      expect(back.id, 'r1');
+      expect(back.content, 'did X');
+      expect(back.timestamp, 123456);
+    });
+
+    test('WorkLogSummary survives toJson/fromJson', () {
+      final s = WorkLogSummary(
+        id: 's1',
+        dateRange: '2026-07-21',
+        content: '## Summary',
+        inputLang: 'zh',
+        outputLang: 'en',
+        timestamp: 999,
+      );
+      final back = WorkLogSummary.fromJson(s.toJson());
+      expect(back.id, 's1');
+      expect(back.dateRange, '2026-07-21');
+      expect(back.content, '## Summary');
+      expect(back.inputLang, 'zh');
+      expect(back.outputLang, 'en');
+      expect(back.timestamp, 999);
+    });
+  });
+
+  group('distinct projects/tags providers (autocomplete source)', () {
+    Task mk(String uid, {String project = '', List<String> tags = const []}) =>
+        Task()
+          ..uid = uid
+          ..title = 't$uid'
+          ..priority = Priority.p2Medium
+          ..status = TaskStatus.planned
+          ..createdAt = DateTime.now()
+          ..project = project
+          ..tags = List.of(tags);
+
+    test('collects unique, sorted project/tag values', () async {
+      final tasks = [
+        mk('1', project: 'Metro', tags: ['lyft', 'ate']),
+        mk('2', project: 'Cosmo', tags: ['firmware', 'lyft']),
+        mk('3', project: '  ', tags: []),
+      ];
+      final container = ProviderContainer(overrides: [
+        taskRepositoryProvider.overrideWithValue(_FakeRepo(tasks)),
+      ]);
+      addTearDown(container.dispose);
+      await container.read(taskListProvider.notifier).loadTasks();
+
+      expect(container.read(distinctProjectsProvider), ['Cosmo', 'Metro']);
+      expect(container.read(distinctTagsProvider),
+          ['ate', 'firmware', 'lyft']);
     });
   });
 }

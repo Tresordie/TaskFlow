@@ -138,6 +138,39 @@ final groupedTasksByModeProvider =
   }
 });
 
+// ─── Autocomplete suggestions ────────────────────────────────────────────────
+
+/// Distinct, sorted project names currently in use (empty values excluded).
+/// Powers the Project autocomplete in the quick-add bar and edit dialog.
+final distinctProjectsProvider = Provider<List<String>>((ref) {
+  final tasksAsync = ref.watch(taskListProvider);
+  final tasks = tasksAsync.valueOrNull ?? const <Task>[];
+  final set = <String>{};
+  for (final t in tasks) {
+    final p = t.project.trim();
+    if (p.isNotEmpty) set.add(p);
+  }
+  final list = set.toList()
+    ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  return list;
+});
+
+/// Distinct, sorted tags currently in use. Powers the Tags autocomplete.
+final distinctTagsProvider = Provider<List<String>>((ref) {
+  final tasksAsync = ref.watch(taskListProvider);
+  final tasks = tasksAsync.valueOrNull ?? const <Task>[];
+  final set = <String>{};
+  for (final t in tasks) {
+    for (final tag in t.tags) {
+      final s = tag.trim();
+      if (s.isNotEmpty) set.add(s);
+    }
+  }
+  final list = set.toList()
+    ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  return list;
+});
+
 class TaskFilter {
   final TaskStatus? status;
   final Priority? priority;

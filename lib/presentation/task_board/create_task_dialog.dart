@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
+import '../shared/suggestion_field.dart';
 
 class CreateTaskDialog extends ConsumerStatefulWidget {
   const CreateTaskDialog({super.key});
@@ -82,8 +83,9 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
             Row(
               children: [
                 Expanded(
-                  child: TextField(
+                  child: SuggestionField(
                     controller: _tagController,
+                    suggestions: ref.watch(distinctTagsProvider),
                     decoration: const InputDecoration(
                       hintText: 'e.g. Metro, ATE, Firmware',
                     ),

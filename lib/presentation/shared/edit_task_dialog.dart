@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
+import 'suggestion_field.dart';
 import 'tree_indent.dart';
 
 /// A dialog for editing an existing task's title, description, priority
@@ -125,11 +126,12 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
               ),
               const SizedBox(height: 16),
 
-              // Project field
+              // Project field (with history autocomplete)
               Text('Project', style: theme.textTheme.labelLarge),
               const SizedBox(height: 6),
-              TextField(
+              SuggestionField(
                 controller: _projectController,
+                suggestions: ref.watch(distinctProjectsProvider),
                 decoration: const InputDecoration(
                   hintText: 'Project name (e.g. Cosmo, Metro)',
                   prefixIcon: Icon(Icons.folder_outlined, size: 18),

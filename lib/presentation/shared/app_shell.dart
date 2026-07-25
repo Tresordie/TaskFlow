@@ -184,6 +184,13 @@ class _Sidebar extends StatelessWidget {
             isActive: currentLocation == '/reports',
             onTap: () => context.go('/reports'),
           ),
+          _NavItem(
+            icon: Icons.edit_note_outlined,
+            activeIcon: Icons.edit_note,
+            label: 'Work Log',
+            isActive: currentLocation == '/worklog',
+            onTap: () => context.go('/worklog'),
+          ),
 
           const Spacer(),
 

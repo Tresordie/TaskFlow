@@ -10,6 +10,7 @@ import '../presentation/heatmap/heatmap_screen.dart';
 import '../presentation/ai_parse/ai_parse_screen.dart';
 import '../presentation/reports/reports_screen.dart';
 import '../presentation/settings/settings_screen.dart';
+import '../presentation/work_log/work_log_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -58,6 +59,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'reports',
             pageBuilder: (context, state) => const NoTransitionPage(
               child: ReportsScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/worklog',
+            name: 'workLog',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: WorkLogScreen(),
             ),
           ),
           GoRoute(

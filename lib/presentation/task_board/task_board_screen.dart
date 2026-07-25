@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
+import '../shared/suggestion_field.dart';
 import 'task_card_widget.dart';
 
 class TaskBoardScreen extends ConsumerWidget {
@@ -485,12 +486,14 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
                     ),
                   ],
                   const Spacer(),
-                  // Tags input (comma-separated)
+                  // Tags input (comma-separated, with history autocomplete)
                   SizedBox(
                     width: 150,
                     height: 30,
-                    child: TextField(
+                    child: SuggestionField(
                       controller: _tagController,
+                      commaSeparated: true,
+                      suggestions: ref.watch(distinctTagsProvider),
                       style: const TextStyle(fontSize: 12),
                       decoration: InputDecoration(
                         hintText: 'Tags (a, b)',
@@ -519,12 +522,13 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Project name input (sticky across quick-adds)
+                  // Project name input (sticky across quick-adds, with history autocomplete)
                   SizedBox(
                     width: 170,
                     height: 30,
-                    child: TextField(
+                    child: SuggestionField(
                       controller: _projectController,
+                      suggestions: ref.watch(distinctProjectsProvider),
                       style: const TextStyle(fontSize: 12),
                       decoration: InputDecoration(
                         hintText: 'Project (e.g. Cosmo)',

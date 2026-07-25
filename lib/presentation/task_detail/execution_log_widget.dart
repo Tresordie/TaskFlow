@@ -11,6 +11,7 @@ import '../../core/utils/open_folder.dart';
 import '../../data/models/task.dart';
 import '../../data/services/attachment_service.dart';
 import '../../providers/task_providers.dart';
+import '../shared/markdown_input.dart';
 import 'edit_entry_dialog.dart';
 
 class ExecutionLogWidget extends ConsumerStatefulWidget {
@@ -25,6 +26,8 @@ class ExecutionLogWidget extends ConsumerStatefulWidget {
 
 class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
   final _entryController = TextEditingController();
+  late final FocusNode _entryFocus =
+      markdownIndentFocusNode(_entryController);
   EntryType _selectedType = EntryType.note;
 
   // Resizable text input area height (logical pixels).
@@ -39,6 +42,7 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
   @override
   void dispose() {
     _entryController.dispose();
+    _entryFocus.dispose();
     super.dispose();
   }
 
@@ -221,6 +225,14 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
               ],
               const SizedBox(height: 10),
 
+              // Markdown formatting toolbar (bold/italic/code/headings/lists/
+              // quote + indent/outdent). Tab & Shift+Tab also indent inline.
+              MarkdownToolbar(
+                controller: _entryController,
+                refocus: _entryFocus,
+              ),
+              const SizedBox(height: 6),
+
               // Text input (height controlled by the grip handle above)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -230,12 +242,13 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
                       height: _textAreaHeight,
                       child: TextField(
                         controller: _entryController,
+                        focusNode: _entryFocus,
                         maxLines: null,
                         expands: true,
                         textAlignVertical: TextAlignVertical.top,
                         decoration: InputDecoration(
                           hintText:
-                              'Record what you did, observed, measured... (Markdown supported)',
+                              'Record what you did, observed, measured... (Markdown supported, Tab to indent)',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),

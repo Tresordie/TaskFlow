@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../data/services/attachment_service.dart';
 import '../../providers/task_providers.dart';
+import '../shared/markdown_input.dart';
 
 /// Dialog for editing an already-sent execution-log entry.
 ///
@@ -30,6 +31,7 @@ class EditExecutionEntryDialog extends ConsumerStatefulWidget {
 class _EditExecutionEntryDialogState
     extends ConsumerState<EditExecutionEntryDialog> {
   late final TextEditingController _contentController;
+  late final FocusNode _contentFocus;
   late EntryType _selectedType;
   late final List<Attachment> _attachments;
   bool _isPicking = false;
@@ -39,6 +41,7 @@ class _EditExecutionEntryDialogState
   void initState() {
     super.initState();
     _contentController = TextEditingController(text: widget.entry.content);
+    _contentFocus = markdownIndentFocusNode(_contentController);
     _selectedType = widget.entry.type;
     _attachments = List<Attachment>.from(widget.entry.attachments);
   }
@@ -46,6 +49,7 @@ class _EditExecutionEntryDialogState
   @override
   void dispose() {
     _contentController.dispose();
+    _contentFocus.dispose();
     super.dispose();
   }
 
@@ -144,14 +148,22 @@ class _EditExecutionEntryDialogState
                 ),
               const SizedBox(height: 14),
 
+              // Markdown formatting toolbar (Tab / Shift+Tab also indent).
+              MarkdownToolbar(
+                controller: _contentController,
+                refocus: _contentFocus,
+              ),
+              const SizedBox(height: 6),
+
               // Content (Markdown source)
               TextField(
                 controller: _contentController,
+                focusNode: _contentFocus,
                 minLines: 4,
                 maxLines: 12,
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: 'Entry content (Markdown supported)',
+                  hintText: 'Entry content (Markdown supported, Tab to indent)',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),

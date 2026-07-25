@@ -211,6 +211,161 @@ Rules:
     }
   }
 
+  /// Generates a structured work summary from free-form work-log records
+  /// (ported from the LinguaFlow Chrome extension's workreport page).
+  ///
+  /// [recordsText] is the already-formatted block of records (see
+  /// [formatWorkLogRecords]); [dateRange] labels the covered period.
+  /// [inputLang]/[outputLang] are language codes (e.g. 'zh', 'en'); the
+  /// prompt instructs the model to read the input language but write the
+  /// summary entirely in the output language.
+  Future<String> summarizeWorkLog({
+    required String recordsText,
+    required String dateRange,
+    required String inputLang,
+    required String outputLang,
+  }) async {
+    final uri = _buildUri();
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 15);
+    try {
+      final request =
+          await client.postUrl(uri).timeout(const Duration(seconds: 20));
+      request.headers.set('Content-Type', 'application/json; charset=utf-8');
+      request.headers.set('Authorization', 'Bearer $apiKey');
+      request.add(utf8.encode(jsonEncode({
+        'model': model,
+        'temperature': 0.1,
+        'messages': [
+          {
+            'role': 'system',
+            'content': workLogSystemPrompt(
+                outputChinese: outputLang == 'zh', dateRange: dateRange),
+          },
+          {
+            'role': 'user',
+            'content': workLogUserPrompt(
+              recordsText: recordsText,
+              dateRange: dateRange,
+              inputLang: inputLang,
+              outputLang: outputLang,
+            ),
+          },
+        ],
+      })));
+      final response =
+          await request.close().timeout(const Duration(seconds: 120));
+      final text = await response.transform(utf8.decoder).join();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw AiServiceException(
+            'API error ${response.statusCode}: ${_shorten(text)}');
+      }
+      final result = _extractContentMultiLine(text).trim();
+      if (result.isEmpty) {
+        throw AiServiceException('Empty summary returned by the model.');
+      }
+      return autoFormatResult(result);
+    } on SocketException catch (e) {
+      throw AiServiceException('Network error: ${e.message}');
+    } on TimeoutException {
+      throw AiServiceException('Summary request timed out.');
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  /// Formats a list of (timestamp, content) work records into the numbered,
+  /// `---`-separated block the summarizer prompt expects.
+  static String formatWorkLogRecords(
+      List<({int timestamp, String content})> records) {
+    final f = DateFormat('yyyy-MM-dd HH:mm');
+    final buf = StringBuffer();
+    for (var i = 0; i < records.length; i++) {
+      if (i > 0) buf.write('\n\n---\n\n');
+      buf.write(
+          '[${i + 1}] ${f.format(DateTime.fromMillisecondsSinceEpoch(records[i].timestamp))}\n'
+          '${records[i].content}');
+    }
+    return buf.toString();
+  }
+
+  /// System prompt for the work-log summarizer (exposed for tests).
+  @visibleForTesting
+  static String workLogSystemPrompt({
+    required bool outputChinese,
+    required String dateRange,
+  }) {
+    if (outputChinese) {
+      return '你是工作汇报总结助手。请阅读以下工作记录，提取关键要点并生成结构化的中文总结。\n\n'
+          '输出格式：\n'
+          '## 📋 工作总结 ($dateRange)\n'
+          '### 🔑 要点总结\n'
+          '- [要点]\n'
+          '### 📝 要点详述\n'
+          '**1. [标题]** 详细阐述';
+    }
+    return 'Role: work summarizer.\n'
+        'Rule: read the input but write ONLY in the requested output language.\n'
+        'Format:\n'
+        '## 📋 Work Summary\n'
+        '### 🔑 Key Points\n'
+        '- point\n'
+        '### 📝 Detailed Breakdown\n'
+        '**1. title** elaboration.';
+  }
+
+  /// User prompt for the work-log summarizer (exposed for tests).
+  @visibleForTesting
+  static String workLogUserPrompt({
+    required String recordsText,
+    required String dateRange,
+    required String inputLang,
+    required String outputLang,
+  }) {
+    final inputName = _langName(inputLang);
+    final outputName = _langName(outputLang);
+    if (outputLang == 'zh') {
+      return '请用$outputName总结以下工作记录（$dateRange）：\n\n$recordsText';
+    }
+    return 'Produce a $outputName summary of these work records ($dateRange).\n'
+        'Respond ENTIRELY in $outputName. Do NOT write any $inputName.\n\n'
+        '=== BEGIN INPUT (read in $inputName, respond in $outputName) ===\n'
+        '$recordsText\n'
+        '=== END INPUT ===\n\n'
+        'Now write the $outputName summary:';
+  }
+
+  static String _langName(String code) =>
+      _workLogLangNames[code] ?? code;
+
+  static const _workLogLangNames = {
+    'zh': 'Chinese', 'en': 'English', 'ja': 'Japanese', 'ko': 'Korean',
+    'fr': 'French', 'de': 'German', 'es': 'Spanish', 'pt': 'Portuguese',
+    'ru': 'Russian', 'ar': 'Arabic', 'it': 'Italian', 'nl': 'Dutch',
+    'th': 'Thai', 'vi': 'Vietnamese', 'id': 'Indonesian', 'ms': 'Malay',
+    'tr': 'Turkish', 'pl': 'Polish', 'sv': 'Swedish', 'da': 'Danish',
+    'fi': 'Finnish', 'el': 'Greek', 'cs': 'Czech', 'ro': 'Romanian',
+    'hu': 'Hungarian', 'uk': 'Ukrainian', 'hi': 'Hindi', 'bn': 'Bengali',
+    'he': 'Hebrew', 'fa': 'Persian',
+  };
+
+  /// Normalizes LLM output whitespace/markdown the same way the extension
+  /// did: unify newlines, trim trailing spaces, collapse 3+ blank lines,
+  /// strip leading/trailing blanks, tidy list-marker spacing and CJK
+  /// punctuation spacing.
+  @visibleForTesting
+  static String autoFormatResult(String text) {
+    var t = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    t = t.split('\n').map((l) => l.trimRight()).join('\n');
+    t = t.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    t = t.replaceAll(RegExp(r'^\n+'), '').replaceAll(RegExp(r'\n+$'), '');
+    t = t.replaceAll(RegExp(r'^([\s]*[-*+])\s{2,}', multiLine: true), r'$1 ');
+    t = t.replaceAll(RegExp(r'^([\s]*\d+\.)\s{2,}', multiLine: true), r'$1 ');
+    t = t.replaceAll(RegExp(r'([。！？；])([^\n\s])'), r'$1 $2');
+    t = t.replaceAll(RegExp(r'\s+([。！？，；：、])'), r'$1');
+    return t;
+  }
+
   // ------------------------------------------------------------------
 
   static String _enhancePrompt(bool chinese) => chinese
