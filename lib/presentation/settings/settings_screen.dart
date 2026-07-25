@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/version.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/font_provider.dart';
 import '../../providers/ai_provider.dart';
@@ -206,7 +207,8 @@ class SettingsScreen extends ConsumerWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('TaskFlow v1.0.0', style: theme.textTheme.titleMedium),
+                  Text('TaskFlow v$kAppVersion',
+                      style: theme.textTheme.titleMedium),
                   Text('Phase 1 · Flutter 3.44 · Isar · Riverpod',
                       style: theme.textTheme.bodyMedium),
                 ],
