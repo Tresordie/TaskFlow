@@ -24,9 +24,9 @@ class AppFonts {
   AppFonts._();
 
   /// Curated presets focused on crisp, beautiful mixed Chinese + English
-  /// rendering. (v1.4.22: removed Latin-only / mono / display fonts — Inter,
-  /// Roboto, Lato, Poppins-style duplicates, Montserrat, Merriweather,
-  /// JetBrains Mono, Source Code Pro — in favor of CJK-capable families.)
+  /// rendering. (v1.4.24: dropped Noto Serif SC and LXGW WenKai per user
+  /// request; added ZCOOL XiaoWei and ZCOOL QingKe HuangYou — two distinctive
+  /// families that typeset mixed CN/EN beautifully.)
   static const List<FontOption> presets = [
     FontOption(
       id: 'system',
@@ -41,17 +41,17 @@ class AppFonts {
       isGoogleFont: true,
     ),
     FontOption(
-      id: 'notoSerifSC',
-      labelZh: 'Noto Serif SC (思源宋体 · 中英混排优雅)',
-      labelEn: 'Noto Serif SC',
-      fontFamily: 'Noto Serif SC',
+      id: 'zcoolXiaoWei',
+      labelZh: 'ZCOOL XiaoWei (站酷小薇 · 清秀优雅)',
+      labelEn: 'ZCOOL XiaoWei',
+      fontFamily: 'ZCOOL XiaoWei',
       isGoogleFont: true,
     ),
     FontOption(
-      id: 'lxgwWenKaiTC',
-      labelZh: 'LXGW WenKai (霞鹜文楷 · 中英混排美观)',
-      labelEn: 'LXGW WenKai TC',
-      fontFamily: 'LXGW WenKai TC',
+      id: 'zcoolQingKeHuangYou',
+      labelZh: 'ZCOOL QingKe HuangYou (庆科黄油体 · 饱满圆润)',
+      labelEn: 'ZCOOL QingKe HuangYou',
+      fontFamily: 'ZCOOL QingKe HuangYou',
       isGoogleFont: true,
     ),
     FontOption(

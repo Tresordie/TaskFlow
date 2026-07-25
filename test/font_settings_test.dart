@@ -30,11 +30,15 @@ void main() {
       }
     });
 
-    test('adds CJK-capable fonts for mixed CN/EN rendering', () {
+    test('v1.4.24: serif/regular-script fonts removed, ZCOOL fonts added', () {
       final families = AppFonts.presets.map((f) => f.fontFamily).toSet();
+      // Removed per user request.
+      expect(families.contains('Noto Serif SC'), isFalse);
+      expect(families.contains('LXGW WenKai TC'), isFalse);
+      // Kept + added for beautiful mixed CN/EN rendering.
       expect(families.contains('Noto Sans SC'), isTrue);
-      expect(families.contains('Noto Serif SC'), isTrue);
-      expect(families.contains('LXGW WenKai TC'), isTrue);
+      expect(families.contains('ZCOOL XiaoWei'), isTrue);
+      expect(families.contains('ZCOOL QingKe HuangYou'), isTrue);
     });
 
     test('every preset id is unique and non-empty', () {

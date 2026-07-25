@@ -123,10 +123,15 @@ class AppTheme {
         outline: p.border,
       ),
       cardTheme: CardThemeData(
-        elevation: 0,
+        // v1.4.24: gentle lift instead of pure-flat — a soft tinted shadow
+        // gives the main panels subtle depth. surfaceTintColor is disabled so
+        // the card keeps its flat color (no M3 tint overlay).
+        elevation: isDark ? 0 : 1,
+        shadowColor: p.primary.withOpacity(0.10),
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: p.border, width: 1),
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: p.border.withOpacity(0.8), width: 1),
         ),
         color: p.card,
         margin: EdgeInsets.zero,
@@ -227,6 +232,19 @@ class AppTheme {
           borderRadius: BorderRadius.circular(20),
         ),
         backgroundColor: p.surface,
+      ),
+      // v1.4.24: slim, rounded scrollbars that brighten on hover — a small
+      // detail that makes the desktop UI feel much more polished.
+      scrollbarTheme: ScrollbarThemeData(
+        radius: const Radius.circular(8),
+        thickness: WidgetStateProperty.all(8),
+        crossAxisMargin: 2,
+        trackColor: WidgetStateProperty.all(Colors.transparent),
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          return states.contains(WidgetState.hovered)
+              ? p.primary.withOpacity(0.45)
+              : p.textSecondary.withOpacity(0.28);
+        }),
       ),
     );
   }

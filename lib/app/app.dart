@@ -36,13 +36,17 @@ class TaskFlowApp extends ConsumerWidget {
       // Desktop-friendly scrolling: allow mouse / trackpad drag-scrolling
       // on every list (wheel scrolling stays enabled by default).
       scrollBehavior: AppScrollBehavior(),
-      // Apply the global font size scale to every screen.
+      // Apply the global font size scale to every screen, and make all page
+      // text selectable (v1.4.24): drag to select across widgets, then Ctrl+C
+      // or right-click → Copy. Editable fields keep their own selection.
       builder: (context, child) {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(
             textScaler: TextScaler.linear(fontScale),
           ),
-          child: child ?? const SizedBox.shrink(),
+          child: SelectionArea(
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
     );
@@ -113,10 +117,10 @@ class TaskFlowApp extends ConsumerWidget {
     switch (family) {
       case 'Noto Sans SC':
         return GoogleFonts.notoSansScTextTheme(base);
-      case 'Noto Serif SC':
-        return GoogleFonts.notoSerifScTextTheme(base);
-      case 'LXGW WenKai TC':
-        return GoogleFonts.lxgwWenKaiTcTextTheme(base);
+      case 'ZCOOL XiaoWei':
+        return GoogleFonts.zcoolXiaoWeiTextTheme(base);
+      case 'ZCOOL QingKe HuangYou':
+        return GoogleFonts.zcoolQingKeHuangYouTextTheme(base);
       case 'Poppins':
         return GoogleFonts.poppinsTextTheme(base);
       default:
