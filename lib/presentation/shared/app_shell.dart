@@ -12,6 +12,16 @@ class AppShell extends StatelessWidget {
     final isWide = MediaQuery.of(context).size.width > 768;
     final theme = Theme.of(context);
 
+    // The single app-wide SelectionArea (v1.4.24, relocated in v1.4.25):
+    // makes every page's read-only text mouse drag-selectable + copyable
+    // (Ctrl+C / right-click). It MUST live here — inside the Navigator's
+    // Overlay — because SelectionArea builds a SelectableRegion, which
+    // requires an Overlay ancestor; installing it in MaterialApp.builder
+    // (above the Navigator) throws in debug and silently breaks selection
+    // in release. Do not add screen-local SelectionAreas below this: the
+    // nesting also breaks drag selection.
+    final content = SelectionArea(child: child);
+
     return Scaffold(
       body: Column(
         children: [
@@ -40,14 +50,14 @@ class AppShell extends StatelessWidget {
                                       .withOpacity(0.2),
                                 ),
                               ),
-                              child: child,
+                              child: content,
                             ),
                           ),
                         ),
                       ],
                     ),
                   )
-                : child,
+                : content,
           ),
         ],
       ),

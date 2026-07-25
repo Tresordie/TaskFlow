@@ -50,154 +50,148 @@ class _TaskDetailContent extends ConsumerWidget {
     final priorityColor = AppColors.priorityColor(task.priority.index);
 
     return Scaffold(
-      // SelectionArea makes every read-only text below selectable &
-      // copyable with the mouse: the task title / description / meta,
-      // sub-step titles, and the Execution Log entries (MarkdownBody
-      // content included — RenderParagraph registers its selectable
-      // fragments with the surrounding SelectionContainer). Tappable
-      // controls (status dropdown, sub-step toggles, edit/delete
-      // buttons, the log input field) are unaffected: selection needs
-      // a drag, a plain click still triggers them.
-      body: SelectionArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, size: 20),
-                    onPressed: () => context.pop(),
+      // Text selection comes from the app-wide SelectionArea (AppShell):
+      // every read-only text on this screen — task title / description /
+      // meta, sub-step titles and the Execution Log entries — is mouse
+      // drag-selectable and copyable. Do NOT add a screen-local
+      // SelectionArea here: nesting one inside the app-level area
+      // silently breaks drag selection (v1.4.25 fix).
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top bar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, size: 20),
+                  onPressed: () => context.pop(),
+                ),
+                const SizedBox(width: 8),
+                // Status selector
+                _StatusDropdown(task: task),
+                const Spacer(),
+                // Priority badge
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: priorityColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                  const SizedBox(width: 8),
-                  // Status selector
-                  _StatusDropdown(task: task),
-                  const Spacer(),
-                  // Priority badge
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: priorityColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      task.priority.label,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: priorityColor,
-                      ),
+                  child: Text(
+                    task.priority.label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: priorityColor,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  // Edit button
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 20),
-                    tooltip: 'Edit task',
-                    onPressed: () => _openEditDialog(context),
-                  ),
-                  // Delete button
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 20),
-                    color: AppColors.error,
-                    onPressed: () => _confirmDelete(context, ref),
+                ),
+                const SizedBox(width: 8),
+                // Edit button
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  tooltip: 'Edit task',
+                  onPressed: () => _openEditDialog(context),
+                ),
+                // Delete button
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                  color: AppColors.error,
+                  onPressed: () => _confirmDelete(context, ref),
+                ),
+              ],
+            ),
+          ),
+
+          // Task title & meta
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  task.title,
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                if (task.description != null &&
+                    task.description!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  AppMarkdownBody(
+                    data: task.description!,
+                    hardenLineBreaks: true,
+                    styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
+                        .copyWith(
+                      p: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(height: 1.5),
+                    ),
                   ),
                 ],
-              ),
-            ),
-
-            // Task title & meta
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.title,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  if (task.description != null &&
-                      task.description!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    AppMarkdownBody(
-                      data: task.description!,
-                      hardenLineBreaks: true,
-                      styleSheet:
-                          MarkdownStyleSheet.fromTheme(Theme.of(context))
-                              .copyWith(
-                        p: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(height: 1.5),
+                const SizedBox(height: 12),
+                // Meta info row: created / due / started / done / tags
+                Builder(builder: (context) {
+                  final now = DateTime.now();
+                  final due = task.dueDate;
+                  final isOverdue = due != null &&
+                      due.isBefore(now) &&
+                      task.status != TaskStatus.completed;
+                  return Wrap(
+                    spacing: 16,
+                    runSpacing: 6,
+                    children: [
+                      _MetaItem(
+                        icon: Icons.access_time,
+                        label: DateFormat('MMM d, yyyy · HH:mm')
+                            .format(task.createdAt),
                       ),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  // Meta info row: created / due / started / done / tags
-                  Builder(builder: (context) {
-                    final now = DateTime.now();
-                    final due = task.dueDate;
-                    final isOverdue = due != null &&
-                        due.isBefore(now) &&
-                        task.status != TaskStatus.completed;
-                    return Wrap(
-                      spacing: 16,
-                      runSpacing: 6,
-                      children: [
+                      if (due != null)
                         _MetaItem(
-                          icon: Icons.access_time,
-                          label: DateFormat('MMM d, yyyy · HH:mm')
-                              .format(task.createdAt),
+                          icon: Icons.event,
+                          label: 'Due ${DateFormat('MMM d, yyyy').format(due)}',
+                          color: isOverdue ? AppColors.error : null,
                         ),
-                        if (due != null)
-                          _MetaItem(
-                            icon: Icons.event,
-                            label:
-                                'Due ${DateFormat('MMM d, yyyy').format(due)}',
-                            color: isOverdue ? AppColors.error : null,
-                          ),
-                        if (task.startedAt != null)
-                          _MetaItem(
-                            icon: Icons.play_arrow,
-                            label:
-                                'Started ${DateFormat('MMM d, yyyy · HH:mm').format(task.startedAt!)}',
-                          ),
-                        if (task.completedAt != null)
-                          _MetaItem(
-                            icon: Icons.check_circle,
-                            label:
-                                'Done ${DateFormat('MMM d, yyyy · HH:mm').format(task.completedAt!)}',
-                          ),
-                      ],
-                    );
-                  }),
-                  const SizedBox(height: 10),
-                  // Editable tags
-                  _TagsEditor(task: task),
-                ],
-              ),
+                      if (task.startedAt != null)
+                        _MetaItem(
+                          icon: Icons.play_arrow,
+                          label:
+                              'Started ${DateFormat('MMM d, yyyy · HH:mm').format(task.startedAt!)}',
+                        ),
+                      if (task.completedAt != null)
+                        _MetaItem(
+                          icon: Icons.check_circle,
+                          label:
+                              'Done ${DateFormat('MMM d, yyyy · HH:mm').format(task.completedAt!)}',
+                        ),
+                    ],
+                  );
+                }),
+                const SizedBox(height: 10),
+                // Editable tags
+                _TagsEditor(task: task),
+              ],
             ),
+          ),
 
-            const Divider(height: 32),
+          const Divider(height: 32),
 
-            // Sub-steps section
-            if (task.subSteps.isNotEmpty) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: _SubStepsSection(task: task),
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Execution Log section (main area)
-            Expanded(
-              child: ExecutionLogWidget(task: task),
+          // Sub-steps section
+          if (task.subSteps.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: _SubStepsSection(task: task),
             ),
+            const SizedBox(height: 16),
           ],
-        ),
+
+          // Execution Log section (main area)
+          Expanded(
+            child: ExecutionLogWidget(task: task),
+          ),
+        ],
       ),
     );
   }

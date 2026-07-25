@@ -25,8 +25,8 @@ class AppFonts {
 
   /// Curated presets focused on crisp, beautiful mixed Chinese + English
   /// rendering. (v1.4.24: dropped Noto Serif SC and LXGW WenKai per user
-  /// request; added ZCOOL XiaoWei and ZCOOL QingKe HuangYou — two distinctive
-  /// families that typeset mixed CN/EN beautifully.)
+  /// request; v1.4.25: dropped ZCOOL XiaoWei and ZCOOL QingKe HuangYou per
+  /// user request — leaving Noto Sans SC as the curated CJK choice.)
   static const List<FontOption> presets = [
     FontOption(
       id: 'system',
@@ -38,20 +38,6 @@ class AppFonts {
       labelZh: 'Noto Sans SC (思源黑体 · 中英混排清晰)',
       labelEn: 'Noto Sans SC',
       fontFamily: 'Noto Sans SC',
-      isGoogleFont: true,
-    ),
-    FontOption(
-      id: 'zcoolXiaoWei',
-      labelZh: 'ZCOOL XiaoWei (站酷小薇 · 清秀优雅)',
-      labelEn: 'ZCOOL XiaoWei',
-      fontFamily: 'ZCOOL XiaoWei',
-      isGoogleFont: true,
-    ),
-    FontOption(
-      id: 'zcoolQingKeHuangYou',
-      labelZh: 'ZCOOL QingKe HuangYou (庆科黄油体 · 饱满圆润)',
-      labelEn: 'ZCOOL QingKe HuangYou',
-      fontFamily: 'ZCOOL QingKe HuangYou',
       isGoogleFont: true,
     ),
     FontOption(

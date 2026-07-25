@@ -66,12 +66,21 @@ void main() {
     expect(find.text('TaskFlow'), findsOneWidget);
   });
 
-  testWidgets('task detail read-only content sits in a SelectionArea',
+  testWidgets(
+      'task detail read-only content is drag-selectable via the app-level SelectionArea',
       (tester) async {
     // v1.2.9: task content and Execution Log entries must be selectable
-    // and copyable in display mode. Plain Text / MarkdownBody are NOT
-    // selectable by default — the whole screen must live under a
-    // SelectionArea for mouse selection + Ctrl-C / right-click copy.
+    // and copyable in display mode. v1.4.24 added an app-wide
+    // SelectionArea; v1.4.25 relocated it into AppShell: a SelectionArea
+    // in MaterialApp.builder sits above the Navigator's Overlay (its
+    // SelectableRegion requires an Overlay ancestor — throws in debug,
+    // silently broken selection in release), and the old screen-local
+    // SelectionArea nested inside it broke drag selection in the
+    // Execution Log. Mirror AppShell here: one SelectionArea wrapping
+    // the page inside the route.
+    await tester.binding.setSurfaceSize(const Size(1280, 1024));
+    addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
     final task = Task()
       ..id = 1
       ..uid = 'sel'
@@ -90,19 +99,35 @@ void main() {
         overrides: [
           taskListProvider.overrideWith((ref) => _StaticTasks([task])),
         ],
-        child: const MaterialApp(home: TaskDetailScreen(taskId: 1)),
+        child: MaterialApp(
+          home: SelectionArea(child: TaskDetailScreen(taskId: 1)),
+        ),
       ),
     );
     await tester.pumpAndSettle();
 
     expect(find.byType(SelectionArea), findsOneWidget);
     expect(find.text('Selectable task title'), findsOneWidget);
-    // The log entry is rendered through MarkdownBody (RichText), hence
-    // findRichText.
-    expect(
-      find.textContaining('selectable log entry body', findRichText: true),
-      findsOneWidget,
+
+    // The log entry is rendered through MarkdownBody → SelectableText.rich
+    // (backed by an EditableText). Drag across it with the mouse: the
+    // selection must end up non-collapsed.
+    final logFinder =
+        find.textContaining('selectable log entry body', findRichText: true);
+    expect(logFinder, findsOneWidget);
+    final rect = tester.getRect(logFinder);
+    final gesture = await tester.startGesture(
+      rect.topLeft + Offset(2, rect.height / 2),
+      kind: PointerDeviceKind.mouse,
     );
+    await gesture.moveTo(
+      rect.topLeft + Offset(rect.width - 2, rect.height / 2),
+    );
+    await gesture.up();
+    await tester.pump();
+    final editable = tester.widget<EditableText>(logFinder);
+    expect(editable.controller.selection.isCollapsed, isFalse,
+        reason: 'Execution Log markdown must be mouse drag-selectable');
   });
 
   testWidgets(

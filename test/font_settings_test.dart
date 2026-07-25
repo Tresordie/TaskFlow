@@ -30,15 +30,16 @@ void main() {
       }
     });
 
-    test('v1.4.24: serif/regular-script fonts removed, ZCOOL fonts added', () {
+    test('v1.4.24/25: serif/regular-script/ZCOOL fonts removed', () {
       final families = AppFonts.presets.map((f) => f.fontFamily).toSet();
-      // Removed per user request.
+      // Removed per user request (v1.4.24: serif + regular script;
+      // v1.4.25: ZCOOL families).
       expect(families.contains('Noto Serif SC'), isFalse);
       expect(families.contains('LXGW WenKai TC'), isFalse);
-      // Kept + added for beautiful mixed CN/EN rendering.
+      expect(families.contains('ZCOOL XiaoWei'), isFalse);
+      expect(families.contains('ZCOOL QingKe HuangYou'), isFalse);
+      // Noto Sans SC stays as the curated mixed CN/EN preset.
       expect(families.contains('Noto Sans SC'), isTrue);
-      expect(families.contains('ZCOOL XiaoWei'), isTrue);
-      expect(families.contains('ZCOOL QingKe HuangYou'), isTrue);
     });
 
     test('every preset id is unique and non-empty', () {

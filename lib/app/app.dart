@@ -36,17 +36,19 @@ class TaskFlowApp extends ConsumerWidget {
       // Desktop-friendly scrolling: allow mouse / trackpad drag-scrolling
       // on every list (wheel scrolling stays enabled by default).
       scrollBehavior: AppScrollBehavior(),
-      // Apply the global font size scale to every screen, and make all page
-      // text selectable (v1.4.24): drag to select across widgets, then Ctrl+C
-      // or right-click → Copy. Editable fields keep their own selection.
+      // Apply the global font size scale to every screen.
+      //
+      // NOTE: text selection (SelectionArea) must NOT be installed here —
+      // this builder sits ABOVE the Navigator's Overlay, and SelectionArea
+      // builds a SelectableRegion that requires an Overlay ancestor (it
+      // throws in debug and silently breaks selection in release). The
+      // single app-wide SelectionArea lives in AppShell instead (v1.4.25).
       builder: (context, child) {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(
             textScaler: TextScaler.linear(fontScale),
           ),
-          child: SelectionArea(
-            child: child ?? const SizedBox.shrink(),
-          ),
+          child: child ?? const SizedBox.shrink(),
         );
       },
     );
