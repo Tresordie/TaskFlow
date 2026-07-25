@@ -20,6 +20,16 @@ import '../../core/markdown/rich_markdown.dart';
 /// Set [hardenLineBreaks] for free-form user input (execution logs, work
 /// records) where a single newline must stay a visible line break; leave it
 /// off for AI-generated content that is already properly paragraphed.
+///
+/// [selectable] defaults to FALSE on purpose (v1.4.26): with
+/// `selectable: true` flutter_markdown emits `SelectableText.rich`, whose
+/// per-block gesture detectors win the arena against the app-wide
+/// SelectionArea's container gesture — the result is single-block-only
+/// selection (no cross-block drag, no Ctrl+A select-all). With
+/// `selectable: false` flutter_markdown emits `Text.rich`, and every `Text`
+/// registers with the surrounding SelectionArea (installed in AppShell),
+/// giving unified cross-block drag selection, select-all and right-click
+/// copy. Link taps keep working in both modes (span TapGestureRecognizer).
 class AppMarkdownBody extends StatelessWidget {
   final String data;
   final bool selectable;
@@ -30,7 +40,7 @@ class AppMarkdownBody extends StatelessWidget {
   const AppMarkdownBody({
     super.key,
     required this.data,
-    this.selectable = true,
+    this.selectable = false,
     this.hardenLineBreaks = false,
     this.styleSheet,
     this.onTapLink,

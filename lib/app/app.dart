@@ -119,10 +119,6 @@ class TaskFlowApp extends ConsumerWidget {
     switch (family) {
       case 'Noto Sans SC':
         return GoogleFonts.notoSansScTextTheme(base);
-      case 'ZCOOL XiaoWei':
-        return GoogleFonts.zcoolXiaoWeiTextTheme(base);
-      case 'ZCOOL QingKe HuangYou':
-        return GoogleFonts.zcoolQingKeHuangYouTextTheme(base);
       case 'Poppins':
         return GoogleFonts.poppinsTextTheme(base);
       default:
@@ -131,14 +127,17 @@ class TaskFlowApp extends ConsumerWidget {
   }
 }
 
-/// Desktop-friendly [ScrollBehavior]: in addition to the default touch drag
-/// and mouse-wheel / trackpad scrolling, let every scrollable be scrolled by
-/// pressing and dragging with the mouse pointer (or trackpad / stylus).
+/// Desktop [ScrollBehavior]: wheel / trackpad / touch scroll as usual, but
+/// mouse drag is deliberately NOT a scroll device (v1.4.26). Under the
+/// app-wide SelectionArea a mouse drag means text selection (block select
+/// + copy); if scrollables also claimed vertical mouse drags they would
+/// win the gesture arena and scroll the list instead of selecting. This
+/// mirrors the standard desktop model (browsers, editors): mouse drag =
+/// select, wheel = scroll.
 class AppScrollBehavior extends MaterialScrollBehavior {
   @override
   Set<PointerDeviceKind> get dragDevices => const {
         PointerDeviceKind.touch,
-        PointerDeviceKind.mouse,
         PointerDeviceKind.trackpad,
         PointerDeviceKind.stylus,
         PointerDeviceKind.invertedStylus,

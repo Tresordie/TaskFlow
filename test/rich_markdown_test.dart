@@ -80,9 +80,11 @@ void main() {
         return false;
       }
 
-      // Selectable paragraphs render as SelectableText, not Text.
-      final found = find.byType(SelectableText).evaluate().any((e) {
-        final span = (e.widget as SelectableText).textSpan;
+      // Non-selectable markdown renders as Text.rich (v1.4.26): selection
+      // is provided by the surrounding SelectionArea, not per-block
+      // SelectableText widgets.
+      final found = find.byType(Text).evaluate().any((e) {
+        final span = (e.widget as Text).textSpan;
         return span != null && hasLineThrough(span);
       });
       expect(found, isTrue,

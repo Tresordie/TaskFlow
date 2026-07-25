@@ -1,10 +1,12 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:taskflow/app/app.dart';
 import 'package:taskflow/core/markdown/latex_support.dart';
 import 'package:taskflow/data/models/task.dart';
 import 'package:taskflow/data/repositories/task_repository.dart';
@@ -67,17 +69,18 @@ void main() {
   });
 
   testWidgets(
-      'task detail read-only content is drag-selectable via the app-level SelectionArea',
+      'execution log entries support cross-block drag selection via the app-wide SelectionArea',
       (tester) async {
-    // v1.2.9: task content and Execution Log entries must be selectable
-    // and copyable in display mode. v1.4.24 added an app-wide
-    // SelectionArea; v1.4.25 relocated it into AppShell: a SelectionArea
-    // in MaterialApp.builder sits above the Navigator's Overlay (its
-    // SelectableRegion requires an Overlay ancestor — throws in debug,
-    // silently broken selection in release), and the old screen-local
-    // SelectionArea nested inside it broke drag selection in the
-    // Execution Log. Mirror AppShell here: one SelectionArea wrapping
-    // the page inside the route.
+    // Selection history: v1.2.9 added a screen-local SelectionArea; v1.4.24
+    // added an app-wide one in MaterialApp.builder (broken: it sits above
+    // the Navigator's Overlay, which SelectionArea's SelectableRegion
+    // requires); v1.4.25 moved it into AppShell but markdown still rendered
+    // as SelectableText (selectable: true), whose per-block gesture
+    // detectors only allowed single-block selection — no cross-block drag,
+    // no select-all. v1.4.26 renders markdown as Text.rich (selectable:
+    // false), which registers with the SelectionArea for unified
+    // cross-block selection. Mirror AppShell here: one SelectionArea
+    // wrapping the page inside the route.
     await tester.binding.setSurfaceSize(const Size(1280, 1024));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -90,16 +93,25 @@ void main() {
       ..createdAt = DateTime(2026, 7, 22, 9, 0);
     task.executionLog.add(ExecutionEntry()
       ..uid = 'e1'
-      ..content = 'selectable log entry body'
+      ..content = 'first selectable log entry body'
       ..type = EntryType.note
       ..timestamp = DateTime(2026, 7, 22, 10, 30));
+    task.executionLog.add(ExecutionEntry()
+      ..uid = 'e2'
+      ..content = 'second selectable log entry body'
+      ..type = EntryType.note
+      ..timestamp = DateTime(2026, 7, 22, 11, 0));
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           taskListProvider.overrideWith((ref) => _StaticTasks([task])),
         ],
+        // Replicate production exactly: use the app's real scroll
+        // behavior (AppScrollBehavior deliberately excludes mouse drag
+        // devices so mouse drags select text instead of scrolling).
         child: MaterialApp(
+          scrollBehavior: AppScrollBehavior(),
           home: SelectionArea(child: TaskDetailScreen(taskId: 1)),
         ),
       ),
@@ -107,27 +119,44 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(SelectionArea), findsOneWidget);
-    expect(find.text('Selectable task title'), findsOneWidget);
 
-    // The log entry is rendered through MarkdownBody → SelectableText.rich
-    // (backed by an EditableText). Drag across it with the mouse: the
-    // selection must end up non-collapsed.
-    final logFinder =
-        find.textContaining('selectable log entry body', findRichText: true);
-    expect(logFinder, findsOneWidget);
-    final rect = tester.getRect(logFinder);
+    // Both entries render through AppMarkdownBody as Text.rich and are
+    // registered with the SelectionArea. The log lists entries
+    // newest-first, so the SECOND entry (11:00) renders ABOVE the first
+    // (10:30). Drag the mouse top-down across both: the unified selection
+    // must cover BOTH paragraphs (this is the block selection the user
+    // performs).
+    final topFinder = find.textContaining('second selectable log entry body',
+        findRichText: true);
+    final bottomFinder = find.textContaining('first selectable log entry body',
+        findRichText: true);
+    expect(topFinder, findsOneWidget);
+    expect(bottomFinder, findsOneWidget);
+
+    final topRect = tester.getRect(topFinder);
+    final bottomRect = tester.getRect(bottomFinder);
     final gesture = await tester.startGesture(
-      rect.topLeft + Offset(2, rect.height / 2),
+      topRect.topLeft + const Offset(2, 2),
       kind: PointerDeviceKind.mouse,
     );
-    await gesture.moveTo(
-      rect.topLeft + Offset(rect.width - 2, rect.height / 2),
-    );
+    addTearDown(gesture.removePointer);
+    await tester.pump();
+
+    // Incremental moves with pumps in between, mirroring Flutter's own
+    // scrollable_selection_test gesture sequence.
+    await gesture.moveTo(topRect.bottomRight - const Offset(2, 2));
+    await tester.pump();
+    await gesture.moveTo(bottomRect.bottomRight - const Offset(2, 2));
+    await tester.pump();
     await gesture.up();
     await tester.pump();
-    final editable = tester.widget<EditableText>(logFinder);
-    expect(editable.controller.selection.isCollapsed, isFalse,
-        reason: 'Execution Log markdown must be mouse drag-selectable');
+
+    final topParagraph = tester.renderObject<RenderParagraph>(topFinder);
+    final bottomParagraph = tester.renderObject<RenderParagraph>(bottomFinder);
+    expect(topParagraph.selections.any((s) => !s.isCollapsed), isTrue,
+        reason: 'cross-block drag must select the top entry');
+    expect(bottomParagraph.selections.any((s) => !s.isCollapsed), isTrue,
+        reason: 'cross-block drag must extend into the bottom entry');
   });
 
   testWidgets(
