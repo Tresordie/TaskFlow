@@ -7,8 +7,8 @@ List<String> filterSuggestions(List<String> options, String query) {
   final q = query.trim().toLowerCase();
   final Iterable<String> result = q.isEmpty
       ? options
-      : options.where((o) =>
-          o.toLowerCase().contains(q) && o.toLowerCase() != q);
+      : options
+          .where((o) => o.toLowerCase().contains(q) && o.toLowerCase() != q);
   return result.take(8).toList();
 }
 
@@ -33,6 +33,12 @@ class SuggestionField extends StatefulWidget {
   final ValueChanged<String>? onSubmitted;
   final FocusNode? focusNode;
 
+  /// Icon shown in a tinted chip at the leading edge of each suggestion row.
+  final IconData? optionIcon;
+
+  /// Optional header strip label for the dropdown (e.g. "Recent projects").
+  final String? headerText;
+
   const SuggestionField({
     super.key,
     required this.controller,
@@ -42,6 +48,8 @@ class SuggestionField extends StatefulWidget {
     this.commaSeparated = false,
     this.onSubmitted,
     this.focusNode,
+    this.optionIcon,
+    this.headerText,
   });
 
   @override
@@ -54,6 +62,7 @@ class _SuggestionFieldState extends State<SuggestionField> {
   late final FocusNode _focusNode;
   OverlayEntry? _overlay;
   List<String> _matches = [];
+  String _lastQuery = '';
 
   @override
   void initState() {
@@ -99,6 +108,7 @@ class _SuggestionFieldState extends State<SuggestionField> {
     }
     final matches = filterSuggestions(widget.suggestions, _currentToken);
     _matches = matches;
+    _lastQuery = _currentToken.trim();
     if (matches.isEmpty) {
       _removeOverlay();
     } else if (_overlay == null) {
@@ -145,37 +155,130 @@ class _SuggestionFieldState extends State<SuggestionField> {
     _overlay = OverlayEntry(
       builder: (context) {
         final theme = Theme.of(context);
+        final primary = theme.colorScheme.primary;
         return CompositedTransformFollower(
           link: _layerLink,
           showWhenUnlinked: false,
-          offset: Offset(0, height + 3),
+          offset: Offset(0, height + 4),
           child: SizedBox(
             width: width,
-            child: Material(
-              elevation: 8,
-              borderRadius: BorderRadius.circular(8),
-              color: theme.colorScheme.surface,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 240),
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  shrinkWrap: true,
-                  children: [
-                    for (final option in _matches)
-                      InkWell(
-                        onTap: () => _select(option),
-                        borderRadius: BorderRadius.circular(6),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 7),
-                          child: Text(
-                            option,
-                            style: const TextStyle(fontSize: 12.5),
-                            overflow: TextOverflow.ellipsis,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 140),
+              curve: Curves.easeOutCubic,
+              builder: (context, t, child) => Opacity(
+                opacity: t,
+                child: Transform.translate(
+                  offset: Offset(0, -4 * (1 - t)),
+                  child: child,
+                ),
+              ),
+              child: Material(
+                elevation: 12,
+                shadowColor: primary.withOpacity(0.18),
+                borderRadius: BorderRadius.circular(10),
+                color: theme.colorScheme.surface,
+                surfaceTintColor: theme.colorScheme.surfaceTint,
+                clipBehavior: Clip.antiAlias,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: theme.colorScheme.outline.withOpacity(0.18)),
+                  ),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 264),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (widget.headerText != null)
+                          Container(
+                            padding: const EdgeInsets.fromLTRB(12, 7, 12, 6),
+                            color: primary.withOpacity(0.05),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  widget.optionIcon ?? Icons.history,
+                                  size: 12,
+                                  color: primary,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  widget.headerText!.toUpperCase(),
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: primary,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.6,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '${_matches.length}',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.onSurface
+                                        .withOpacity(0.4),
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        Flexible(
+                          child: ListView(
+                            padding: const EdgeInsets.all(5),
+                            shrinkWrap: true,
+                            children: [
+                              for (final option in _matches)
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 1),
+                                  child: InkWell(
+                                    onTap: () => _select(option),
+                                    borderRadius: BorderRadius.circular(7),
+                                    hoverColor: primary.withOpacity(0.08),
+                                    splashColor: primary.withOpacity(0.12),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 7, vertical: 6),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 22,
+                                            height: 22,
+                                            decoration: BoxDecoration(
+                                              color: primary.withOpacity(0.10),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Icon(
+                                              widget.optionIcon ??
+                                                  Icons.history_rounded,
+                                              size: 13,
+                                              color: primary,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 9),
+                                          Expanded(
+                                            child: Text.rich(
+                                              _highlight(option, theme),
+                                              style: const TextStyle(
+                                                  fontSize: 12.5),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
-                      ),
-                  ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -184,6 +287,29 @@ class _SuggestionFieldState extends State<SuggestionField> {
       },
     );
     Overlay.of(context).insert(_overlay!);
+  }
+
+  /// TextSpan for [option] with the first case-insensitive occurrence of
+  /// the current query highlighted in the primary color.
+  InlineSpan _highlight(String option, ThemeData theme) {
+    final q = _lastQuery.toLowerCase();
+    if (q.isEmpty) return TextSpan(text: option);
+    final idx = option.toLowerCase().indexOf(q);
+    if (idx < 0) return TextSpan(text: option);
+    final primary = theme.colorScheme.primary;
+    return TextSpan(
+      children: [
+        TextSpan(text: option.substring(0, idx)),
+        TextSpan(
+          text: option.substring(idx, idx + q.length),
+          style: TextStyle(
+            color: primary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        TextSpan(text: option.substring(idx + q.length)),
+      ],
+    );
   }
 
   void _removeOverlay() {

@@ -8,6 +8,7 @@ import '../../providers/date_nav_providers.dart';
 import '../../providers/task_providers.dart';
 import '../shared/task_date_meta.dart';
 import '../shared/task_tag_project_meta.dart';
+import '../shared/wheel_forward.dart';
 
 class TimelineScreen extends ConsumerWidget {
   const TimelineScreen({super.key});
@@ -21,101 +22,110 @@ class TimelineScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header with date picker / range controls
-        Padding(
-          padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
-          child: Row(
+        // Forward mouse-wheel events over the fixed header to the timeline
+        // list below, so the page scrolls wherever the pointer is.
+        WheelForward(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Timeline',
-                    style: theme.textTheme.headlineLarge,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    nav.rangeMode
-                        ? '${DateFormat('MMM d, yyyy').format(nav.dateRange!.start)} – '
-                            '${DateFormat('MMM d, yyyy').format(nav.dateRange!.end)}'
-                        : DateFormat('EEEE, MMM d, yyyy')
-                            .format(nav.selectedDate),
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-              const Spacer(),
-              if (nav.rangeMode) ...[
-                // Active range chip
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.date_range,
-                          size: 16, color: theme.colorScheme.primary),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${DateFormat('MMM d').format(nav.dateRange!.start)} – '
-                        '${DateFormat('MMM d').format(nav.dateRange!.end)}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.primary,
+              // Header with date picker / range controls
+              Padding(
+                padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
+                child: Row(
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Timeline',
+                          style: theme.textTheme.headlineLarge,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          nav.rangeMode
+                              ? '${DateFormat('MMM d, yyyy').format(nav.dateRange!.start)} – '
+                                  '${DateFormat('MMM d, yyyy').format(nav.dateRange!.end)}'
+                              : DateFormat('EEEE, MMM d, yyyy')
+                                  .format(nav.selectedDate),
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    if (nav.rangeMode) ...[
+                      // Active range chip
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.date_range,
+                                size: 16, color: theme.colorScheme.primary),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${DateFormat('MMM d').format(nav.dateRange!.start)} – '
+                              '${DateFormat('MMM d').format(nav.dateRange!.end)}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 20),
+                        tooltip: 'Edit range',
+                        onPressed: () => _pickRange(context, ref, nav),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 20),
+                        tooltip: 'Clear range',
+                        onPressed: () =>
+                            _setNav(ref, nav.copyWith(clearRange: true)),
+                      ),
+                    ] else ...[
+                      // Single-day navigation
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left),
+                        onPressed: () => _setNav(
+                            ref,
+                            nav.copyWith(
+                                selectedDate: nav.selectedDate
+                                    .subtract(const Duration(days: 1)))),
+                      ),
+                      TextButton(
+                        onPressed: () => _pickDate(context, ref, nav),
+                        child: const Text('Today'),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right),
+                        onPressed: () => _setNav(
+                            ref,
+                            nav.copyWith(
+                                selectedDate: nav.selectedDate
+                                    .add(const Duration(days: 1)))),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        onPressed: () => _pickRange(context, ref, nav),
+                        icon: const Icon(Icons.date_range, size: 16),
+                        label: const Text('Range'),
+                      ),
                     ],
-                  ),
+                  ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 20),
-                  tooltip: 'Edit range',
-                  onPressed: () => _pickRange(context, ref, nav),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 20),
-                  tooltip: 'Clear range',
-                  onPressed: () =>
-                      _setNav(ref, nav.copyWith(clearRange: true)),
-                ),
-              ] else ...[
-                // Single-day navigation
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  onPressed: () => _setNav(
-                      ref,
-                      nav.copyWith(
-                          selectedDate: nav.selectedDate
-                              .subtract(const Duration(days: 1)))),
-                ),
-                TextButton(
-                  onPressed: () => _pickDate(context, ref, nav),
-                  child: const Text('Today'),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  onPressed: () => _setNav(
-                      ref,
-                      nav.copyWith(
-                          selectedDate:
-                              nav.selectedDate.add(const Duration(days: 1)))),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: () => _pickRange(context, ref, nav),
-                  icon: const Icon(Icons.date_range, size: 16),
-                  label: const Text('Range'),
-                ),
-              ],
+              ),
+              const SizedBox(height: 24),
             ],
           ),
         ),
-        const SizedBox(height: 24),
 
         // Timeline content
         Expanded(
@@ -197,8 +207,8 @@ class TimelineScreen extends ConsumerWidget {
       }
       final taskDay =
           DateTime(t.createdAt.year, t.createdAt.month, t.createdAt.day);
-      final selected = DateTime(nav.selectedDate.year, nav.selectedDate.month,
-          nav.selectedDate.day);
+      final selected = DateTime(
+          nav.selectedDate.year, nav.selectedDate.month, nav.selectedDate.day);
       return taskDay == selected;
     }).toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
@@ -350,10 +360,9 @@ class _TimelineItem extends StatelessWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
-                          value: task.subSteps
-                                  .where((s) => s.completed)
-                                  .length /
-                              task.subSteps.length,
+                          value:
+                              task.subSteps.where((s) => s.completed).length /
+                                  task.subSteps.length,
                           minHeight: 4,
                           backgroundColor: AppColors.lightBorder,
                           valueColor:
@@ -367,8 +376,7 @@ class _TimelineItem extends StatelessWidget {
                       Row(
                         children: [
                           Icon(Icons.edit_note,
-                              size: 14,
-                              color: AppColors.lightTextSecondary),
+                              size: 14, color: AppColors.lightTextSecondary),
                           const SizedBox(width: 4),
                           Text(
                             '${task.executionLog.length} log entries',

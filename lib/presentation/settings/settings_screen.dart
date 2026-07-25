@@ -67,8 +67,7 @@ class SettingsScreen extends ConsumerWidget {
               child: _FontCard(
                 font: font,
                 isSelected: currentFont.id == font.id,
-                onTap: () =>
-                    ref.read(fontProvider.notifier).setFont(font),
+                onTap: () => ref.read(fontProvider.notifier).setFont(font),
               ),
             )),
 
@@ -195,8 +194,7 @@ class SettingsScreen extends ConsumerWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('TaskFlow v1.0.0',
-                      style: theme.textTheme.titleMedium),
+                  Text('TaskFlow v1.0.0', style: theme.textTheme.titleMedium),
                   Text('Phase 1 · Flutter 3.44 · Isar · Riverpod',
                       style: theme.textTheme.bodyMedium),
                 ],
@@ -245,30 +243,33 @@ class _ThemeCard extends StatelessWidget {
         child: Row(
           children: [
             // Color dots
-            ...[palette.primary, palette.primaryLight, palette.bg, palette.textPrimary]
-                .map((c) => Container(
-                      width: 16,
-                      height: 16,
-                      margin: const EdgeInsets.only(right: 4),
-                      decoration: BoxDecoration(
-                        color: c,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: Colors.black.withOpacity(0.08),
-                            width: 0.5),
-                      ),
-                    )),
+            ...[
+              palette.primary,
+              palette.primaryLight,
+              palette.bg,
+              palette.textPrimary
+            ].map((c) => Container(
+                  width: 16,
+                  height: 16,
+                  margin: const EdgeInsets.only(right: 4),
+                  decoration: BoxDecoration(
+                    color: c,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                        color: Colors.black.withOpacity(0.08), width: 0.5),
+                  ),
+                )),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(mode.labelZh,
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontSize: 13)),
+                      style:
+                          theme.textTheme.titleMedium?.copyWith(fontSize: 13)),
                   Text(mode.label,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(fontSize: 11)),
+                      style:
+                          theme.textTheme.bodyMedium?.copyWith(fontSize: 11)),
                 ],
               ),
             ),
@@ -358,11 +359,11 @@ class _FontCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(font.labelZh,
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontSize: 13)),
+                      style:
+                          theme.textTheme.titleMedium?.copyWith(fontSize: 13)),
                   Text(font.labelEn,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(fontSize: 11)),
+                      style:
+                          theme.textTheme.bodyMedium?.copyWith(fontSize: 11)),
                 ],
               ),
             ),
@@ -373,9 +374,8 @@ class _FontCard extends StatelessWidget {
               height: 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : Colors.transparent,
+                color:
+                    isSelected ? theme.colorScheme.primary : Colors.transparent,
                 border: Border.all(
                   color: isSelected
                       ? theme.colorScheme.primary
@@ -618,7 +618,11 @@ class _AiConfigCardState extends ConsumerState<_AiConfigCard> {
   static const _presets = [
     ('DeepSeek', 'https://api.deepseek.com', 'deepseek-v4-pro'),
     ('OpenAI', 'https://api.openai.com', 'gpt-4o-mini'),
-    ('DashScope', 'https://dashscope.aliyuncs.com/compatible-mode', 'qwen-plus'),
+    (
+      'DashScope',
+      'https://dashscope.aliyuncs.com/compatible-mode',
+      'qwen-plus'
+    ),
   ];
 
   @override
@@ -789,8 +793,7 @@ class _AiConfigCardState extends ConsumerState<_AiConfigCard> {
                       : Icons.visibility_off_outlined,
                   size: 18,
                 ),
-                onPressed: () =>
-                    setState(() => _obscureKey = !_obscureKey),
+                onPressed: () => setState(() => _obscureKey = !_obscureKey),
               ),
             ),
           ),
@@ -974,7 +977,8 @@ class _BackupSyncCardState extends ConsumerState<_BackupSyncCard> {
           .read(backupServiceProvider)
           .restoreSnapshot(jsonText, merge: choice == 'merge');
       await ref.read(taskListProvider.notifier).loadTasks();
-      _snack('Restored $restored task(s) (${choice == 'merge' ? 'merge' : 'full restore'})');
+      _snack(
+          'Restored $restored task(s) (${choice == 'merge' ? 'merge' : 'full restore'})');
     } catch (e) {
       _snack('Restore failed: $e', error: true);
     } finally {
@@ -997,8 +1001,7 @@ class _BackupSyncCardState extends ConsumerState<_BackupSyncCard> {
   Future<void> _autoDetect() async {
     final path = SyncNotifier.detectDriveFolder();
     if (path == null) {
-      _snack('No Google Drive folder found — select it manually.',
-          error: true);
+      _snack('No Google Drive folder found — select it manually.', error: true);
       return;
     }
     _folderController.text = path;
@@ -1067,9 +1070,8 @@ class _BackupSyncCardState extends ConsumerState<_BackupSyncCard> {
               ),
               const SizedBox(width: 8),
               OutlinedButton.icon(
-                onPressed: (_backupBusy || _restoreBusy)
-                    ? null
-                    : _restoreFromFile,
+                onPressed:
+                    (_backupBusy || _restoreBusy) ? null : _restoreFromFile,
                 style: OutlinedButton.styleFrom(
                     visualDensity: VisualDensity.compact),
                 icon: _restoreBusy
@@ -1114,8 +1116,7 @@ class _BackupSyncCardState extends ConsumerState<_BackupSyncCard> {
               ),
               Switch(
                 value: sync.enabled,
-                onChanged: (v) =>
-                    ref.read(syncProvider.notifier).setEnabled(v),
+                onChanged: (v) => ref.read(syncProvider.notifier).setEnabled(v),
               ),
             ],
           ),
@@ -1154,15 +1155,15 @@ class _BackupSyncCardState extends ConsumerState<_BackupSyncCard> {
               const SizedBox(width: 8),
               OutlinedButton(
                 onPressed: _browseFolder,
-                style:
-                    OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+                style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact),
                 child: const Text('Browse…'),
               ),
               const SizedBox(width: 8),
               OutlinedButton.icon(
                 onPressed: _autoDetect,
-                style:
-                    OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+                style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact),
                 icon: const Icon(Icons.search, size: 15),
                 label: const Text('Auto-detect'),
               ),
@@ -1193,8 +1194,8 @@ class _BackupSyncCardState extends ConsumerState<_BackupSyncCard> {
                 onPressed: (sync.busy || !sync.configured)
                     ? null
                     : () => _runSync((n) => n.push()),
-                style:
-                    OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+                style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact),
                 icon: const Icon(Icons.cloud_upload_outlined, size: 15),
                 label: const Text('Push'),
               ),
@@ -1203,8 +1204,8 @@ class _BackupSyncCardState extends ConsumerState<_BackupSyncCard> {
                 onPressed: (sync.busy || !sync.configured)
                     ? null
                     : () => _runSync((n) => n.pull()),
-                style:
-                    OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+                style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact),
                 icon: const Icon(Icons.cloud_download_outlined, size: 15),
                 label: const Text('Pull'),
               ),

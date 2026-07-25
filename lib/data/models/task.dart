@@ -203,10 +203,9 @@ List<SubStep> subStepsInDisplayOrder(List<SubStep> steps) {
   final childrenOf = <String?, List<SubStep>>{};
   final uids = steps.map((s) => s.uid).toSet();
   for (final step in steps) {
-    final parent =
-        step.parentUid != null && uids.contains(step.parentUid)
-            ? step.parentUid
-            : null;
+    final parent = step.parentUid != null && uids.contains(step.parentUid)
+        ? step.parentUid
+        : null;
     childrenOf.putIfAbsent(parent, () => []).add(step);
   }
 

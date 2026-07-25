@@ -40,16 +40,15 @@ class MarkdownInput {
   static void prefixLines(TextEditingController c, String prefix) {
     final text = c.text;
     final s = _sel(c);
-    final lineStart = s.start == 0 ? 0 : text.lastIndexOf('\n', s.start - 1) + 1;
+    final lineStart =
+        s.start == 0 ? 0 : text.lastIndexOf('\n', s.start - 1) + 1;
     var lineEnd = text.indexOf('\n', s.end);
     if (lineEnd < 0) lineEnd = text.length;
     final block = text.substring(lineStart, lineEnd);
-    final prefixed =
-        block.split('\n').map((l) => '$prefix$l').join('\n');
+    final prefixed = block.split('\n').map((l) => '$prefix$l').join('\n');
     c.value = TextEditingValue(
       text: text.replaceRange(lineStart, lineEnd, prefixed),
-      selection:
-          TextSelection.collapsed(offset: lineStart + prefixed.length),
+      selection: TextSelection.collapsed(offset: lineStart + prefixed.length),
     );
   }
 
@@ -60,7 +59,8 @@ class MarkdownInput {
   static void outdent(TextEditingController c) {
     final text = c.text;
     final s = _sel(c);
-    final lineStart = s.start == 0 ? 0 : text.lastIndexOf('\n', s.start - 1) + 1;
+    final lineStart =
+        s.start == 0 ? 0 : text.lastIndexOf('\n', s.start - 1) + 1;
     var lineEnd = text.indexOf('\n', s.end);
     if (lineEnd < 0) lineEnd = text.length;
     final block = text.substring(lineStart, lineEnd);
@@ -71,8 +71,7 @@ class MarkdownInput {
     }).join('\n');
     c.value = TextEditingValue(
       text: text.replaceRange(lineStart, lineEnd, outdented),
-      selection:
-          TextSelection.collapsed(offset: lineStart + outdented.length),
+      selection: TextSelection.collapsed(offset: lineStart + outdented.length),
     );
   }
 }
@@ -83,8 +82,7 @@ class MarkdownInput {
 FocusNode markdownIndentFocusNode(TextEditingController controller) {
   return FocusNode(
     onKeyEvent: (node, event) {
-      if (event is KeyDownEvent &&
-          event.logicalKey == LogicalKeyboardKey.tab) {
+      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.tab) {
         if (HardwareKeyboard.instance.isShiftPressed) {
           MarkdownInput.outdent(controller);
         } else {

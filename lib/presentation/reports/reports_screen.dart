@@ -126,8 +126,7 @@ class ReportsState {
       error: identical(error, _unset) ? this.error : error as String?,
       aiWarning:
           identical(aiWarning, _unset) ? this.aiWarning : aiWarning as String?,
-      aiWarningNeedsConfig:
-          aiWarningNeedsConfig ?? this.aiWarningNeedsConfig,
+      aiWarningNeedsConfig: aiWarningNeedsConfig ?? this.aiWarningNeedsConfig,
       aiSummaries: identical(aiSummaries, _unset)
           ? this.aiSummaries
           : aiSummaries as Map<Task, String>?,
@@ -155,12 +154,14 @@ class ReportController extends StateNotifier<ReportsState> {
       final r = state.customRange;
       if (r == null) {
         final now = DateTime.now();
-        return (DateTime(now.year, now.month, now.day),
-            DateTime(now.year, now.month, now.day));
+        return (
+          DateTime(now.year, now.month, now.day),
+          DateTime(now.year, now.month, now.day)
+        );
       }
       final s = DateTime(r.start.year, r.start.month, r.start.day);
-      final e =
-          DateTime(r.end.year, r.end.month, r.end.day).add(const Duration(days: 1));
+      final e = DateTime(r.end.year, r.end.month, r.end.day)
+          .add(const Duration(days: 1));
       return (s, e);
     }
     return ReportService.rangeFor(state.period, state.anchor);
@@ -241,7 +242,8 @@ class ReportController extends StateNotifier<ReportsState> {
 
   void setAllSelected(bool selected) {
     final all = ref.read(taskListProvider).valueOrNull ?? const <Task>[];
-    final set = selected ? <String>{} : tasksInRange(all).map((t) => t.uid).toSet();
+    final set =
+        selected ? <String>{} : tasksInRange(all).map((t) => t.uid).toSet();
     state = state.copyWith(excludedUids: set);
   }
 
@@ -511,16 +513,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 child: Text('All',
                     style: TextStyle(
                         fontSize: 12,
-                        color:
-                            theme.colorScheme.onSurface.withOpacity(0.6))),
+                        color: theme.colorScheme.onSurface.withOpacity(0.6))),
               ),
               for (final o in options)
                 DropdownMenuItem<T?>(
                   value: o,
                   child: Text(
                     optionLabel(o),
-                    style:
-                        TextStyle(fontSize: 12, color: optionColor?.call(o)),
+                    style: TextStyle(fontSize: 12, color: optionColor?.call(o)),
                   ),
                 ),
             ],
@@ -611,8 +611,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final inRange = notifier.tasksInRange(allTasks);
     final selectedCount =
         inRange.where((t) => !s.excludedUids.contains(t.uid)).length;
-    final allSelected =
-        inRange.isNotEmpty && selectedCount == inRange.length;
+    final allSelected = inRange.isNotEmpty && selectedCount == inRange.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -620,8 +619,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         Row(
           children: [
             Icon(Icons.fact_check_outlined,
-                size: 15,
-                color: theme.colorScheme.onSurface.withOpacity(0.5)),
+                size: 15, color: theme.colorScheme.onSurface.withOpacity(0.5)),
             const SizedBox(width: 8),
             Text(
               inRange.isEmpty
@@ -649,9 +647,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(4),
                   child: Icon(
-                    s.taskPickerOpen
-                        ? Icons.expand_less
-                        : Icons.expand_more,
+                    s.taskPickerOpen ? Icons.expand_less : Icons.expand_more,
                     size: 16,
                     color: theme.colorScheme.onSurface.withOpacity(0.6),
                   ),
@@ -741,8 +737,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   size: 22, color: theme.colorScheme.primary),
               const SizedBox(width: 10),
               Text('Reports',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700, fontSize: 18)),
+                  style: theme.textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w700, fontSize: 18)),
               const Spacer(),
               if (s.data != null) ...[
                 s.editing
@@ -797,180 +793,187 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 LayoutBuilder(
-              builder: (context, constraints) {
-                final controls = <Widget>[
-                  // Period selector
-                  SegmentedButton<ReportPeriod>(
-                    segments: [
-                      for (final p in ReportPeriod.values)
-                        ButtonSegment(
-                          value: p,
-                          label: Text(p.label,
-                              style: const TextStyle(fontSize: 12)),
+                  builder: (context, constraints) {
+                    final controls = <Widget>[
+                      // Period selector
+                      SegmentedButton<ReportPeriod>(
+                        segments: [
+                          for (final p in ReportPeriod.values)
+                            ButtonSegment(
+                              value: p,
+                              label: Text(p.label,
+                                  style: const TextStyle(fontSize: 12)),
+                            ),
+                        ],
+                        selected: {s.period},
+                        showSelectedIcon: false,
+                        style: ButtonStyle(
+                          visualDensity: VisualDensity.compact,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                    ],
-                    selected: {s.period},
-                    showSelectedIcon: false,
-                    style: ButtonStyle(
-                      visualDensity: VisualDensity.compact,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    onSelectionChanged: (sel) => notifier.setPeriod(sel.first),
-                  ),
-                  const SizedBox(width: 16),
-                  // Date navigation (prev/next hidden in custom mode)
-                  if (s.period != ReportPeriod.custom)
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      tooltip: 'Previous',
-                      onPressed: () => notifier.shiftAnchor(-1),
-                      icon: const Icon(Icons.chevron_left, size: 20),
-                    ),
-                  InkWell(
-                    borderRadius: BorderRadius.circular(8),
-                    onTap: s.period == ReportPeriod.custom
-                        ? _pickRange
-                        : _pickDate,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.08),
+                        onSelectionChanged: (sel) =>
+                            notifier.setPeriod(sel.first),
+                      ),
+                      const SizedBox(width: 16),
+                      // Date navigation (prev/next hidden in custom mode)
+                      if (s.period != ReportPeriod.custom)
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          tooltip: 'Previous',
+                          onPressed: () => notifier.shiftAnchor(-1),
+                          icon: const Icon(Icons.chevron_left, size: 20),
+                        ),
+                      InkWell(
                         borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                              s.period == ReportPeriod.custom
-                                  ? Icons.date_range
-                                  : Icons.calendar_month,
-                              size: 14, color: theme.colorScheme.primary),
-                          const SizedBox(width: 6),
-                          Text(
-                            notifier.anchorLabel,
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.primary,
-                            ),
+                        onTap: s.period == ReportPeriod.custom
+                            ? _pickRange
+                            : _pickDate,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (s.period != ReportPeriod.custom)
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      tooltip: 'Next',
-                      onPressed: () => notifier.shiftAnchor(1),
-                      icon: const Icon(Icons.chevron_right, size: 20),
-                    ),
-                  const SizedBox(width: 12),
-                  // Report language
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                          color: theme.colorScheme.outline.withOpacity(0.35)),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<ReportLanguage>(
-                        value: s.lang,
-                        isDense: true,
-                        icon: const Icon(Icons.arrow_drop_down, size: 18),
-                        items: [
-                          for (final l in ReportLanguage.values)
-                            DropdownMenuItem(
-                              value: l,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.language,
-                                      size: 13,
-                                      color: theme.colorScheme.primary),
-                                  const SizedBox(width: 6),
-                                  Text(l.label,
-                                      style: const TextStyle(fontSize: 12)),
-                                ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                  s.period == ReportPeriod.custom
+                                      ? Icons.date_range
+                                      : Icons.calendar_month,
+                                  size: 14,
+                                  color: theme.colorScheme.primary),
+                              const SizedBox(width: 6),
+                              Text(
+                                notifier.anchorLabel,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.primary,
+                                ),
                               ),
-                            ),
-                        ],
-                        onChanged: (l) {
-                          if (l == null || l == s.lang) return;
-                          notifier.setLang(l);
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  // AI summary toggle
-                  Tooltip(
-                    message: ref.watch(aiConfigProvider).isConfigured
-                        ? 'On by default: AI summarizes each task\'s '
-                            'in-period execution logs (Details column) and '
-                            'translates titles into the report language'
-                        : 'Configure the AI endpoint in Settings first — '
-                            'without it, titles stay in their original '
-                            'language and Details shows plain log counts',
-                    child: FilterChip(
-                      avatar: Icon(
-                        Icons.auto_awesome,
-                        size: 14,
-                        color: s.useAiSummary
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurface.withOpacity(0.5),
-                      ),
-                      label: const Text('AI summary',
-                          style: TextStyle(fontSize: 12)),
-                      selected: s.useAiSummary,
-                      showCheckmark: false,
-                      visualDensity: VisualDensity.compact,
-                      onSelected: notifier.setUseAiSummary,
-                    ),
-                  ),
-                ];
-
-                final generateButton = FilledButton.icon(
-                  onPressed: s.generating ? null : notifier.generate,
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 12),
-                  ),
-                  icon: s.generating
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.play_arrow_rounded, size: 17),
-                  label:
-                      Text(s.generating ? 'Generating…' : 'Generate Report'),
-                );
-
-                // Everything stays on ONE row. When there is room, a Spacer
-                // pushes Generate to the right edge; when the window is too
-                // narrow, the row scrolls horizontally instead of clipping.
-                // The controls + Generate button need ~980px, so only use
-                // the fixed single row once there is clearly enough room —
-                // below that, scroll so the button is never clipped.
-                final fits = constraints.maxWidth >= 1040;
-                return fits
-                    ? Row(children: [...controls, const Spacer(), generateButton])
-                    : SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            ...controls,
-                            const SizedBox(width: 16),
-                            generateButton,
-                          ],
+                            ],
+                          ),
                         ),
-                      );
-              },
-            ),
+                      ),
+                      if (s.period != ReportPeriod.custom)
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          tooltip: 'Next',
+                          onPressed: () => notifier.shiftAnchor(1),
+                          icon: const Icon(Icons.chevron_right, size: 20),
+                        ),
+                      const SizedBox(width: 12),
+                      // Report language
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color:
+                                  theme.colorScheme.outline.withOpacity(0.35)),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<ReportLanguage>(
+                            value: s.lang,
+                            isDense: true,
+                            icon: const Icon(Icons.arrow_drop_down, size: 18),
+                            items: [
+                              for (final l in ReportLanguage.values)
+                                DropdownMenuItem(
+                                  value: l,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.language,
+                                          size: 13,
+                                          color: theme.colorScheme.primary),
+                                      const SizedBox(width: 6),
+                                      Text(l.label,
+                                          style: const TextStyle(fontSize: 12)),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                            onChanged: (l) {
+                              if (l == null || l == s.lang) return;
+                              notifier.setLang(l);
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // AI summary toggle
+                      Tooltip(
+                        message: ref.watch(aiConfigProvider).isConfigured
+                            ? 'On by default: AI summarizes each task\'s '
+                                'in-period execution logs (Details column) and '
+                                'translates titles into the report language'
+                            : 'Configure the AI endpoint in Settings first — '
+                                'without it, titles stay in their original '
+                                'language and Details shows plain log counts',
+                        child: FilterChip(
+                          avatar: Icon(
+                            Icons.auto_awesome,
+                            size: 14,
+                            color: s.useAiSummary
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.onSurface.withOpacity(0.5),
+                          ),
+                          label: const Text('AI summary',
+                              style: TextStyle(fontSize: 12)),
+                          selected: s.useAiSummary,
+                          showCheckmark: false,
+                          visualDensity: VisualDensity.compact,
+                          onSelected: notifier.setUseAiSummary,
+                        ),
+                      ),
+                    ];
+
+                    final generateButton = FilledButton.icon(
+                      onPressed: s.generating ? null : notifier.generate,
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 18, vertical: 12),
+                      ),
+                      icon: s.generating
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.play_arrow_rounded, size: 17),
+                      label: Text(
+                          s.generating ? 'Generating…' : 'Generate Report'),
+                    );
+
+                    // Everything stays on ONE row. When there is room, a Spacer
+                    // pushes Generate to the right edge; when the window is too
+                    // narrow, the row scrolls horizontally instead of clipping.
+                    // The controls + Generate button need ~980px, so only use
+                    // the fixed single row once there is clearly enough room —
+                    // below that, scroll so the button is never clipped.
+                    final fits = constraints.maxWidth >= 1040;
+                    return fits
+                        ? Row(children: [
+                            ...controls,
+                            const Spacer(),
+                            generateButton
+                          ])
+                        : SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                ...controls,
+                                const SizedBox(width: 16),
+                                generateButton,
+                              ],
+                            ),
+                          );
+                  },
+                ),
                 const SizedBox(height: 10),
                 _buildFilterRow(theme),
                 const SizedBox(height: 10),
@@ -1005,8 +1008,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               decoration: BoxDecoration(
                 color: AppColors.warning.withOpacity(0.09),
                 borderRadius: BorderRadius.circular(10),
-                border:
-                    Border.all(color: AppColors.warning.withOpacity(0.35)),
+                border: Border.all(color: AppColors.warning.withOpacity(0.35)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1063,16 +1065,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         Text(
                           'Pick a period and press Generate Report',
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withOpacity(0.35),
+                            color:
+                                theme.colorScheme.onSurface.withOpacity(0.35),
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Exports land in Documents/TaskFlow/reports/',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withOpacity(0.28),
+                            color:
+                                theme.colorScheme.onSurface.withOpacity(0.28),
                           ),
                         ),
                       ],
@@ -1209,8 +1211,8 @@ class _ReportPreviewState extends State<_ReportPreview> {
                           fontWeight: FontWeight.w700, fontSize: 12.5),
                       tableBody:
                           theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-                      h1: theme.textTheme.titleLarge?.copyWith(
-                          fontSize: 17, fontWeight: FontWeight.w700),
+                      h1: theme.textTheme.titleLarge
+                          ?.copyWith(fontSize: 17, fontWeight: FontWeight.w700),
                       h2: theme.textTheme.titleMedium?.copyWith(
                           fontSize: 14.5, fontWeight: FontWeight.w700),
                       h3: theme.textTheme.titleSmall?.copyWith(fontSize: 13),

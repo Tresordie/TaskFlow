@@ -264,8 +264,7 @@ class TaskRepository {
   /// nested under that parent (depth = parent.depth + 1); adds are
   /// silently rejected once the parent is already at [SubStep.maxDepth]
   /// so nesting never exceeds 3 levels.
-  Future<void> addSubStep(int taskId, String title,
-      {String? parentUid}) async {
+  Future<void> addSubStep(int taskId, String title, {String? parentUid}) async {
     final isar = await AppDatabase.instance;
     final task = await isar.tasks.get(taskId);
     if (task == null) return;
@@ -277,8 +276,7 @@ class TaskRepository {
 
     SubStep? parent;
     if (parentUid != null) {
-      parent =
-          task.subSteps.where((s) => s.uid == parentUid).firstOrNull;
+      parent = task.subSteps.where((s) => s.uid == parentUid).firstOrNull;
       if (parent == null || parent.depth >= SubStep.maxDepth) return;
     }
 
@@ -307,8 +305,7 @@ class TaskRepository {
     final task = await isar.tasks.get(taskId);
     if (task == null) return;
 
-    final step =
-        task.subSteps.where((s) => s.uid == subStepUid).firstOrNull;
+    final step = task.subSteps.where((s) => s.uid == subStepUid).firstOrNull;
     if (step == null || step.title == trimmed) return;
 
     step.title = trimmed;
@@ -336,8 +333,7 @@ class TaskRepository {
     final task = await isar.tasks.get(taskId);
     if (task == null) return;
 
-    final step =
-        task.subSteps.where((s) => s.uid == subStepUid).firstOrNull;
+    final step = task.subSteps.where((s) => s.uid == subStepUid).firstOrNull;
     if (step == null) return;
 
     final doomed = subStepDescendantUids(task.subSteps, step);

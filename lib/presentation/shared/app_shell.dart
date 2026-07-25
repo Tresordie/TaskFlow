@@ -53,8 +53,7 @@ class AppShell extends StatelessWidget {
       ),
       bottomNavigationBar: isWide
           ? null
-          : _BottomNav(
-              currentLocation: GoRouterState.of(context).uri.path),
+          : _BottomNav(currentLocation: GoRouterState.of(context).uri.path),
     );
   }
 }
@@ -87,124 +86,124 @@ class _Sidebar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
-              children: [
-                Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        theme.colorScheme.primary,
-                        theme.colorScheme.secondary,
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          theme.colorScheme.primary,
+                          theme.colorScheme.secondary,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.primary.withOpacity(0.25),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: theme.colorScheme.primary.withOpacity(0.25),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    child: const Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.white,
+                      size: 17,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.check_circle_outline,
-                    color: Colors.white,
-                    size: 17,
+                  const SizedBox(width: 10),
+                  Text(
+                    'TaskFlow',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  'TaskFlow',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Nav section label
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              'MENU',
-              style: theme.textTheme.labelSmall?.copyWith(
-                fontSize: 10,
-                letterSpacing: 1.0,
-                color: theme.colorScheme.onSurface.withOpacity(0.35),
+                ],
               ),
             ),
-          ),
-          const SizedBox(height: 8),
+            const SizedBox(height: 24),
 
-          _NavItem(
-            icon: Icons.today_outlined,
-            activeIcon: Icons.today,
-            label: 'Today',
-            isActive: currentLocation == '/today',
-            onTap: () => context.go('/today'),
-          ),
-          _NavItem(
-            icon: Icons.timeline_outlined,
-            activeIcon: Icons.timeline,
-            label: 'Timeline',
-            isActive: currentLocation == '/timeline',
-            onTap: () => context.go('/timeline'),
-          ),
-          _NavItem(
-            icon: Icons.calendar_month_outlined,
-            activeIcon: Icons.calendar_month,
-            label: 'Calendar',
-            isActive: currentLocation == '/calendar',
-            onTap: () => context.go('/calendar'),
-          ),
-          _NavItem(
-            icon: Icons.grid_on_outlined,
-            activeIcon: Icons.grid_on,
-            label: 'Activity',
-            isActive: currentLocation == '/activity',
-            onTap: () => context.go('/activity'),
-          ),
-          _NavItem(
-            icon: Icons.auto_awesome_outlined,
-            activeIcon: Icons.auto_awesome,
-            label: 'AI Parse',
-            isActive: currentLocation == '/ai',
-            onTap: () => context.go('/ai'),
-          ),
-          _NavItem(
-            icon: Icons.summarize_outlined,
-            activeIcon: Icons.summarize,
-            label: 'Reports',
-            isActive: currentLocation == '/reports',
-            onTap: () => context.go('/reports'),
-          ),
-          _NavItem(
-            icon: Icons.edit_note_outlined,
-            activeIcon: Icons.edit_note,
-            label: 'Work Log',
-            isActive: currentLocation == '/worklog',
-            onTap: () => context.go('/worklog'),
-          ),
+            // Nav section label
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'MENU',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontSize: 10,
+                  letterSpacing: 1.0,
+                  color: theme.colorScheme.onSurface.withOpacity(0.35),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
 
-          const Spacer(),
+            _NavItem(
+              icon: Icons.today_outlined,
+              activeIcon: Icons.today,
+              label: 'Today',
+              isActive: currentLocation == '/today',
+              onTap: () => context.go('/today'),
+            ),
+            _NavItem(
+              icon: Icons.timeline_outlined,
+              activeIcon: Icons.timeline,
+              label: 'Timeline',
+              isActive: currentLocation == '/timeline',
+              onTap: () => context.go('/timeline'),
+            ),
+            _NavItem(
+              icon: Icons.calendar_month_outlined,
+              activeIcon: Icons.calendar_month,
+              label: 'Calendar',
+              isActive: currentLocation == '/calendar',
+              onTap: () => context.go('/calendar'),
+            ),
+            _NavItem(
+              icon: Icons.grid_on_outlined,
+              activeIcon: Icons.grid_on,
+              label: 'Activity',
+              isActive: currentLocation == '/activity',
+              onTap: () => context.go('/activity'),
+            ),
+            _NavItem(
+              icon: Icons.auto_awesome_outlined,
+              activeIcon: Icons.auto_awesome,
+              label: 'AI Parse',
+              isActive: currentLocation == '/ai',
+              onTap: () => context.go('/ai'),
+            ),
+            _NavItem(
+              icon: Icons.summarize_outlined,
+              activeIcon: Icons.summarize,
+              label: 'Reports',
+              isActive: currentLocation == '/reports',
+              onTap: () => context.go('/reports'),
+            ),
+            _NavItem(
+              icon: Icons.edit_note_outlined,
+              activeIcon: Icons.edit_note,
+              label: 'Work Log',
+              isActive: currentLocation == '/worklog',
+              onTap: () => context.go('/worklog'),
+            ),
 
-          // Settings
-          _NavItem(
-            icon: Icons.settings_outlined,
-            activeIcon: Icons.settings,
-            label: 'Settings',
-            isActive: currentLocation == '/settings',
-            onTap: () => context.go('/settings'),
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
+            const Spacer(),
+
+            // Settings
+            _NavItem(
+              icon: Icons.settings_outlined,
+              activeIcon: Icons.settings,
+              label: 'Settings',
+              isActive: currentLocation == '/settings',
+              onTap: () => context.go('/settings'),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
@@ -239,8 +238,7 @@ class _NavItem extends StatelessWidget {
           onTap: onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               color: isActive
                   ? theme.colorScheme.primary.withOpacity(0.12)
@@ -261,8 +259,7 @@ class _NavItem extends StatelessWidget {
                   label,
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight:
-                        isActive ? FontWeight.w600 : FontWeight.w400,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                     color: isActive
                         ? theme.colorScheme.primary
                         : theme.colorScheme.onSurface.withOpacity(0.65),

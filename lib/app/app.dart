@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -28,6 +29,9 @@ class TaskFlowApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: theme,
       routerConfig: router,
+      // Desktop-friendly scrolling: allow mouse / trackpad drag-scrolling
+      // on every list (wheel scrolling stays enabled by default).
+      scrollBehavior: AppScrollBehavior(),
       // Apply the global font size scale to every screen.
       builder: (context, child) {
         return MediaQuery(
@@ -92,4 +96,19 @@ class TaskFlowApp extends ConsumerWidget {
         return base;
     }
   }
+}
+
+/// Desktop-friendly [ScrollBehavior]: in addition to the default touch drag
+/// and mouse-wheel / trackpad scrolling, let every scrollable be scrolled by
+/// pressing and dragging with the mouse pointer (or trackpad / stylus).
+class AppScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => const {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.invertedStylus,
+        PointerDeviceKind.unknown,
+      };
 }

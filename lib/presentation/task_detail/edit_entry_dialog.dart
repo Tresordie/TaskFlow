@@ -63,8 +63,7 @@ class _EditExecutionEntryDialogState
           const Text('Edit Log Entry'),
           const Spacer(),
           Text(
-            DateFormat('yyyy-MM-dd HH:mm:ss')
-                .format(widget.entry.timestamp),
+            DateFormat('yyyy-MM-dd HH:mm:ss').format(widget.entry.timestamp),
             style: theme.textTheme.labelSmall?.copyWith(
               color: AppColors.lightTextSecondary,
             ),
@@ -94,8 +93,7 @@ class _EditExecutionEntryDialogState
                           ? _typeColor(type)
                           : AppColors.lightTextSecondary,
                     ),
-                    onSelected: (_) =>
-                        setState(() => _selectedType = type),
+                    onSelected: (_) => setState(() => _selectedType = type),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     visualDensity: VisualDensity.compact,
                   );

@@ -109,8 +109,7 @@ class ReportData {
     required this.subStepsTotal,
   });
 
-  int get totalTouched =>
-      {
+  int get totalTouched => {
         ...completed,
         ...inProgress,
         ...planned,
@@ -192,8 +191,9 @@ class _L {
     }
   }
 
-  String reportTitle(ReportPeriod p) =>
-      _zh ? 'TaskFlow ${periodLabel(p)} — ' : 'TaskFlow ${periodLabel(p)} Report — ';
+  String reportTitle(ReportPeriod p) => _zh
+      ? 'TaskFlow ${periodLabel(p)} — '
+      : 'TaskFlow ${periodLabel(p)} Report — ';
 
   String get period => _zh ? '周期' : 'Period';
   String get prepared => _zh ? '生成于' : 'Prepared';
@@ -262,7 +262,8 @@ class _L {
   // Risk / ask fragments.
   String overdueDetail(String date, String pri) =>
       _zh ? '逾期（截止 $date，$pri）' : 'overdue (due $date, $pri)';
-  String blockedDetail(String content) => _zh ? '阻塞：$content' : 'blocked: $content';
+  String blockedDetail(String content) =>
+      _zh ? '阻塞：$content' : 'blocked: $content';
   String needsDecision(String content) =>
       _zh ? '需决策：$content' : 'needs decision: $content';
 }
@@ -316,8 +317,8 @@ class ReportService {
     Set<String>? onlyUids,
   }) {
     final s = DateTime(start.year, start.month, start.day);
-    final e = DateTime(end.year, end.month, end.day)
-        .add(const Duration(days: 1));
+    final e =
+        DateTime(end.year, end.month, end.day).add(const Duration(days: 1));
     return _build(ReportPeriod.custom, s, e, filter, onlyUids);
   }
 
@@ -333,9 +334,7 @@ class ReportService {
     bool inRange(DateTime? t) =>
         t != null && !t.isBefore(start) && t.isBefore(end);
 
-    final completed = all
-        .where((t) => inRange(t.completedAt))
-        .toList()
+    final completed = all.where((t) => inRange(t.completedAt)).toList()
       ..sort((a, b) => a.priority.index.compareTo(b.priority.index));
 
     final inProgress = all
@@ -420,12 +419,13 @@ class ReportService {
   /// the original title + heuristic details); the UI should surface
   /// [failed]/[firstError] so silent fallbacks never go unnoticed. Maps
   /// are keyed by task identity, matching [ReportData.touchedTasks].
-  Future<({
-    Map<Task, String> summaries,
-    Map<Task, String> titles,
-    int failed,
-    String? firstError,
-  })> aiEnhance(
+  Future<
+      ({
+        Map<Task, String> summaries,
+        Map<Task, String> titles,
+        int failed,
+        String? firstError,
+      })> aiEnhance(
     ReportData d,
     AiService ai,
     ReportLanguage lang,
@@ -643,8 +643,7 @@ class ReportService {
     var worst = 0; // 0 green · 1 yellow · 2 red
     for (final g in groups.values) {
       final rag = _ragForGroup(g, d, l);
-      final level =
-          rag.emoji == '🔴' ? 2 : (rag.emoji == '🟡' ? 1 : 0);
+      final level = rag.emoji == '🔴' ? 2 : (rag.emoji == '🟡' ? 1 : 0);
       if (level > worst) worst = level;
     }
     if (worst == 2) return (emoji: '🔴', label: l.atRisk);
@@ -684,8 +683,7 @@ class ReportService {
   /// when available (applies to completed tasks too — their summaries
   /// describe what was accomplished), otherwise a single compact
   /// heuristic line (sub-step progress / completion / due date).
-  List<String> _taskDetailsLines(
-      Task t, _L l, Map<Task, String>? aiSummaries) {
+  List<String> _taskDetailsLines(Task t, _L l, Map<Task, String>? aiSummaries) {
     final ai = aiSummaries?[t];
     if (ai != null && ai.trim().isNotEmpty) {
       final lines = ai
@@ -748,8 +746,7 @@ class ReportService {
       ));
     }
     for (final entry in d.logActivity.entries) {
-      for (final e
-          in entry.value.where((e) => e.type == EntryType.blocked)) {
+      for (final e in entry.value.where((e) => e.type == EntryType.blocked)) {
         out.add((
           title: _title(entry.key, aiTitles),
           detail: l.blockedDetail(_oneLine(e.content)),
@@ -763,8 +760,7 @@ class ReportService {
       ReportData d, _L l, Map<Task, String>? aiTitles) {
     final out = <({String title, String detail})>[];
     for (final entry in d.logActivity.entries) {
-      for (final e
-          in entry.value.where((e) => e.type == EntryType.blocked)) {
+      for (final e in entry.value.where((e) => e.type == EntryType.blocked)) {
         out.add((
           title: _title(entry.key, aiTitles),
           detail: l.needsDecision(_oneLine(e.content)),
@@ -774,8 +770,7 @@ class ReportService {
     return out;
   }
 
-  String _mdEscape(String s) =>
-      s.replaceAll('|', '\\|').replaceAll('\n', ' ');
+  String _mdEscape(String s) => s.replaceAll('|', '\\|').replaceAll('\n', ' ');
 
   String _oneLine(String s) {
     var t = s.replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -853,7 +848,8 @@ class ReportService {
     // In the email variant the header-row background lives on the <tr>
     // (matching the reference example), not on each <th>.
     final thBg = email ? '' : 'background:#F1F5F9;';
-    final headTrOpen = email ? '<tr style="background-color:#F1F5F9;">' : '<tr>';
+    final headTrOpen =
+        email ? '<tr style="background-color:#F1F5F9;">' : '<tr>';
     final thL = 'text-align:left;font-size:11px;text-transform:uppercase;'
         'letter-spacing:.5px;color:$mut;padding:10px 14px;$thBg';
     final thC = 'text-align:center;font-size:11px;text-transform:uppercase;'
@@ -961,7 +957,8 @@ $headTrOpen<th style="$thL">${l.project}</th><th class="center" style="$thC">${l
     final String bodyOpen;
     final String bodyClose;
     if (email) {
-      bodyOpen = '''<body style="margin:0; padding:0; background-color:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, 'Noto Sans SC', 'Microsoft YaHei', sans-serif; color:#1E293B;">
+      bodyOpen =
+          '''<body style="margin:0; padding:0; background-color:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, 'Noto Sans SC', 'Microsoft YaHei', sans-serif; color:#1E293B;">
 <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#ffffff; margin:0; padding:20px 0;">
 <tr>
 <td align="center">
@@ -972,7 +969,8 @@ $headTrOpen<th style="$thL">${l.project}</th><th class="center" style="$thC">${l
       bodyClose =
           '</td>\n</tr>\n</table>\n</td>\n</tr>\n</table>\n</body>\n</html>';
     } else {
-      bodyOpen = '''<body bgcolor="#F8FAFC" style="margin:0;padding:0;background:#F8FAFC;">
+      bodyOpen =
+          '''<body bgcolor="#F8FAFC" style="margin:0;padding:0;background:#F8FAFC;">
 <div class="wrap" style="$wrapS">
 ''';
       bodyClose = '</div>\n</body>\n</html>';
@@ -1065,11 +1063,13 @@ $bodyOpen$innerHead''');
     } else {
       b.write('<ul class="sum" style="$sumUlS">');
       for (final t in d.completed) {
-        b.write('<li style="$sumLiS"><strong>${esc(_title(t, aiTitles))}</strong>${esc(_tagSuffix(t))} '
+        b.write(
+            '<li style="$sumLiS"><strong>${esc(_title(t, aiTitles))}</strong>${esc(_tagSuffix(t))} '
             '(${esc(l.doneOn(DateFormat('MM-dd').format(t.completedAt!)))})');
         final sub = _firstSummary(t, aiSummaries);
         if (sub != null) {
-          b.write('<ul class="sub" style="$subUlS"><li style="$subLiS">${esc(sub)}</li></ul>');
+          b.write(
+              '<ul class="sub" style="$subUlS"><li style="$subLiS">${esc(sub)}</li></ul>');
         }
         b.write('</li>');
       }
@@ -1089,7 +1089,8 @@ $bodyOpen$innerHead''');
             '<li style="$sumLiS"><strong>${esc(_title(t, aiTitles))}</strong> — ${esc(l.subStepsCount(done, t.subSteps.length))}${esc(_tagSuffix(t))}');
         final sub = _firstSummary(t, aiSummaries);
         if (sub != null) {
-          b.write('<ul class="sub" style="$subUlS"><li style="$subLiS">${esc(sub)}</li></ul>');
+          b.write(
+              '<ul class="sub" style="$subUlS"><li style="$subLiS">${esc(sub)}</li></ul>');
         }
         b.write('</li>');
       }
@@ -1105,7 +1106,8 @@ $bodyOpen$innerHead''');
     } else {
       b.write('<ul class="sum" style="$sumUlS">');
       for (final r in risks) {
-        b.write('<li style="$sumLiS"><strong>${esc(r.title)}</strong> — ${esc(r.detail)}</li>');
+        b.write(
+            '<li style="$sumLiS"><strong>${esc(r.title)}</strong> — ${esc(r.detail)}</li>');
       }
       b.write('</ul>');
     }
@@ -1113,11 +1115,13 @@ $bodyOpen$innerHead''');
 
     b.write('<h2 style="$h2S">3. ${l.progressDetails}</h2>');
     for (final g in groups.entries) {
-      b.write('<div class="group-head" style="$groupHeadS">${esc(g.key)}</div>');
+      b.write(
+          '<div class="group-head" style="$groupHeadS">${esc(g.key)}</div>');
       b.write(
           '$tableOpen$headTrOpen<th style="$thL">${l.item}</th><th class="center" style="$thC">${l.status}</th><th style="$thL">${l.details}</th></tr>');
       for (final t in g.value) {
-        b.write('<tr><td class="title" style="$tdT">${esc(_title(t, aiTitles))}</td>'
+        b.write(
+            '<tr><td class="title" style="$tdT">${esc(_title(t, aiTitles))}</td>'
             '<td class="center" style="$tdC">${_taskStatusEmoji(t, d)}</td>'
             '<td style="$tdL">${detailsCell(_taskDetailsLines(t, l, aiSummaries))}</td></tr>');
       }
@@ -1135,7 +1139,8 @@ $bodyOpen$innerHead''');
         final group = _projectOf(t, l);
         final due =
             t.dueDate != null ? DateFormat('MM-dd').format(t.dueDate!) : '—';
-        b.write('<tr><td style="$tdL">${esc(group)}</td><td class="title" style="$tdT">${esc(_title(t, aiTitles))}</td>'
+        b.write(
+            '<tr><td style="$tdL">${esc(group)}</td><td class="title" style="$tdT">${esc(_title(t, aiTitles))}</td>'
             '<td class="center" style="$tdC">$due</td><td class="center" style="$tdC">${t.priority.shortLabel}</td></tr>');
       }
       b.write('</table>');
@@ -1148,7 +1153,8 @@ $bodyOpen$innerHead''');
     } else {
       b.write('<ul class="sum" style="$sumUlS">');
       for (final a in asks) {
-        b.write('<li style="$sumLiS"><strong>${esc(a.title)}</strong> — ${esc(a.detail)}</li>');
+        b.write(
+            '<li style="$sumLiS"><strong>${esc(a.title)}</strong> — ${esc(a.detail)}</li>');
       }
       b.write('</ul>');
     }
@@ -1174,7 +1180,8 @@ $bodyOpen$innerHead''');
       markdown,
       extensionSet: md.ExtensionSet.gitHubWeb,
     );
-    final docTitle = (title == null || title.isEmpty) ? 'TaskFlow Report' : title;
+    final docTitle =
+        (title == null || title.isEmpty) ? 'TaskFlow Report' : title;
     return '''<!DOCTYPE html>
 <html>
 <head>

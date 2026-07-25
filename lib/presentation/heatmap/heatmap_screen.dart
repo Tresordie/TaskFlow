@@ -7,6 +7,7 @@ import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
 import '../shared/task_date_meta.dart';
 import '../shared/task_tag_project_meta.dart';
+import '../shared/wheel_forward.dart';
 
 /// GitHub-style contribution heatmap showing daily task volume for the year.
 class HeatmapScreen extends ConsumerWidget {
@@ -20,32 +21,41 @@ class HeatmapScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(28, 28, 28, 20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                theme.colorScheme.primary.withOpacity(0.06),
-                theme.colorScheme.surface,
-              ],
-            ),
-          ),
-          child: Row(
+        // Forward mouse-wheel events over the fixed header to the activity
+        // content below, so the page scrolls wherever the pointer is.
+        WheelForward(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header
               Container(
-                width: 4,
-                height: 28,
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(28, 28, 28, 20),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  borderRadius: BorderRadius.circular(2),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      theme.colorScheme.primary.withOpacity(0.06),
+                      theme.colorScheme.surface,
+                    ],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text('Activity', style: theme.textTheme.headlineLarge),
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Text('Activity', style: theme.textTheme.headlineLarge),
             ],
           ),
         ),
@@ -116,8 +126,8 @@ class HeatmapScreen extends ConsumerWidget {
           value: '$todayCount',
           icon: Icons.today,
           theme: theme,
-          onTap: () =>
-              jumpWith(TaskFilter(date: DateTime(now.year, now.month, now.day))),
+          onTap: () => jumpWith(
+              TaskFilter(date: DateTime(now.year, now.month, now.day))),
         ),
         const SizedBox(width: 12),
         _StatCard(
@@ -174,9 +184,7 @@ class HeatmapScreen extends ConsumerWidget {
       );
     }
     return Column(
-      children: sorted
-          .map((task) => _ActivityTaskItem(task: task))
-          .toList(),
+      children: sorted.map((task) => _ActivityTaskItem(task: task)).toList(),
     );
   }
 }
@@ -340,14 +348,14 @@ class _HeatmapGrid extends StatelessWidget {
     final countMap = <String, int>{};
     for (final task in tasks) {
       if (task.createdAt.year == year) {
-        final key =
-            '${task.createdAt.month}-${task.createdAt.day}';
+        final key = '${task.createdAt.month}-${task.createdAt.day}';
         countMap[key] = (countMap[key] ?? 0) + 1;
       }
     }
 
-    final maxCount =
-        countMap.values.isEmpty ? 1 : countMap.values.reduce((a, b) => a > b ? a : b);
+    final maxCount = countMap.values.isEmpty
+        ? 1
+        : countMap.values.reduce((a, b) => a > b ? a : b);
 
     // Calculate weeks (columns) for the year
     final jan1 = DateTime(year, 1, 1);
@@ -369,8 +377,7 @@ class _HeatmapGrid extends StatelessWidget {
                     height: 42,
                     child: Text(
                       d,
-                      style: theme.textTheme.labelSmall
-                          ?.copyWith(fontSize: 9),
+                      style: theme.textTheme.labelSmall?.copyWith(fontSize: 9),
                     ),
                   )),
             ],
@@ -401,12 +408,12 @@ class _HeatmapGrid extends StatelessWidget {
                           margin: const EdgeInsets.all(1.5),
                         );
                       }
-                      final date =
-                          jan1.add(Duration(days: dayOfYear - 1));
+                      final date = jan1.add(Duration(days: dayOfYear - 1));
                       final key = '${date.month}-${date.day}';
                       final count = countMap[key] ?? 0;
-                      final intensity =
-                          count == 0 ? 0.0 : (count / maxCount).clamp(0.15, 1.0);
+                      final intensity = count == 0
+                          ? 0.0
+                          : (count / maxCount).clamp(0.15, 1.0);
 
                       return Tooltip(
                         message:
@@ -417,8 +424,7 @@ class _HeatmapGrid extends StatelessWidget {
                           margin: const EdgeInsets.all(1.5),
                           decoration: BoxDecoration(
                             color: count == 0
-                                ? theme.colorScheme.outline
-                                    .withOpacity(0.12)
+                                ? theme.colorScheme.outline.withOpacity(0.12)
                                 : primary.withOpacity(intensity),
                             borderRadius: BorderRadius.circular(3),
                           ),

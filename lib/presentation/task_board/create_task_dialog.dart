@@ -72,8 +72,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                       ))
                   .toList(),
               selected: {_priority},
-              onSelectionChanged: (s) =>
-                  setState(() => _priority = s.first),
+              onSelectionChanged: (s) => setState(() => _priority = s.first),
             ),
             const SizedBox(height: 16),
 
@@ -86,6 +85,8 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                   child: SuggestionField(
                     controller: _tagController,
                     suggestions: ref.watch(distinctTagsProvider),
+                    optionIcon: Icons.label_outline,
+                    headerText: 'Recent tags',
                     decoration: const InputDecoration(
                       hintText: 'e.g. Metro, ATE, Firmware',
                     ),
@@ -105,8 +106,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                 children: _tags
                     .map((tag) => Chip(
                           label: Text(tag),
-                          onDeleted: () =>
-                              setState(() => _tags.remove(tag)),
+                          onDeleted: () => setState(() => _tags.remove(tag)),
                           materialTapTargetSize:
                               MaterialTapTargetSize.shrinkWrap,
                         ))
@@ -116,8 +116,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
             const SizedBox(height: 16),
 
             // Sub-tasks
-            Text('Sub-tasks',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text('Sub-tasks', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -145,8 +144,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                     .map((s) => Chip(
                           avatar: const Icon(Icons.checklist, size: 15),
                           label: Text(s),
-                          onDeleted: () =>
-                              setState(() => _subSteps.remove(s)),
+                          onDeleted: () => setState(() => _subSteps.remove(s)),
                           materialTapTargetSize:
                               MaterialTapTargetSize.shrinkWrap,
                         ))

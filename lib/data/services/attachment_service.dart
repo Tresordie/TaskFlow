@@ -14,7 +14,15 @@ class AttachmentService {
   static const _uuid = Uuid();
 
   static const _imageExtensions = {
-    '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.ico', '.tif', '.tiff',
+    '.png',
+    '.jpg',
+    '.jpeg',
+    '.gif',
+    '.bmp',
+    '.webp',
+    '.ico',
+    '.tif',
+    '.tiff',
   };
 
   /// Directory where attachment copies are stored
@@ -70,9 +78,8 @@ class AttachmentService {
         ..name = name
         ..path = destPath
         ..size = picked.size
-        ..type = isImagePath(name)
-            ? AttachmentType.image
-            : AttachmentType.file);
+        ..type =
+            isImagePath(name) ? AttachmentType.image : AttachmentType.file);
     }
     return attachments;
   }

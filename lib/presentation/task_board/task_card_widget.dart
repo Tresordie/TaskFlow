@@ -49,13 +49,11 @@ class _TaskCardState extends ConsumerState<TaskCard> {
             borderRadius: BorderRadius.circular(10),
             child: Container(
               width: 260,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: palette.surface,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: palette.primary.withOpacity(0.4)),
+                border: Border.all(color: palette.primary.withOpacity(0.4)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -111,8 +109,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                     ]
                   : null,
             ),
-            child: _buildCard(
-                theme, palette, task, priorityColor, isCompleted),
+            child: _buildCard(theme, palette, task, priorityColor, isCompleted),
           ),
         );
       },
@@ -198,9 +195,8 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                     Text(
                       task.title,
                       style: theme.textTheme.titleMedium?.copyWith(
-                        decoration: isCompleted
-                            ? TextDecoration.lineThrough
-                            : null,
+                        decoration:
+                            isCompleted ? TextDecoration.lineThrough : null,
                         color: isCompleted
                             ? palette.onSurface.withOpacity(0.4)
                             : null,
@@ -256,8 +252,8 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: priorityColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(6),
@@ -294,8 +290,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     notifier.deleteTask(dragged.id);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-            '"${dragged.title}" → sub-step of "${target.title}"'),
+        content: Text('"${dragged.title}" → sub-step of "${target.title}"'),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
       ),

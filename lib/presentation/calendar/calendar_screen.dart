@@ -8,6 +8,7 @@ import '../../providers/date_nav_providers.dart';
 import '../../providers/task_providers.dart';
 import '../shared/task_date_meta.dart';
 import '../shared/task_tag_project_meta.dart';
+import '../shared/wheel_forward.dart';
 
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
@@ -58,75 +59,85 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(28, 28, 28, 20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                theme.colorScheme.primary.withOpacity(0.06),
-                theme.colorScheme.surface,
-              ],
-            ),
-          ),
-          child: Row(
+        // Forward mouse-wheel events over the fixed header to the day task
+        // list, so the page scrolls wherever the pointer is.
+        WheelForward(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header
               Container(
-                width: 4,
-                height: 28,
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(28, 28, 28, 20),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text('Calendar', style: theme.textTheme.headlineLarge),
-              const Spacer(),
-              if (nav.rangeMode) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.date_range,
-                          size: 16, color: theme.colorScheme.primary),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${DateFormat('MMM d').format(nav.dateRange!.start)} – '
-                        '${DateFormat('MMM d').format(nav.dateRange!.end)}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      theme.colorScheme.primary.withOpacity(0.06),
+                      theme.colorScheme.surface,
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 20),
-                  tooltip: 'Edit range',
-                  onPressed: () => _pickRange(nav),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text('Calendar', style: theme.textTheme.headlineLarge),
+                    const Spacer(),
+                    if (nav.rangeMode) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.date_range,
+                                size: 16, color: theme.colorScheme.primary),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${DateFormat('MMM d').format(nav.dateRange!.start)} – '
+                              '${DateFormat('MMM d').format(nav.dateRange!.end)}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 20),
+                        tooltip: 'Edit range',
+                        onPressed: () => _pickRange(nav),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 20),
+                        tooltip: 'Clear range',
+                        onPressed: () =>
+                            _setNav(nav.copyWith(clearRange: true)),
+                      ),
+                    ] else
+                      OutlinedButton.icon(
+                        onPressed: () => _pickRange(nav),
+                        icon: const Icon(Icons.date_range, size: 16),
+                        label: const Text('Range'),
+                      ),
+                  ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 20),
-                  tooltip: 'Clear range',
-                  onPressed: () => _setNav(nav.copyWith(clearRange: true)),
-                ),
-              ] else
-                OutlinedButton.icon(
-                  onPressed: () => _pickRange(nav),
-                  icon: const Icon(Icons.date_range, size: 16),
-                  label: const Text('Range'),
-                ),
+              ),
             ],
           ),
         ),
@@ -241,8 +252,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               final count = taskCounts[day] ?? 0;
 
               return GestureDetector(
-                onTap: () => _setNav(
-                    nav.copyWith(selectedDate: date, clearRange: true)),
+                onTap: () =>
+                    _setNav(nav.copyWith(selectedDate: date, clearRange: true)),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   margin: const EdgeInsets.all(3),
@@ -284,8 +295,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             (_) => Container(
                               width: 4,
                               height: 4,
-                              margin:
-                                  const EdgeInsets.symmetric(horizontal: 1),
+                              margin: const EdgeInsets.symmetric(horizontal: 1),
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? Colors.white.withOpacity(0.8)
@@ -320,9 +330,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       emptyLabel = 'No tasks in this range';
     } else {
       title = DateFormat('EEE, MMM d').format(nav.selectedDate);
-      dayTasks =
-          tasks.where((t) => _isSameDay(t.createdAt, nav.selectedDate)).toList()
-            ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      dayTasks = tasks
+          .where((t) => _isSameDay(t.createdAt, nav.selectedDate))
+          .toList()
+        ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
       emptyLabel = 'No tasks on this day';
     }
 
@@ -359,9 +370,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           else
             Expanded(
               child: ListView(
-                children: dayTasks
-                    .map((task) => _DayTaskItem(task: task))
-                    .toList(),
+                children:
+                    dayTasks.map((task) => _DayTaskItem(task: task)).toList(),
               ),
             ),
         ],

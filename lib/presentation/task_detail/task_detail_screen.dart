@@ -75,8 +75,8 @@ class _TaskDetailContent extends ConsumerWidget {
                   const Spacer(),
                   // Priority badge
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: priorityColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(6),
@@ -394,16 +394,13 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
         _editingUid = null;
       }
     });
-    ref
-        .read(taskListProvider.notifier)
-        .deleteSubStep(widget.task.id, step.uid);
+    ref.read(taskListProvider.notifier).deleteSubStep(widget.task.id, step.uid);
   }
 
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
-    final completedCount =
-        task.subSteps.where((s) => s.completed).length;
+    final completedCount = task.subSteps.where((s) => s.completed).length;
     final theme = Theme.of(context);
     final ordered = subStepsInDisplayOrder(task.subSteps);
 
@@ -451,8 +448,8 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.add, size: 18,
-                    color: theme.colorScheme.primary),
+                icon:
+                    Icon(Icons.add, size: 18, color: theme.colorScheme.primary),
                 tooltip: 'Add sub-step',
                 onPressed: _addSubStep,
                 visualDensity: VisualDensity.compact,
@@ -472,9 +469,8 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
     // existing children render above it and a new child lands right above
     // the input instead of below the whole sibling group.
     final addingUid = _addingChildUid;
-    final fieldAfter = addingUid == null
-        ? -1
-        : subStepSubtreeEndIndex(ordered, addingUid);
+    final fieldAfter =
+        addingUid == null ? -1 : subStepSubtreeEndIndex(ordered, addingUid);
     // The field must attach to the step the user tapped "+" on — NOT to
     // ordered[fieldAfter], which is the subtree's last descendant (using
     // it would indent the field one level too deep and nest new children
@@ -543,24 +539,22 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
                       ),
                       IconButton(
                         icon: Icon(Icons.check,
-                            size: 16,
-                            color: theme.colorScheme.primary),
+                            size: 16, color: theme.colorScheme.primary),
                         tooltip: 'Save',
                         onPressed: _commitEdit,
                         visualDensity: VisualDensity.compact,
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                            minWidth: 28, minHeight: 28),
+                        constraints:
+                            const BoxConstraints(minWidth: 28, minHeight: 28),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close, size: 16),
                         tooltip: 'Cancel',
-                        onPressed: () =>
-                            setState(() => _editingUid = null),
+                        onPressed: () => setState(() => _editingUid = null),
                         visualDensity: VisualDensity.compact,
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                            minWidth: 28, minHeight: 28),
+                        constraints:
+                            const BoxConstraints(minWidth: 28, minHeight: 28),
                       ),
                     ],
                   )
@@ -601,14 +595,12 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
               icon: Icon(Icons.add, size: 15, color: subtle),
               tooltip: 'Add nested sub-step',
               onPressed: () => setState(() {
-                _addingChildUid =
-                    _addingChildUid == step.uid ? null : step.uid;
+                _addingChildUid = _addingChildUid == step.uid ? null : step.uid;
                 _addChildController.clear();
               }),
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
-              constraints:
-                  const BoxConstraints(minWidth: 26, minHeight: 26),
+              constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
             ),
           // Delete sub-step (with its children)
           if (!isEditing)
@@ -618,8 +610,7 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
               onPressed: () => _deleteStep(step),
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
-              constraints:
-                  const BoxConstraints(minWidth: 26, minHeight: 26),
+              constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
             ),
         ],
       ),
@@ -640,8 +631,7 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
       child: Row(
         children: [
           Icon(Icons.subdirectory_arrow_right,
-              size: 14,
-              color: theme.colorScheme.primary.withOpacity(0.5)),
+              size: 14, color: theme.colorScheme.primary.withOpacity(0.5)),
           const SizedBox(width: 6),
           Expanded(
             child: TextField(
@@ -655,8 +645,8 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
                   color: theme.colorScheme.onSurface.withOpacity(0.35),
                 ),
                 isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 8),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 border: const OutlineInputBorder(),
               ),
               onSubmitted: (_) => _addChild(parent),
@@ -668,8 +658,7 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
             onPressed: () => setState(() => _addingChildUid = null),
             visualDensity: VisualDensity.compact,
             padding: EdgeInsets.zero,
-            constraints:
-                const BoxConstraints(minWidth: 26, minHeight: 26),
+            constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
           ),
         ],
       ),
@@ -752,8 +741,7 @@ class _TagsEditorState extends ConsumerState<_TagsEditor> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Icon(Icons.label_outline,
-            size: 15,
-            color: theme.colorScheme.onSurface.withOpacity(0.5)),
+            size: 15, color: theme.colorScheme.onSurface.withOpacity(0.5)),
         const SizedBox(width: 6),
         Text('Tags', style: theme.textTheme.labelLarge),
         const SizedBox(width: 12),
@@ -791,8 +779,7 @@ class _TagsEditorState extends ConsumerState<_TagsEditor> {
                   decoration: InputDecoration(
                     hintText: 'Add tag, press Enter',
                     isDense: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 10),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
                       borderSide: BorderSide(
@@ -831,8 +818,7 @@ class _TagsEditorState extends ConsumerState<_TagsEditor> {
       onTap: onTap,
       child: Chip(
         avatar: Icon(icon, size: 13, color: accent),
-        label: Text(label,
-            style: TextStyle(fontSize: 11.5, color: accent)),
+        label: Text(label, style: TextStyle(fontSize: 11.5, color: accent)),
         backgroundColor: accent.withOpacity(0.12),
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         visualDensity: VisualDensity.compact,

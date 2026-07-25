@@ -94,7 +94,8 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Created $count task${count == 1 ? '' : 's'} from notes'),
+          content:
+              Text('Created $count task${count == 1 ? '' : 's'} from notes'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -132,7 +133,8 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
           // Header
           Row(
             children: [
-              Icon(Icons.auto_awesome, size: 22, color: theme.colorScheme.primary),
+              Icon(Icons.auto_awesome,
+                  size: 22, color: theme.colorScheme.primary),
               const SizedBox(width: 10),
               Text('AI Parse',
                   style: theme.textTheme.titleLarge
@@ -190,8 +192,7 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                         'Markdown supported',
                         style: TextStyle(
                           fontSize: 10.5,
-                          color:
-                              theme.colorScheme.onSurface.withOpacity(0.35),
+                          color: theme.colorScheme.onSurface.withOpacity(0.35),
                         ),
                       ),
                     ],
@@ -200,7 +201,8 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                 // Content area
                 if (_previewMode)
                   Container(
-                    constraints: const BoxConstraints(minHeight: 120, maxHeight: 260),
+                    constraints:
+                        const BoxConstraints(minHeight: 120, maxHeight: 260),
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
                     child: _notesController.text.trim().isEmpty
@@ -208,15 +210,15 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                             'Nothing to preview yet…',
                             style: TextStyle(
                               fontSize: 13,
-                              color: theme.colorScheme.onSurface
-                                  .withOpacity(0.35),
+                              color:
+                                  theme.colorScheme.onSurface.withOpacity(0.35),
                             ),
                           )
                         : MarkdownBody(
                             data: _notesController.text,
                             selectable: true,
-                            styleSheet: MarkdownStyleSheet.fromTheme(theme)
-                                .copyWith(
+                            styleSheet:
+                                MarkdownStyleSheet.fromTheme(theme).copyWith(
                               p: const TextStyle(fontSize: 13, height: 1.5),
                             ),
                           ),
@@ -350,8 +352,7 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                 controller: _scrollController,
                 itemCount: _results.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, i) =>
-                    _ParsedTaskCard(task: _results[i]),
+                itemBuilder: (context, i) => _ParsedTaskCard(task: _results[i]),
               ),
             ),
           ] else
@@ -435,8 +436,7 @@ class _ParsedTaskCard extends ConsumerWidget {
                           task.selected = v ?? true;
                           setLocal(() {});
                         },
-                        materialTapTargetSize:
-                            MaterialTapTargetSize.shrinkWrap,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         visualDensity: VisualDensity.compact,
                       ),
                     ),
@@ -534,16 +534,16 @@ class _ParsedTaskCard extends ConsumerWidget {
                           children: [
                             Icon(Icons.checklist,
                                 size: 13,
-                                color: theme.colorScheme.primary
-                                    .withOpacity(0.7)),
+                                color:
+                                    theme.colorScheme.primary.withOpacity(0.7)),
                             const SizedBox(width: 6),
                             Text(
                               '${task.subSteps.length} sub-step${task.subSteps.length == 1 ? '' : 's'}',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.primary
-                                    .withOpacity(0.8),
+                                color:
+                                    theme.colorScheme.primary.withOpacity(0.8),
                               ),
                             ),
                           ],

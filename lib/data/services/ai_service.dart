@@ -83,9 +83,8 @@ Rules:
       ..connectionTimeout = const Duration(seconds: 15);
 
     try {
-      final request = await client
-          .postUrl(uri)
-          .timeout(const Duration(seconds: 20));
+      final request =
+          await client.postUrl(uri).timeout(const Duration(seconds: 20));
       request.headers.set('Content-Type', 'application/json; charset=utf-8');
       request.headers.set('Authorization', 'Bearer $apiKey');
 
@@ -104,7 +103,8 @@ Rules:
       // is immutable on HttpClientRequest.)
       request.add(utf8.encode(body));
 
-      final response = await request.close().timeout(const Duration(seconds: 90));
+      final response =
+          await request.close().timeout(const Duration(seconds: 90));
       final text = await response.transform(utf8.decoder).join();
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -138,7 +138,8 @@ Rules:
           {'role': 'user', 'content': 'ping'}
         ],
       })));
-      final response = await request.close().timeout(const Duration(seconds: 30));
+      final response =
+          await request.close().timeout(const Duration(seconds: 30));
       final text = await response.transform(utf8.decoder).join();
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return 'OK (${response.statusCode})';
@@ -174,7 +175,8 @@ Rules:
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 10);
     try {
-      final request = await client.postUrl(uri).timeout(const Duration(seconds: 15));
+      final request =
+          await client.postUrl(uri).timeout(const Duration(seconds: 15));
       request.headers.set('Content-Type', 'application/json; charset=utf-8');
       request.headers.set('Authorization', 'Bearer $apiKey');
       // The digest always contains the raw (usually Chinese) task title;
@@ -195,7 +197,8 @@ Rules:
           {'role': 'user', 'content': _taskDigest(t, periodEntries)},
         ],
       })));
-      final response = await request.close().timeout(const Duration(seconds: 60));
+      final response =
+          await request.close().timeout(const Duration(seconds: 60));
       final text = await response.transform(utf8.decoder).join();
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw AiServiceException(
@@ -335,18 +338,39 @@ Rules:
         'Now write the $outputName summary:';
   }
 
-  static String _langName(String code) =>
-      _workLogLangNames[code] ?? code;
+  static String _langName(String code) => _workLogLangNames[code] ?? code;
 
   static const _workLogLangNames = {
-    'zh': 'Chinese', 'en': 'English', 'ja': 'Japanese', 'ko': 'Korean',
-    'fr': 'French', 'de': 'German', 'es': 'Spanish', 'pt': 'Portuguese',
-    'ru': 'Russian', 'ar': 'Arabic', 'it': 'Italian', 'nl': 'Dutch',
-    'th': 'Thai', 'vi': 'Vietnamese', 'id': 'Indonesian', 'ms': 'Malay',
-    'tr': 'Turkish', 'pl': 'Polish', 'sv': 'Swedish', 'da': 'Danish',
-    'fi': 'Finnish', 'el': 'Greek', 'cs': 'Czech', 'ro': 'Romanian',
-    'hu': 'Hungarian', 'uk': 'Ukrainian', 'hi': 'Hindi', 'bn': 'Bengali',
-    'he': 'Hebrew', 'fa': 'Persian',
+    'zh': 'Chinese',
+    'en': 'English',
+    'ja': 'Japanese',
+    'ko': 'Korean',
+    'fr': 'French',
+    'de': 'German',
+    'es': 'Spanish',
+    'pt': 'Portuguese',
+    'ru': 'Russian',
+    'ar': 'Arabic',
+    'it': 'Italian',
+    'nl': 'Dutch',
+    'th': 'Thai',
+    'vi': 'Vietnamese',
+    'id': 'Indonesian',
+    'ms': 'Malay',
+    'tr': 'Turkish',
+    'pl': 'Polish',
+    'sv': 'Swedish',
+    'da': 'Danish',
+    'fi': 'Finnish',
+    'el': 'Greek',
+    'cs': 'Czech',
+    'ro': 'Romanian',
+    'hu': 'Hungarian',
+    'uk': 'Ukrainian',
+    'hi': 'Hindi',
+    'bn': 'Bengali',
+    'he': 'Hebrew',
+    'fa': 'Persian',
   };
 
   /// Normalizes LLM output whitespace/markdown the same way the extension
@@ -435,7 +459,8 @@ Rules:
         budget -= line.length;
         lines.add(line);
       }
-      b.write('\nexecution log in reporting period (${periodEntries.length} entries):\n'
+      b.write(
+          '\nexecution log in reporting period (${periodEntries.length} entries):\n'
           '${lines.join('\n')}');
     } else {
       b.write('\nexecution log in reporting period: (none)');
@@ -482,8 +507,7 @@ Rules:
       if (inSummary && t.isNotEmpty) bullets.add(_stripBullet(t));
     }
     if (title == null || title.isEmpty) title = originalTitle;
-    var summary =
-        bullets.where((s) => s.isNotEmpty).take(4).join('\n');
+    var summary = bullets.where((s) => s.isNotEmpty).take(4).join('\n');
     if (summary.isEmpty) {
       // No SUMMARY line at all — salvage whatever is not a TITLE: or
       // SUMMARY: marker line.
@@ -515,7 +539,8 @@ Rules:
     if (decoded is Map<String, dynamic> &&
         decoded['choices'] is List &&
         (decoded['choices'] as List).isNotEmpty) {
-      final content = (decoded['choices'] as List).first?['message']?['content'];
+      final content =
+          (decoded['choices'] as List).first?['message']?['content'];
       if (content is String) return content.trim();
     }
     return raw.trim();
@@ -531,8 +556,7 @@ Rules:
     if (uri == null ||
         (uri.scheme != 'http' && uri.scheme != 'https') ||
         uri.host.isEmpty) {
-      throw AiServiceException(
-          'Invalid AI base URL "$baseUrl" — expected '
+      throw AiServiceException('Invalid AI base URL "$baseUrl" — expected '
           'http(s)://host[:port][/v1]. Fix it in Settings → AI.');
     }
     return uri.resolve('chat/completions');
@@ -607,7 +631,10 @@ Rules:
 
   List<String> _stringList(dynamic v) {
     if (v is List) {
-      return v.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList();
+      return v
+          .map((e) => e.toString().trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
     }
     if (v is String && v.trim().isNotEmpty) return [v.trim()];
     return [];

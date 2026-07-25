@@ -56,8 +56,7 @@ class TaskTagProjectMeta extends ConsumerWidget {
             ),
           ),
         ],
-        if (project.isNotEmpty && task.tags.isNotEmpty)
-          SizedBox(width: gap),
+        if (project.isNotEmpty && task.tags.isNotEmpty) SizedBox(width: gap),
         if (task.tags.isNotEmpty) ...[
           Icon(Icons.label_outline, size: iconSize, color: muted),
           const SizedBox(width: 3),
@@ -66,7 +65,10 @@ class TaskTagProjectMeta extends ConsumerWidget {
               TextSpan(
                 children: [
                   for (var i = 0; i < task.tags.length; i++) ...[
-                    if (i > 0) TextSpan(text: '  ', style: TextStyle(fontSize: fontSize, color: muted)),
+                    if (i > 0)
+                      TextSpan(
+                          text: '  ',
+                          style: TextStyle(fontSize: fontSize, color: muted)),
                     TextSpan(
                       text: '#${task.tags[i]}',
                       style: TextStyle(

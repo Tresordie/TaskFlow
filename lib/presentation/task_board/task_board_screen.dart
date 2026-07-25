@@ -7,6 +7,7 @@ import '../../data/models/task.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
 import '../shared/suggestion_field.dart';
+import '../shared/wheel_forward.dart';
 import 'task_card_widget.dart';
 
 class TaskBoardScreen extends ConsumerWidget {
@@ -24,164 +25,179 @@ class TaskBoardScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header with themed accent bar
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(28, 28, 28, 20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                theme.colorScheme.primary.withOpacity(0.06),
-                theme.colorScheme.surface,
-              ],
-            ),
-          ),
+        // Forward mouse-wheel events over the fixed header / quick-add area
+        // to the task list below, so the page scrolls even when the pointer
+        // isn't directly over the list.
+        WheelForward(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 4,
-                    height: 28,
+              // Header with themed accent bar
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(28, 28, 28, 20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      theme.colorScheme.primary.withOpacity(0.06),
+                      theme.colorScheme.surface,
+                    ],
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Today',
+                          style: theme.textTheme.headlineLarge,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16),
+                      child: Text(
+                        today,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(duration: 300.ms),
+
+              // Active filter banner (set e.g. by tapping an Activity stat card)
+              if (filter.isActive)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(28, 12, 28, 0),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
-                      borderRadius: BorderRadius.circular(2),
+                      color: theme.colorScheme.primary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: theme.colorScheme.primary.withOpacity(0.25),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.filter_alt,
+                            size: 16, color: theme.colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _describeFilter(filter),
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () => ref
+                              .read(taskFilterProvider.notifier)
+                              .state = TaskFilter(),
+                          borderRadius: BorderRadius.circular(6),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            child: Text(
+                              'Clear',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Today',
-                    style: theme.textTheme.headlineLarge,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
+                ),
+
+              // Quick Add Bar (enhanced with priority + due date)
               Padding(
-                padding: const EdgeInsets.only(left: 16),
-                child: Text(
-                  today,
-                  style: theme.textTheme.bodyMedium,
-                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                child: _QuickAddBar(),
               ),
-            ],
-          ),
-        ).animate().fadeIn(duration: 300.ms),
 
-        // Active filter banner (set e.g. by tapping an Activity stat card)
-        if (filter.isActive)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(28, 12, 28, 0),
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: theme.colorScheme.primary.withOpacity(0.25),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.filter_alt,
-                      size: 16, color: theme.colorScheme.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _describeFilter(filter),
+              // Group-by selector
+              Padding(
+                padding: const EdgeInsets.fromLTRB(28, 0, 28, 6),
+                child: Row(
+                  children: [
+                    Icon(Icons.group_work_outlined,
+                        size: 14,
+                        color: theme.colorScheme.onSurface.withOpacity(0.45)),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Group by:',
                       style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.primary,
+                        fontSize: 12,
+                        color: theme.colorScheme.onSurface.withOpacity(0.55),
                       ),
                     ),
-                  ),
-                  InkWell(
-                    onTap: () => ref
-                        .read(taskFilterProvider.notifier)
-                        .state = TaskFilter(),
-                    borderRadius: BorderRadius.circular(6),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      child: Text(
-                        'Clear',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.primary,
+                    const SizedBox(width: 8),
+                    ...TaskGroupMode.values.map((mode) {
+                      final isActive = groupMode == mode;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 5),
+                        child: GestureDetector(
+                          onTap: () => ref
+                              .read(taskGroupModeProvider.notifier)
+                              .state = mode,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? theme.colorScheme.primary.withOpacity(0.12)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: isActive
+                                    ? theme.colorScheme.primary.withOpacity(0.5)
+                                    : theme.colorScheme.outline
+                                        .withOpacity(0.3),
+                              ),
+                            ),
+                            child: Text(
+                              mode.label,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: isActive
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                color: isActive
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.onSurface
+                                        .withOpacity(0.6),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-        // Quick Add Bar (enhanced with priority + due date)
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-          child: _QuickAddBar(),
-        ),
-
-        // Group-by selector
-        Padding(
-          padding: const EdgeInsets.fromLTRB(28, 0, 28, 6),
-          child: Row(
-            children: [
-              Icon(Icons.group_work_outlined,
-                  size: 14,
-                  color: theme.colorScheme.onSurface.withOpacity(0.45)),
-              const SizedBox(width: 6),
-              Text(
-                'Group by:',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: theme.colorScheme.onSurface.withOpacity(0.55),
+                      );
+                    }),
+                  ],
                 ),
               ),
-              const SizedBox(width: 8),
-              ...TaskGroupMode.values.map((mode) {
-                final isActive = groupMode == mode;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 5),
-                  child: GestureDetector(
-                    onTap: () => ref.read(taskGroupModeProvider.notifier).state =
-                        mode,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isActive
-                            ? theme.colorScheme.primary.withOpacity(0.12)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: isActive
-                              ? theme.colorScheme.primary.withOpacity(0.5)
-                              : theme.colorScheme.outline.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Text(
-                        mode.label,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight:
-                              isActive ? FontWeight.w600 : FontWeight.w400,
-                          color: isActive
-                              ? theme.colorScheme.primary
-                              : theme.colorScheme.onSurface.withOpacity(0.6),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
             ],
           ),
         ),
@@ -249,13 +265,11 @@ class TaskBoardScreen extends ConsumerWidget {
 
     switch (mode) {
       case TaskGroupMode.priority:
-        final p =
-            Priority.values.where((p) => p.label == label).firstOrNull;
+        final p = Priority.values.where((p) => p.label == label).firstOrNull;
         return p == null ? fallback : AppColors.priorityColor(p.index);
 
       case TaskGroupMode.status:
-        final s =
-            TaskStatus.values.where((s) => s.label == label).firstOrNull;
+        final s = TaskStatus.values.where((s) => s.label == label).firstOrNull;
         return s == null ? fallback : AppColors.statusColor(s);
 
       case TaskGroupMode.project:
@@ -364,8 +378,7 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
                   size: 20,
                 ),
                 color: theme.colorScheme.onSurface.withOpacity(0.5),
-                onPressed: () =>
-                    setState(() => _expanded = !_expanded),
+                onPressed: () => setState(() => _expanded = !_expanded),
               ),
               // Submit button
               Padding(
@@ -373,8 +386,8 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
                 child: ElevatedButton(
                   onPressed: _addTask,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     minimumSize: Size.zero,
                   ),
                   child: const Text('Add', style: TextStyle(fontSize: 13)),
@@ -391,173 +404,177 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                children: [
-                  // Priority selector
-                  Text('Priority:',
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(fontSize: 12)),
-                  const SizedBox(width: 8),
-                  ...Priority.values.map((p) {
-                    final color = AppColors.priorityColor(p.index);
-                    final isSelected = _priority == p;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: GestureDetector(
-                        onTap: () => setState(() => _priority = p),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
+                    children: [
+                      // Priority selector
+                      Text('Priority:',
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(fontSize: 12)),
+                      const SizedBox(width: 8),
+                      ...Priority.values.map((p) {
+                        final color = AppColors.priorityColor(p.index);
+                        final isSelected = _priority == p;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: GestureDetector(
+                            onTap: () => setState(() => _priority = p),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? color.withOpacity(0.15)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? color
+                                      : color.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Text(
+                                p.shortLabel,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: color,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                      const SizedBox(width: 20),
+                      // Due date picker
+                      GestureDetector(
+                        onTap: _pickDueDate,
+                        child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                              horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
-                            color: isSelected
-                                ? color.withOpacity(0.15)
+                            color: _dueDate != null
+                                ? theme.colorScheme.primary.withOpacity(0.1)
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
-                              color: isSelected
-                                  ? color
-                                  : color.withOpacity(0.3),
-                            ),
-                          ),
-                          child: Text(
-                            p.shortLabel,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: color,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                  const SizedBox(width: 20),
-                  // Due date picker
-                  GestureDetector(
-                    onTap: _pickDueDate,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: _dueDate != null
-                            ? theme.colorScheme.primary.withOpacity(0.1)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: _dueDate != null
-                              ? theme.colorScheme.primary.withOpacity(0.4)
-                              : theme.colorScheme.outline.withOpacity(0.4),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.calendar_today,
-                              size: 13,
                               color: _dueDate != null
-                                  ? theme.colorScheme.primary
-                                  : theme.colorScheme.onSurface
-                                      .withOpacity(0.5)),
-                          const SizedBox(width: 6),
-                          Text(
-                            _dueDate != null
-                                ? DateFormat('MMM d').format(_dueDate!)
-                                : 'Due date',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: _dueDate != null
-                                  ? theme.colorScheme.primary
-                                  : theme.colorScheme.onSurface
-                                      .withOpacity(0.5),
+                                  ? theme.colorScheme.primary.withOpacity(0.4)
+                                  : theme.colorScheme.outline.withOpacity(0.4),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (_dueDate != null) ...[
-                    const SizedBox(width: 6),
-                    GestureDetector(
-                      onTap: () => setState(() => _dueDate = null),
-                      child: Icon(Icons.close,
-                          size: 14,
-                          color:
-                              theme.colorScheme.onSurface.withOpacity(0.4)),
-                    ),
-                  ],
-                  const Spacer(),
-                  // Tags input (comma-separated, with history autocomplete)
-                  SizedBox(
-                    width: 150,
-                    height: 30,
-                    child: SuggestionField(
-                      controller: _tagController,
-                      commaSeparated: true,
-                      suggestions: ref.watch(distinctTagsProvider),
-                      style: const TextStyle(fontSize: 12),
-                      decoration: InputDecoration(
-                        hintText: 'Tags (a, b)',
-                        prefixIcon: Icon(Icons.label_outline,
-                            size: 14,
-                            color:
-                                theme.colorScheme.onSurface.withOpacity(0.5)),
-                        prefixIconConstraints: const BoxConstraints(
-                            minWidth: 30, minHeight: 0),
-                        isDense: true,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 6),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(6),
-                          borderSide: BorderSide(
-                              color: theme.colorScheme.outline
-                                  .withOpacity(0.4)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(6),
-                          borderSide: BorderSide(
-                              color: theme.colorScheme.outline
-                                  .withOpacity(0.4)),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.calendar_today,
+                                  size: 13,
+                                  color: _dueDate != null
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurface
+                                          .withOpacity(0.5)),
+                              const SizedBox(width: 6),
+                              Text(
+                                _dueDate != null
+                                    ? DateFormat('MMM d').format(_dueDate!)
+                                    : 'Due date',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: _dueDate != null
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurface
+                                          .withOpacity(0.5),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Project name input (sticky across quick-adds, with history autocomplete)
-                  SizedBox(
-                    width: 170,
-                    height: 30,
-                    child: SuggestionField(
-                      controller: _projectController,
-                      suggestions: ref.watch(distinctProjectsProvider),
-                      style: const TextStyle(fontSize: 12),
-                      decoration: InputDecoration(
-                        hintText: 'Project (e.g. Cosmo)',
-                        prefixIcon: Icon(Icons.folder_outlined,
-                            size: 14,
-                            color:
-                                theme.colorScheme.onSurface.withOpacity(0.5)),
-                        prefixIconConstraints: const BoxConstraints(
-                            minWidth: 30, minHeight: 0),
-                        isDense: true,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 6),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(6),
-                          borderSide: BorderSide(
-                              color: theme.colorScheme.outline
-                                  .withOpacity(0.4)),
+                      if (_dueDate != null) ...[
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => setState(() => _dueDate = null),
+                          child: Icon(Icons.close,
+                              size: 14,
+                              color:
+                                  theme.colorScheme.onSurface.withOpacity(0.4)),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(6),
-                          borderSide: BorderSide(
-                              color: theme.colorScheme.outline
-                                  .withOpacity(0.4)),
+                      ],
+                      const Spacer(),
+                      // Tags input (comma-separated, with history autocomplete)
+                      SizedBox(
+                        width: 150,
+                        height: 30,
+                        child: SuggestionField(
+                          controller: _tagController,
+                          commaSeparated: true,
+                          suggestions: ref.watch(distinctTagsProvider),
+                          optionIcon: Icons.label_outline,
+                          headerText: 'Recent tags',
+                          style: const TextStyle(fontSize: 12),
+                          decoration: InputDecoration(
+                            hintText: 'Tags (a, b)',
+                            prefixIcon: Icon(Icons.label_outline,
+                                size: 14,
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.5)),
+                            prefixIconConstraints: const BoxConstraints(
+                                minWidth: 30, minHeight: 0),
+                            isDense: true,
+                            contentPadding:
+                                const EdgeInsets.symmetric(vertical: 6),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(6),
+                              borderSide: BorderSide(
+                                  color: theme.colorScheme.outline
+                                      .withOpacity(0.4)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(6),
+                              borderSide: BorderSide(
+                                  color: theme.colorScheme.outline
+                                      .withOpacity(0.4)),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      // Project name input (sticky across quick-adds, with history autocomplete)
+                      SizedBox(
+                        width: 170,
+                        height: 30,
+                        child: SuggestionField(
+                          controller: _projectController,
+                          suggestions: ref.watch(distinctProjectsProvider),
+                          optionIcon: Icons.folder_outlined,
+                          headerText: 'Recent projects',
+                          style: const TextStyle(fontSize: 12),
+                          decoration: InputDecoration(
+                            hintText: 'Project (e.g. Cosmo)',
+                            prefixIcon: Icon(Icons.folder_outlined,
+                                size: 14,
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.5)),
+                            prefixIconConstraints: const BoxConstraints(
+                                minWidth: 30, minHeight: 0),
+                            isDense: true,
+                            contentPadding:
+                                const EdgeInsets.symmetric(vertical: 6),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(6),
+                              borderSide: BorderSide(
+                                  color: theme.colorScheme.outline
+                                      .withOpacity(0.4)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(6),
+                              borderSide: BorderSide(
+                                  color: theme.colorScheme.outline
+                                      .withOpacity(0.4)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
                   // Sub-tasks row
                   Padding(
                     padding: const EdgeInsets.only(top: 10),
@@ -613,8 +630,7 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
                         runSpacing: 4,
                         children: _subSteps
                             .map((s) => Chip(
-                                  avatar: const Icon(Icons.checklist,
-                                      size: 13),
+                                  avatar: const Icon(Icons.checklist, size: 13),
                                   label: Text(s,
                                       style: const TextStyle(fontSize: 11)),
                                   materialTapTargetSize:

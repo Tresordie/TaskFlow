@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
@@ -8,6 +9,7 @@ import 'package:taskflow/core/markdown/latex_support.dart';
 import 'package:taskflow/data/models/task.dart';
 import 'package:taskflow/data/repositories/task_repository.dart';
 import 'package:taskflow/presentation/shared/custom_title_bar.dart';
+import 'package:taskflow/presentation/shared/wheel_forward.dart';
 import 'package:taskflow/presentation/task_detail/task_detail_screen.dart';
 import 'package:taskflow/providers/task_providers.dart';
 
@@ -150,8 +152,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final field = find.byWidgetPredicate((w) =>
-        w is TextField &&
-        w.decoration?.hintText == 'Add nested sub-step…');
+        w is TextField && w.decoration?.hintText == 'Add nested sub-step…');
     expect(field, findsOneWidget);
 
     // The field must sit exactly one indent level below the parent —
@@ -171,6 +172,55 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
     expect(notifier.lastParentUid, 'p');
+  });
+
+  testWidgets(
+      'WheelForward scrolls the primary list when wheeling over the header',
+      (tester) async {
+    late ScrollController primary;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              primary = PrimaryScrollController.of(context);
+              return Column(
+                children: [
+                  WheelForward(
+                    child: Container(
+                      height: 100,
+                      color: const Color(0xFFEEEEEE),
+                      child: const Text('fixed header'),
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      children: List.generate(
+                        50,
+                        (i) => SizedBox(height: 60, child: Text('row $i')),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(primary.position.pixels, 0.0);
+
+    // Wheel over the FIXED HEADER (y=50 is inside the 100px header), not the
+    // list: WheelForward must forward it to the primary scrollable.
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: const Offset(400, 50),
+        scrollDelta: const Offset(0, 120),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(primary.position.pixels, greaterThan(0.0));
   });
 }
 
@@ -193,8 +243,7 @@ class _CapturingTasks extends _StaticTasks {
   String? lastParentUid;
 
   @override
-  Future<void> addSubStep(int taskId, String title,
-      {String? parentUid}) async {
+  Future<void> addSubStep(int taskId, String title, {String? parentUid}) async {
     lastParentUid = parentUid;
   }
 }

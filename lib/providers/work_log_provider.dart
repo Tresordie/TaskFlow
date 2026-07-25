@@ -104,11 +104,8 @@ class WorkLogNotifier extends StateNotifier<WorkLogState> {
     final text = content.trim();
     if (text.isEmpty) return;
     final now = DateTime.now().millisecondsSinceEpoch;
-    final records = state.records
-        .where((r) => r.id != id)
-        .toList();
-    records.insert(
-        0, WorkLogRecord(id: id, content: text, timestamp: now));
+    final records = state.records.where((r) => r.id != id).toList();
+    records.insert(0, WorkLogRecord(id: id, content: text, timestamp: now));
     state = state.copyWith(records: records);
     await _repo.saveRecords(records);
     await _repo.saveDraft('');
@@ -141,13 +138,15 @@ class WorkLogNotifier extends StateNotifier<WorkLogState> {
   Future<void> generateSummary(List<WorkLogRecord> records) async {
     if (records.isEmpty) {
       state = state.copyWith(
-          error: 'No work records to summarize. Adjust the filter or select records.');
+          error:
+              'No work records to summarize. Adjust the filter or select records.');
       return;
     }
     final config = _ref.read(aiConfigProvider);
     if (!config.isConfigured) {
       state = state.copyWith(
-          error: 'AI is not configured. Set Base URL / API Key / Model in Settings → AI.');
+          error:
+              'AI is not configured. Set Base URL / API Key / Model in Settings → AI.');
       return;
     }
 

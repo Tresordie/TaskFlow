@@ -38,16 +38,16 @@ void main() {
 
     test('weekly range starts on Monday', () {
       // 2026-07-15 is a Wednesday.
-      final (start, end) = ReportService.rangeFor(
-          ReportPeriod.weekly, DateTime(2026, 7, 15));
+      final (start, end) =
+          ReportService.rangeFor(ReportPeriod.weekly, DateTime(2026, 7, 15));
       expect(start, DateTime(2026, 7, 13)); // Monday
       expect(end, DateTime(2026, 7, 20));
       expect(start.weekday, DateTime.monday);
     });
 
     test('weekly range handles a Monday anchor', () {
-      final (start, end) = ReportService.rangeFor(
-          ReportPeriod.weekly, DateTime(2026, 7, 13));
+      final (start, end) =
+          ReportService.rangeFor(ReportPeriod.weekly, DateTime(2026, 7, 13));
       expect(start, DateTime(2026, 7, 13));
       expect(end, DateTime(2026, 7, 20));
     });
@@ -60,22 +60,22 @@ void main() {
     });
 
     test('monthly range covers the calendar month', () {
-      final (start, end) = ReportService.rangeFor(
-          ReportPeriod.monthly, DateTime(2026, 7, 21));
+      final (start, end) =
+          ReportService.rangeFor(ReportPeriod.monthly, DateTime(2026, 7, 21));
       expect(start, DateTime(2026, 7, 1));
       expect(end, DateTime(2026, 8, 1));
     });
 
     test('monthly range rolls over the year boundary', () {
-      final (start, end) = ReportService.rangeFor(
-          ReportPeriod.monthly, DateTime(2026, 12, 5));
+      final (start, end) =
+          ReportService.rangeFor(ReportPeriod.monthly, DateTime(2026, 12, 5));
       expect(start, DateTime(2026, 12, 1));
       expect(end, DateTime(2027, 1, 1));
     });
 
     test('yearly range covers the calendar year', () {
-      final (start, end) = ReportService.rangeFor(
-          ReportPeriod.yearly, DateTime(2026, 7, 21));
+      final (start, end) =
+          ReportService.rangeFor(ReportPeriod.yearly, DateTime(2026, 7, 21));
       expect(start, DateTime(2026, 1, 1));
       expect(end, DateTime(2027, 1, 1));
     });
@@ -104,8 +104,7 @@ void main() {
 
     test('null onlyUids aggregates every task in range', () async {
       final svc = ReportService(_FakeRepo(sampleTasks()));
-      final d =
-          await svc.generate(ReportPeriod.weekly, DateTime(2026, 7, 15));
+      final d = await svc.generate(ReportPeriod.weekly, DateTime(2026, 7, 15));
       expect(d.touchedTasks.map((t) => t.uid).toSet(), {'a', 'b', 'c'});
     });
 
@@ -134,8 +133,7 @@ void main() {
   });
 
   group('ReportController persists report across widget rebuilds', () {
-    test('report state survives a widget rebuild (navigation away & back)',
-        () {
+    test('report state survives a widget rebuild (navigation away & back)', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(reportControllerProvider.notifier);
@@ -236,8 +234,8 @@ void main() {
         '2026-07',
       );
       expect(
-        makeData(ReportPeriod.yearly, DateTime(2026, 1, 1),
-                DateTime(2027, 1, 1))
+        makeData(
+                ReportPeriod.yearly, DateTime(2026, 1, 1), DateTime(2027, 1, 1))
             .titlePrefix,
         '2026',
       );
@@ -485,8 +483,10 @@ void main() {
         },
       );
       // Tables keep borders/collapse/width.
-      expect(html, contains(
-          'style="width:100%;border-collapse:collapse;border-spacing:0;'));
+      expect(
+          html,
+          contains(
+              'style="width:100%;border-collapse:collapse;border-spacing:0;'));
       // Anti-stripe: if Gmail strips border-collapse, border-spacing:0 and
       // the cellspacing/cellpadding attributes still force zero cell gaps.
       expect(html, contains('<table cellspacing="0" cellpadding="0"'));
@@ -531,13 +531,18 @@ void main() {
       expect(html, isNot(contains('var(')));
       // Rule 1 — table-based layout: 100% outer table with vertical
       // padding, centering a max-width:900px content table.
-      expect(html,
-          contains('style="background-color:#ffffff; margin:0; padding:20px 0;"'));
+      expect(
+          html,
+          contains(
+              'style="background-color:#ffffff; margin:0; padding:20px 0;"'));
       expect(html, contains('<td align="center">'));
-      expect(html, contains('max-width:900px; padding:0 16px; text-align:left;'));
+      expect(
+          html, contains('max-width:900px; padding:0 16px; text-align:left;'));
       // Rule 2 — white background everywhere, no full-width colored band.
-      expect(html, contains(
-          '<body style="margin:0; padding:0; background-color:#ffffff; font-family:'));
+      expect(
+          html,
+          contains(
+              '<body style="margin:0; padding:0; background-color:#ffffff; font-family:'));
       expect(html, isNot(contains('#F8FAFC')));
       // Rule 4 — 6-digit hex only: Google-palette solid pills, never
       // 8-digit alpha hex or rgba().
@@ -557,8 +562,10 @@ void main() {
       // accent, data tables carry width/border attributes, footer is a div.
       expect(html, contains('<tr style="background-color:#F1F5F9;">'));
       expect(html, contains('border-left:4px solid'));
-      expect(html, contains(
-          '<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse;'));
+      expect(
+          html,
+          contains(
+              '<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse;'));
       expect(html, contains('<div style="margin-top:36px;'));
       expect(html, isNot(contains('<footer')));
       // Zero cell spacing on every table (anti-stripe), layout included.
@@ -630,16 +637,13 @@ void main() {
       // Model now defaults to deepseek-v4-pro, so baseUrl + apiKey alone
       // count as configured; an explicitly emptied model still blocks.
       expect(
-        const AiConfig(
-                baseUrl: 'https://api.deepseek.com', apiKey: 'sk-1')
+        const AiConfig(baseUrl: 'https://api.deepseek.com', apiKey: 'sk-1')
             .isConfigured,
         isTrue,
       );
       expect(
         const AiConfig(
-                baseUrl: 'https://api.deepseek.com',
-                apiKey: 'sk-1',
-                model: '')
+                baseUrl: 'https://api.deepseek.com', apiKey: 'sk-1', model: '')
             .isConfigured,
         isFalse,
       );
@@ -655,8 +659,7 @@ void main() {
 
     test('whitespace-only values count as unconfigured', () {
       expect(
-        const AiConfig(baseUrl: '  ', apiKey: 'sk-1', model: 'm')
-            .isConfigured,
+        const AiConfig(baseUrl: '  ', apiKey: 'sk-1', model: 'm').isConfigured,
         isFalse,
       );
     });
@@ -748,8 +751,7 @@ void main() {
       await server.close(force: true);
     });
 
-    test('bare SUMMARY: line followed by bullets is fully captured',
-        () async {
+    test('bare SUMMARY: line followed by bullets is fully captured', () async {
       // Models often emit the bullets on the lines AFTER a bare
       // "SUMMARY:" — the old parser only read same-line text, so the
       // summary came back empty and (typically completed) tasks silently
@@ -785,8 +787,8 @@ void main() {
 
       final r = await ai.enhanceTask(task, chinese: false);
       expect(r.title, 'Monolith PVT release validation');
-      expect(r.summary,
-          'Validated V2 factory release\nClosed after PVT sign-off');
+      expect(
+          r.summary, 'Validated V2 factory release\nClosed after PVT sign-off');
       await server.close(force: true);
     });
 
@@ -850,8 +852,7 @@ void main() {
           'choices': [
             {
               'message': {
-                'content':
-                    'TITLE: Monolith PVT release validation\nSUMMARY:'
+                'content': 'TITLE: Monolith PVT release validation\nSUMMARY:'
               }
             }
           ]
@@ -895,8 +896,8 @@ void main() {
         ..title = 't';
       expect(
         () => ai.enhanceTask(task, chinese: false),
-        throwsA(isA<AiServiceException>().having(
-            (e) => e.message, 'message', contains('Settings → AI'))),
+        throwsA(isA<AiServiceException>()
+            .having((e) => e.message, 'message', contains('Settings → AI'))),
       );
     });
   });
@@ -921,12 +922,11 @@ void main() {
   });
 
   group('Nested sub-steps (max 3 levels)', () {
-    SubStep step(String uid, {String? parent, int depth = 0}) =>
-        SubStep()
-          ..uid = uid
-          ..title = 'step $uid'
-          ..parentUid = parent
-          ..depth = depth;
+    SubStep step(String uid, {String? parent, int depth = 0}) => SubStep()
+      ..uid = uid
+      ..title = 'step $uid'
+      ..parentUid = parent
+      ..depth = depth;
 
     test('maxDepth allows exactly 3 levels (0, 1, 2)', () {
       expect(SubStep.maxDepth, 2);
@@ -943,8 +943,7 @@ void main() {
         step('a1x', parent: 'a1', depth: 2),
         step('b1', parent: 'b', depth: 1),
       ];
-      final ordered =
-          subStepsInDisplayOrder(steps).map((s) => s.uid).toList();
+      final ordered = subStepsInDisplayOrder(steps).map((s) => s.uid).toList();
       expect(ordered, ['a', 'a1', 'a1x', 'a2', 'b', 'b1']);
     });
 
@@ -953,8 +952,7 @@ void main() {
         step('a'),
         step('x', parent: 'ghost', depth: 1),
       ];
-      final ordered =
-          subStepsInDisplayOrder(steps).map((s) => s.uid).toList();
+      final ordered = subStepsInDisplayOrder(steps).map((s) => s.uid).toList();
       expect(ordered, ['a', 'x']);
     });
 
@@ -989,8 +987,7 @@ void main() {
       expect(subStepSubtreeEndIndex(ordered, 'ghost'), -1);
     });
 
-    test('normalize repairs sign-bit-corrupted depths (v1.4.9 migration)',
-        () {
+    test('normalize repairs sign-bit-corrupted depths (v1.4.9 migration)', () {
       // Regression (v1.4.12): the v1.4.9 Isar migration wrote the
       // sort-encoded default for the new depth field, flipping the sign
       // bit — roots read as (1 << 63) instead of 0, and the corruption
@@ -1089,7 +1086,8 @@ void main() {
       final live = ['torque check', 'brake bleed'];
       // Synchronous entry point, exactly as createTask() invokes it
       // before its first await.
-      final task = repo.buildNewTask(title: 'Bike prep', subSteps: live, sortOrder: 1);
+      final task =
+          repo.buildNewTask(title: 'Bike prep', subSteps: live, sortOrder: 1);
       live.clear(); // UI clears immediately (future not awaited)
       expect(task.subSteps.map((s) => s.title).toList(),
           ['torque check', 'brake bleed']);
@@ -1140,8 +1138,8 @@ void main() {
     TextEditingController ctl(String text, {int? base, int? extent}) {
       final c = TextEditingController(text: text);
       if (base != null) {
-        c.selection = TextSelection(
-            baseOffset: base, extentOffset: extent ?? base);
+        c.selection =
+            TextSelection(baseOffset: base, extentOffset: extent ?? base);
       }
       return c;
     }
@@ -1184,10 +1182,14 @@ void main() {
   group('Work Log AI prompt + format helpers', () {
     test('formatWorkLogRecords numbers records and separates them', () {
       final out = AiService.formatWorkLogRecords([
-        (timestamp: DateTime(2026, 7, 21, 9, 0).millisecondsSinceEpoch,
-            content: 'first'),
-        (timestamp: DateTime(2026, 7, 21, 10, 30).millisecondsSinceEpoch,
-            content: 'second'),
+        (
+          timestamp: DateTime(2026, 7, 21, 9, 0).millisecondsSinceEpoch,
+          content: 'first'
+        ),
+        (
+          timestamp: DateTime(2026, 7, 21, 10, 30).millisecondsSinceEpoch,
+          content: 'second'
+        ),
       ]);
       expect(out, contains('[1]'));
       expect(out, contains('[2]'));
@@ -1271,8 +1273,7 @@ void main() {
       await container.read(taskListProvider.notifier).loadTasks();
 
       expect(container.read(distinctProjectsProvider), ['Cosmo', 'Metro']);
-      expect(container.read(distinctTagsProvider),
-          ['ate', 'firmware', 'lyft']);
+      expect(container.read(distinctTagsProvider), ['ate', 'firmware', 'lyft']);
     });
   });
 }

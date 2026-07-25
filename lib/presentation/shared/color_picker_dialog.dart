@@ -79,8 +79,7 @@ class _PickerBodyState extends State<_PickerBody> {
 
   Color get _custom => Color.fromARGB(255, _r, _g, _b);
 
-  String get _hex =>
-      '#${_r.toRadixString(16).padLeft(2, '0').toUpperCase()}'
+  String get _hex => '#${_r.toRadixString(16).padLeft(2, '0').toUpperCase()}'
       '${_g.toRadixString(16).padLeft(2, '0').toUpperCase()}'
       '${_b.toRadixString(16).padLeft(2, '0').toUpperCase()}';
 
@@ -120,12 +119,12 @@ class _PickerBodyState extends State<_PickerBody> {
         // --- Custom RGB picker ----------------------------------------
         Text('Custom color', style: theme.textTheme.labelLarge),
         const SizedBox(height: 4),
-        _channelSlider('R', _r, const Color(0xFFE53935),
-            (v) => setState(() => _r = v)),
-        _channelSlider('G', _g, const Color(0xFF43A047),
-            (v) => setState(() => _g = v)),
-        _channelSlider('B', _b, const Color(0xFF1E88E5),
-            (v) => setState(() => _b = v)),
+        _channelSlider(
+            'R', _r, const Color(0xFFE53935), (v) => setState(() => _r = v)),
+        _channelSlider(
+            'G', _g, const Color(0xFF43A047), (v) => setState(() => _g = v)),
+        _channelSlider(
+            'B', _b, const Color(0xFF1E88E5), (v) => setState(() => _b = v)),
 
         const SizedBox(height: 6),
         Row(

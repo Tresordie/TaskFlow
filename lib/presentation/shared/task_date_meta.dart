@@ -26,9 +26,8 @@ class TaskDateMeta extends StatelessWidget {
     final created = DateFormat('MMM d, yyyy · HH:mm').format(task.createdAt);
     final due = task.dueDate;
     final now = DateTime.now();
-    final isOverdue = due != null &&
-        due.isBefore(now) &&
-        task.status != TaskStatus.completed;
+    final isOverdue =
+        due != null && due.isBefore(now) && task.status != TaskStatus.completed;
 
     final iconSize = compact ? 12.0 : 13.0;
     final fontSize = compact ? 10.5 : 11.0;

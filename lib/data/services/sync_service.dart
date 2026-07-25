@@ -89,8 +89,7 @@ class SyncNotifier extends StateNotifier<SyncState> {
       await prefs.setString(_kFolder, state.folderPath);
       await prefs.setBool(_kEnabled, state.enabled);
       if (state.lastSyncAt != null) {
-        await prefs.setString(
-            _kLastSync, state.lastSyncAt!.toIso8601String());
+        await prefs.setString(_kLastSync, state.lastSyncAt!.toIso8601String());
       }
     } catch (_) {}
   }
@@ -168,8 +167,8 @@ class SyncNotifier extends StateNotifier<SyncState> {
         await _persist();
         return;
       }
-      final count = await _backup.restoreSnapshot(await file.readAsString(),
-          merge: true);
+      final count =
+          await _backup.restoreSnapshot(await file.readAsString(), merge: true);
       state = state.copyWith(
         busy: false,
         lastSyncAt: DateTime.now(),

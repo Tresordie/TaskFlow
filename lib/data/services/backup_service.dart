@@ -111,12 +111,12 @@ class BackupService {
       ..uid = (j['uid'] as String?) ?? ''
       ..title = (j['title'] as String?) ?? 'Untitled'
       ..description = j['description'] as String?
-      ..priority = _enumByName(Priority.values, j['priority'] as String?,
-          Priority.p2Medium)
+      ..priority = _enumByName(
+          Priority.values, j['priority'] as String?, Priority.p2Medium)
       ..status = _enumByName(
           TaskStatus.values, j['status'] as String?, TaskStatus.planned)
-      ..createdAt = DateTime.tryParse(j['createdAt'] as String? ?? '') ??
-          DateTime.now()
+      ..createdAt =
+          DateTime.tryParse(j['createdAt'] as String? ?? '') ?? DateTime.now()
       ..dueDate = _parseDate(j['dueDate'])
       ..startedAt = _parseDate(j['startedAt'])
       ..completedAt = _parseDate(j['completedAt'])

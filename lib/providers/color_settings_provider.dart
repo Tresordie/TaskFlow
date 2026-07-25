@@ -66,8 +66,7 @@ class ColorSettingsNotifier extends StateNotifier<ColorSettings> {
       final m = jsonDecode(raw);
       if (m is Map) {
         return {
-          for (final e in m.entries)
-            e.key.toString(): (e.value as num).toInt(),
+          for (final e in m.entries) e.key.toString(): (e.value as num).toInt(),
         };
       }
     } catch (_) {}

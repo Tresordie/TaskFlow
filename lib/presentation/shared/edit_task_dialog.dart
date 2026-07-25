@@ -95,204 +95,206 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
           padding: const EdgeInsets.all(24),
           child: SingleChildScrollView(
             child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                children: [
-                  Icon(Icons.edit_outlined,
-                      size: 20, color: theme.colorScheme.primary),
-                  const SizedBox(width: 8),
-                  Text('Edit Task', style: theme.textTheme.titleLarge),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 18),
-                    onPressed: () => Navigator.pop(context),
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  children: [
+                    Icon(Icons.edit_outlined,
+                        size: 20, color: theme.colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text('Edit Task', style: theme.textTheme.titleLarge),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Title field
+                Text('Title', style: theme.textTheme.labelLarge),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _titleController,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    hintText: 'Task title',
                   ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Title field
-              Text('Title', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _titleController,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  hintText: 'Task title',
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Project field (with history autocomplete)
-              Text('Project', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 6),
-              SuggestionField(
-                controller: _projectController,
-                suggestions: ref.watch(distinctProjectsProvider),
-                decoration: const InputDecoration(
-                  hintText: 'Project name (e.g. Cosmo, Metro)',
-                  prefixIcon: Icon(Icons.folder_outlined, size: 18),
+                // Project field (with history autocomplete)
+                Text('Project', style: theme.textTheme.labelLarge),
+                const SizedBox(height: 6),
+                SuggestionField(
+                  controller: _projectController,
+                  suggestions: ref.watch(distinctProjectsProvider),
+                  optionIcon: Icons.folder_outlined,
+                  headerText: 'Recent projects',
+                  decoration: const InputDecoration(
+                    hintText: 'Project name (e.g. Cosmo, Metro)',
+                    prefixIcon: Icon(Icons.folder_outlined, size: 18),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Due date picker
-              Text('Due Date', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  InkWell(
-                    onTap: _pickDueDate,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 9),
-                      decoration: BoxDecoration(
-                        color: _dueDate != null
-                            ? theme.colorScheme.primary.withOpacity(0.1)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
+                // Due date picker
+                Text('Due Date', style: theme.textTheme.labelLarge),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    InkWell(
+                      onTap: _pickDueDate,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 9),
+                        decoration: BoxDecoration(
                           color: _dueDate != null
-                              ? theme.colorScheme.primary.withOpacity(0.4)
-                              : theme.colorScheme.outline.withOpacity(0.4),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.calendar_today,
-                            size: 14,
+                              ? theme.colorScheme.primary.withOpacity(0.1)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
                             color: _dueDate != null
-                                ? theme.colorScheme.primary
-                                : theme.colorScheme.onSurface
-                                    .withOpacity(0.5),
+                                ? theme.colorScheme.primary.withOpacity(0.4)
+                                : theme.colorScheme.outline.withOpacity(0.4),
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _dueDate != null
-                                ? DateFormat('yyyy-MM-dd (EEE)')
-                                    .format(_dueDate!)
-                                : 'No due date',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.calendar_today,
+                              size: 14,
                               color: _dueDate != null
                                   ? theme.colorScheme.primary
                                   : theme.colorScheme.onSurface
                                       .withOpacity(0.5),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            Text(
+                              _dueDate != null
+                                  ? DateFormat('yyyy-MM-dd (EEE)')
+                                      .format(_dueDate!)
+                                  : 'No due date',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: _dueDate != null
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.onSurface
+                                        .withOpacity(0.5),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  if (_dueDate != null) ...[
-                    const SizedBox(width: 4),
-                    IconButton(
-                      icon: Icon(
-                        Icons.close,
-                        size: 16,
-                        color: theme.colorScheme.onSurface.withOpacity(0.45),
+                    if (_dueDate != null) ...[
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: Icon(
+                          Icons.close,
+                          size: 16,
+                          color: theme.colorScheme.onSurface.withOpacity(0.45),
+                        ),
+                        tooltip: 'Clear due date',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => setState(() => _dueDate = null),
                       ),
-                      tooltip: 'Clear due date',
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Description field
+                Text('Description', style: theme.textTheme.labelLarge),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _descriptionController,
+                  maxLines: 4,
+                  minLines: 2,
+                  decoration: const InputDecoration(
+                    hintText: 'Add more details (optional)',
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Priority selector
+                Text('Priority', style: theme.textTheme.labelLarge),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: Priority.values.map((p) {
+                    final color = AppColors.priorityColor(p.index);
+                    final isSelected = _priority == p;
+                    return ChoiceChip(
+                      label: Text(p.label),
+                      selected: isSelected,
+                      selectedColor: color.withOpacity(0.18),
+                      labelStyle: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected
+                            ? color
+                            : theme.colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                      side: BorderSide(
+                        color: isSelected
+                            ? color.withOpacity(0.5)
+                            : theme.colorScheme.outline.withOpacity(0.4),
+                      ),
+                      onSelected: (_) => setState(() => _priority = p),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       visualDensity: VisualDensity.compact,
-                      onPressed: () => setState(() => _dueDate = null),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+
+                // Sub-tasks section (nested, max 3 levels)
+                Text('Sub-tasks', style: theme.textTheme.labelLarge),
+                const SizedBox(height: 8),
+                if (_subSteps.isNotEmpty) ..._buildSubStepRows(theme),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _subStepController,
+                        decoration: const InputDecoration(
+                          hintText: 'Add a sub-task and press Enter',
+                          isDense: true,
+                        ),
+                        onSubmitted: (_) => _addSubStep(),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add, size: 18),
+                      onPressed: _addSubStep,
                     ),
                   ],
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Description field
-              Text('Description', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _descriptionController,
-                maxLines: 4,
-                minLines: 2,
-                decoration: const InputDecoration(
-                  hintText: 'Add more details (optional)',
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-              // Priority selector
-              Text('Priority', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: Priority.values.map((p) {
-                  final color = AppColors.priorityColor(p.index);
-                  final isSelected = _priority == p;
-                  return ChoiceChip(
-                    label: Text(p.label),
-                    selected: isSelected,
-                    selectedColor: color.withOpacity(0.18),
-                    labelStyle: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected
-                          ? color
-                          : theme.colorScheme.onSurface.withOpacity(0.6),
+                // Actions
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
                     ),
-                    side: BorderSide(
-                      color: isSelected
-                          ? color.withOpacity(0.5)
-                          : theme.colorScheme.outline.withOpacity(0.4),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _save,
+                      child: const Text('Save Changes'),
                     ),
-                    onSelected: (_) => setState(() => _priority = p),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-
-              // Sub-tasks section (nested, max 3 levels)
-              Text('Sub-tasks', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 8),
-              if (_subSteps.isNotEmpty) ..._buildSubStepRows(theme),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _subStepController,
-                      decoration: const InputDecoration(
-                        hintText: 'Add a sub-task and press Enter',
-                        isDense: true,
-                      ),
-                      onSubmitted: (_) => _addSubStep(),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add, size: 18),
-                    onPressed: _addSubStep,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Actions
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _save,
-                    child: const Text('Save Changes'),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
             ),
           ),
         ),
@@ -337,9 +339,8 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
     // existing children render above it and a new child lands right above
     // the input instead of below the whole sibling group.
     final addingUid = _addingChildUid;
-    final fieldAfter = addingUid == null
-        ? -1
-        : subStepSubtreeEndIndex(ordered, addingUid);
+    final fieldAfter =
+        addingUid == null ? -1 : subStepSubtreeEndIndex(ordered, addingUid);
     // The field must attach to the step the user tapped "+" on — NOT to
     // ordered[fieldAfter], which is the subtree's last descendant (using
     // it would indent the field one level too deep and nest new children
@@ -366,9 +367,7 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
       child: Row(
         children: [
           Icon(
-            step.completed
-                ? Icons.check_circle
-                : Icons.radio_button_unchecked,
+            step.completed ? Icons.check_circle : Icons.radio_button_unchecked,
             size: 16,
             color: step.completed
                 ? theme.colorScheme.primary
@@ -380,8 +379,7 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
               controller: _controllerFor(step),
               style: TextStyle(
                 fontSize: 13,
-                color:
-                    theme.colorScheme.onSurface.withOpacity(0.85),
+                color: theme.colorScheme.onSurface.withOpacity(0.85),
               ),
               decoration: const InputDecoration(
                 isDense: true,
@@ -396,17 +394,14 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
               icon: Icon(
                 Icons.add,
                 size: 14,
-                color:
-                    theme.colorScheme.onSurface.withOpacity(0.4),
+                color: theme.colorScheme.onSurface.withOpacity(0.4),
               ),
               tooltip: 'Add nested sub-task',
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
-              constraints:
-                  const BoxConstraints(minWidth: 26, minHeight: 26),
+              constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
               onPressed: () => setState(() {
-                _addingChildUid =
-                    _addingChildUid == step.uid ? null : step.uid;
+                _addingChildUid = _addingChildUid == step.uid ? null : step.uid;
                 _addChildController.clear();
               }),
             ),
@@ -419,8 +414,7 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
             tooltip: 'Remove sub-task (and its children)',
             visualDensity: VisualDensity.compact,
             padding: EdgeInsets.zero,
-            constraints:
-                const BoxConstraints(minWidth: 26, minHeight: 26),
+            constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
             onPressed: () => _removeStep(step),
           ),
         ],
@@ -442,8 +436,7 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
       child: Row(
         children: [
           Icon(Icons.subdirectory_arrow_right,
-              size: 13,
-              color: theme.colorScheme.primary.withOpacity(0.5)),
+              size: 13, color: theme.colorScheme.primary.withOpacity(0.5)),
           const SizedBox(width: 6),
           Expanded(
             child: TextField(
@@ -453,8 +446,8 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
               decoration: const InputDecoration(
                 hintText: 'Add nested sub-task…',
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 8),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               ),
               onSubmitted: (_) => _addChildStep(parent),
             ),
@@ -464,10 +457,8 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
             tooltip: 'Close',
             visualDensity: VisualDensity.compact,
             padding: EdgeInsets.zero,
-            constraints:
-                const BoxConstraints(minWidth: 26, minHeight: 26),
-            onPressed: () =>
-                setState(() => _addingChildUid = null),
+            constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+            onPressed: () => setState(() => _addingChildUid = null),
           ),
         ],
       ),

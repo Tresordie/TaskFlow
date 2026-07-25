@@ -20,14 +20,12 @@ class ExecutionLogWidget extends ConsumerStatefulWidget {
   const ExecutionLogWidget({super.key, required this.task});
 
   @override
-  ConsumerState<ExecutionLogWidget> createState() =>
-      _ExecutionLogWidgetState();
+  ConsumerState<ExecutionLogWidget> createState() => _ExecutionLogWidgetState();
 }
 
 class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
   final _entryController = TextEditingController();
-  late final FocusNode _entryFocus =
-      markdownIndentFocusNode(_entryController);
+  late final FocusNode _entryFocus = markdownIndentFocusNode(_entryController);
   EntryType _selectedType = EntryType.note;
 
   // Resizable text input area height (logical pixels).
@@ -64,8 +62,7 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
               ),
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
@@ -216,8 +213,8 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
                     children: _pendingAttachments
                         .map((a) => _PendingAttachmentChip(
                               attachment: a,
-                              onRemove: () => setState(
-                                  () => _pendingAttachments.remove(a)),
+                              onRemove: () =>
+                                  setState(() => _pendingAttachments.remove(a)),
                             ))
                         .toList(),
                   ),
@@ -362,8 +359,7 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
               } catch (e) {
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text('Failed to delete log entry: $e')),
+                  SnackBar(content: Text('Failed to delete log entry: $e')),
                 );
               }
             },
@@ -592,10 +588,7 @@ class _LogEntryItem extends StatelessWidget {
                       const Spacer(),
                       Text(
                         DateFormat('HH:mm:ss').format(entry.timestamp),
-                        style: Theme.of(context)
-                            .textTheme
-                            .labelSmall
-                            ?.copyWith(
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               color: AppColors.lightTextSecondary,
                             ),
                       ),
@@ -630,8 +623,7 @@ class _LogEntryItem extends StatelessWidget {
                             child: Icon(
                               Icons.delete_outline,
                               size: 14,
-                              color:
-                                  AppColors.error.withOpacity(0.6),
+                              color: AppColors.error.withOpacity(0.6),
                             ),
                           ),
                         ),
@@ -659,8 +651,7 @@ class _LogEntryItem extends StatelessWidget {
                           // Windows (ShellExecuteW); open the path out-of-band.
                           openPath(uri.toFilePath());
                         } else {
-                          launchUrl(uri,
-                              mode: LaunchMode.externalApplication);
+                          launchUrl(uri, mode: LaunchMode.externalApplication);
                         }
                       },
                     ),
@@ -714,12 +705,14 @@ class _LogEntryItem extends StatelessWidget {
         fontFamily: 'monospace',
         fontSize: 13,
         color: isDark ? Colors.teal.shade200 : Colors.teal.shade800,
-        backgroundColor:
-            isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+        backgroundColor: isDark
+            ? Colors.white.withOpacity(0.08)
+            : Colors.black.withOpacity(0.05),
       ),
       codeblockDecoration: BoxDecoration(
-        color:
-            isDark ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.04),
+        color: isDark
+            ? Colors.white.withOpacity(0.07)
+            : Colors.black.withOpacity(0.04),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isDark
@@ -729,8 +722,9 @@ class _LogEntryItem extends StatelessWidget {
       ),
       codeblockPadding: const EdgeInsets.all(10),
       blockquoteDecoration: BoxDecoration(
-        color:
-            isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+        color: isDark
+            ? Colors.white.withOpacity(0.05)
+            : Colors.black.withOpacity(0.03),
         borderRadius: BorderRadius.circular(6),
       ),
       blockquotePadding: const EdgeInsets.fromLTRB(12, 6, 12, 6),

@@ -77,8 +77,7 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
   // ── Draft auto-save ──────────────────────────────────────────────────
 
   Future<void> _restoreDraft() async {
-    final draft =
-        await ref.read(workLogRepositoryProvider).loadDraft();
+    final draft = await ref.read(workLogRepositoryProvider).loadDraft();
     if (draft.isNotEmpty && _inputController.text.isEmpty) {
       _inputController.text = draft;
     }
@@ -141,11 +140,13 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
     return all.where((r) {
       final dt = r.dateTime;
       if (_dateFrom != null) {
-        final from = DateTime(_dateFrom!.year, _dateFrom!.month, _dateFrom!.day);
+        final from =
+            DateTime(_dateFrom!.year, _dateFrom!.month, _dateFrom!.day);
         if (dt.isBefore(from)) return false;
       }
       if (_dateTo != null) {
-        final to = DateTime(_dateTo!.year, _dateTo!.month, _dateTo!.day, 23, 59, 59);
+        final to =
+            DateTime(_dateTo!.year, _dateTo!.month, _dateTo!.day, 23, 59, 59);
         if (dt.isAfter(to)) return false;
       }
       if (_timeFrom != null) {
@@ -161,7 +162,10 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
   }
 
   bool get _hasFilter =>
-      _dateFrom != null || _dateTo != null || _timeFrom != null || _timeTo != null;
+      _dateFrom != null ||
+      _dateTo != null ||
+      _timeFrom != null ||
+      _timeTo != null;
 
   void _clearFilter() {
     setState(() {
@@ -220,8 +224,7 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
         fileName: 'work-summary-$stamp.$ext',
       );
       if (path != null) {
-        final content =
-            markdown ? text : _wrapHtml(_markdownToHtml(text));
+        final content = markdown ? text : _wrapHtml(_markdownToHtml(text));
         await File(path).writeAsString(content);
         _toast('${ext.toUpperCase()} saved');
       }
@@ -236,8 +239,8 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
 
   void _toast(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
   }
 
   Future<bool> _confirm(String msg) async {
@@ -269,97 +272,134 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(28, 28, 28, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        // Header — same gradient / accent-bar style as the other screens.
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(28, 28, 28, 20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                theme.colorScheme.primary.withOpacity(0.06),
+                theme.colorScheme.surface,
+              ],
+            ),
+          ),
+          child: Row(
             children: [
-              Text('Work Log', style: theme.textTheme.headlineSmall),
-              const SizedBox(height: 4),
-              Text(
-                'Record daily work · AI-generated key-point summary',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.55)),
+              Container(
+                width: 4,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Work Log', style: theme.textTheme.headlineLarge),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Record daily work · AI-generated key-point summary',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.55)),
+                  ),
+                ],
               ),
             ],
           ),
         ),
 
+        // Two-column body: capture (input + records) on the left, AI output
+        // (summary + history) on the right — each scrolls independently.
         Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(28, 4, 28, 28),
-            children: [
-              _buildLanguageBar(state, notifier, theme),
-              const SizedBox(height: 14),
-              _buildInputCard(theme),
-              const SizedBox(height: 14),
-              _buildRecordsCard(state, filtered, theme),
-              const SizedBox(height: 14),
-              _buildSummaryCard(state, filtered, theme),
-              const SizedBox(height: 14),
-              _buildHistoryCard(state, theme),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(28, 18, 28, 28),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: ListView(
+                    primary: false,
+                    padding: EdgeInsets.zero,
+                    children: [
+                      _buildInputCard(theme),
+                      const SizedBox(height: 14),
+                      _buildRecordsCard(state, filtered, theme),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  flex: 2,
+                  child: ListView(
+                    primary: false,
+                    padding: EdgeInsets.zero,
+                    children: [
+                      _buildSummaryCard(state, notifier, filtered, theme),
+                      const SizedBox(height: 14),
+                      _buildHistoryCard(state, theme),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  // ── Language bar ─────────────────────────────────────────────────────
+  // ── Language selector (lives inside the summary card) ────────────────
 
-  Widget _buildLanguageBar(WorkLogState state, WorkLogNotifier notifier,
-      ThemeData theme) {
+  Widget _buildLanguageRow(
+      WorkLogState state, WorkLogNotifier notifier, ThemeData theme) {
     final langs = kWorkLogLanguages.entries.toList();
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Text('Input', style: theme.textTheme.labelLarge),
-            const SizedBox(width: 8),
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                initialValue: state.inputLang,
-                isDense: true,
-                items: [
-                  for (final e in langs)
-                    DropdownMenuItem(value: e.key, child: Text(e.value)),
-                ],
-                onChanged: (v) {
-                  if (v != null) {
-                    notifier.setLangs(
-                        inputLang: v, outputLang: state.outputLang);
-                  }
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Icon(Icons.arrow_forward,
-                size: 18, color: theme.colorScheme.primary),
-            const SizedBox(width: 12),
-            Text('Summary output', style: theme.textTheme.labelLarge),
-            const SizedBox(width: 8),
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                initialValue: state.outputLang,
-                isDense: true,
-                items: [
-                  for (final e in langs)
-                    DropdownMenuItem(value: e.key, child: Text(e.value)),
-                ],
-                onChanged: (v) {
-                  if (v != null) {
-                    notifier.setLangs(
-                        inputLang: state.inputLang, outputLang: v);
-                  }
-                },
-              ),
-            ),
-          ],
+    List<DropdownMenuItem<String>> items() => [
+          for (final e in langs)
+            DropdownMenuItem(value: e.key, child: Text(e.value)),
+        ];
+    return Row(
+      children: [
+        Icon(Icons.translate,
+            size: 15, color: theme.colorScheme.onSurface.withOpacity(0.5)),
+        const SizedBox(width: 6),
+        Text('Input', style: theme.textTheme.labelMedium),
+        const SizedBox(width: 6),
+        Expanded(
+          child: DropdownButtonFormField<String>(
+            initialValue: state.inputLang,
+            isDense: true,
+            items: items(),
+            onChanged: (v) {
+              if (v != null) {
+                notifier.setLangs(inputLang: v, outputLang: state.outputLang);
+              }
+            },
+          ),
         ),
-      ),
+        const SizedBox(width: 10),
+        Icon(Icons.arrow_forward, size: 16, color: theme.colorScheme.primary),
+        const SizedBox(width: 10),
+        Text('Output', style: theme.textTheme.labelMedium),
+        const SizedBox(width: 6),
+        Expanded(
+          child: DropdownButtonFormField<String>(
+            initialValue: state.outputLang,
+            isDense: true,
+            items: items(),
+            onChanged: (v) {
+              if (v != null) {
+                notifier.setLangs(inputLang: state.inputLang, outputLang: v);
+              }
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -373,6 +413,31 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              children: [
+                Icon(Icons.edit_note,
+                    size: 18, color: theme.colorScheme.primary),
+                const SizedBox(width: 6),
+                Text('New record', style: theme.textTheme.titleMedium),
+                if (_editingId != null) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'Editing existing record',
+                      style: theme.textTheme.labelSmall
+                          ?.copyWith(color: theme.colorScheme.primary),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const Divider(height: 20),
             MarkdownToolbar(
               controller: _inputController,
               refocus: _inputFocus,
@@ -438,8 +503,10 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Text('Work records',
-                    style: theme.textTheme.titleMedium),
+                Icon(Icons.list_alt,
+                    size: 18, color: theme.colorScheme.primary),
+                const SizedBox(width: 6),
+                Text('Work records', style: theme.textTheme.titleMedium),
                 Text('${state.records.length}',
                     style: theme.textTheme.bodySmall),
                 if (_hasFilter)
@@ -462,8 +529,7 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
                   },
                 ),
                 _filterChip(
-                  label:
-                      _dateTo == null ? 'To date' : dateFmt.format(_dateTo!),
+                  label: _dateTo == null ? 'To date' : dateFmt.format(_dateTo!),
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
@@ -486,9 +552,7 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
                   },
                 ),
                 _filterChip(
-                  label: _timeTo == null
-                      ? 'To time'
-                      : _timeTo!.format(context),
+                  label: _timeTo == null ? 'To time' : _timeTo!.format(context),
                   onTap: () async {
                     final picked = await showTimePicker(
                         context: context,
@@ -509,8 +573,8 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
                 ),
                 if (_selectedIds.isNotEmpty)
                   Text('(${_selectedIds.length} selected)',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.primary)),
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.colorScheme.primary)),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: state.records.isEmpty ? null : _clearAllRecords,
@@ -616,8 +680,8 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
 
   // ── Summary card ─────────────────────────────────────────────────────
 
-  Widget _buildSummaryCard(
-      WorkLogState state, List<WorkLogRecord> filtered, ThemeData theme) {
+  Widget _buildSummaryCard(WorkLogState state, WorkLogNotifier notifier,
+      List<WorkLogRecord> filtered, ThemeData theme) {
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -633,9 +697,8 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
                     style: theme.textTheme.titleMedium),
                 const Spacer(),
                 ElevatedButton.icon(
-                  onPressed: state.generating
-                      ? null
-                      : () => _generate(filtered),
+                  onPressed:
+                      state.generating ? null : () => _generate(filtered),
                   icon: state.generating
                       ? const SizedBox(
                           width: 14,
@@ -647,6 +710,8 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            _buildLanguageRow(state, notifier, theme),
             if (state.error != null) ...[
               const SizedBox(height: 10),
               Container(
@@ -734,8 +799,7 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
               children: [
                 Icon(Icons.history, size: 18, color: theme.colorScheme.primary),
                 const SizedBox(width: 6),
-                Text('Summary history',
-                    style: theme.textTheme.titleMedium),
+                Text('Summary history', style: theme.textTheme.titleMedium),
                 const SizedBox(width: 8),
                 Text('${state.summaries.length}',
                     style: theme.textTheme.bodySmall),
@@ -763,9 +827,8 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
               )
             else
               ...state.summaries.map((s) => InkWell(
-                    onTap: () => ref
-                        .read(workLogProvider.notifier)
-                        .loadSummary(s),
+                    onTap: () =>
+                        ref.read(workLogProvider.notifier).loadSummary(s),
                     borderRadius: BorderRadius.circular(8),
                     child: Container(
                       width: double.infinity,
@@ -773,8 +836,7 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         border: Border.all(
-                            color:
-                                theme.colorScheme.outline.withOpacity(0.2)),
+                            color: theme.colorScheme.outline.withOpacity(0.2)),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -836,7 +898,8 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
   }
 
   Future<void> _clearAllSummaries() async {
-    final ok = await _confirm('Clear all summary history? This cannot be undone.');
+    final ok =
+        await _confirm('Clear all summary history? This cannot be undone.');
     if (ok) await ref.read(workLogProvider.notifier).clearSummaries();
   }
 

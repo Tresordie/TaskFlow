@@ -36,17 +36,15 @@ final filteredTaskListProvider = Provider<List<Task>>((ref) {
             filtered.where((t) => t.priority == filter.priority).toList();
       }
       if (filter.tag != null && filter.tag!.isNotEmpty) {
-        filtered =
-            filtered.where((t) => t.tags.contains(filter.tag)).toList();
+        filtered = filtered.where((t) => t.tags.contains(filter.tag)).toList();
       }
       if (filter.date != null) {
-        final dayStart = DateTime(
-            filter.date!.year, filter.date!.month, filter.date!.day);
+        final dayStart =
+            DateTime(filter.date!.year, filter.date!.month, filter.date!.day);
         final dayEnd = dayStart.add(const Duration(days: 1));
         filtered = filtered
             .where((t) =>
-                t.createdAt.isAfter(dayStart) &&
-                t.createdAt.isBefore(dayEnd))
+                t.createdAt.isAfter(dayStart) && t.createdAt.isBefore(dayEnd))
             .toList();
       }
       return filtered;
@@ -57,8 +55,7 @@ final filteredTaskListProvider = Provider<List<Task>>((ref) {
 });
 
 // Tasks grouped by priority
-final groupedTasksProvider =
-    Provider<Map<Priority, List<Task>>>((ref) {
+final groupedTasksProvider = Provider<Map<Priority, List<Task>>>((ref) {
   final tasks = ref.watch(filteredTaskListProvider);
   final grouped = <Priority, List<Task>>{
     Priority.p0Critical: [],
@@ -89,8 +86,7 @@ final taskGroupModeProvider =
     StateProvider<TaskGroupMode>((ref) => TaskGroupMode.priority);
 
 /// Generic grouping: returns an ordered map of group-label → tasks.
-final groupedTasksByModeProvider =
-    Provider<Map<String, List<Task>>>((ref) {
+final groupedTasksByModeProvider = Provider<Map<String, List<Task>>>((ref) {
   final tasks = ref.watch(filteredTaskListProvider);
   final mode = ref.watch(taskGroupModeProvider);
 
@@ -117,8 +113,7 @@ final groupedTasksByModeProvider =
     case TaskGroupMode.project:
       final grouped = <String, List<Task>>{};
       for (final task in tasks) {
-        final key =
-            (task.project.isEmpty) ? 'No Project' : task.project;
+        final key = (task.project.isEmpty) ? 'No Project' : task.project;
         (grouped[key] ??= []).add(task);
       }
       return grouped;
@@ -299,8 +294,7 @@ class TaskListNotifier extends StateNotifier<AsyncValue<List<Task>>> {
     await loadTasks();
   }
 
-  Future<void> addSubStep(int taskId, String title,
-      {String? parentUid}) async {
+  Future<void> addSubStep(int taskId, String title, {String? parentUid}) async {
     await _repo.addSubStep(taskId, title, parentUid: parentUid);
     await loadTasks();
   }
