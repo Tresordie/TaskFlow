@@ -363,20 +363,45 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
     final langs = kWorkLogLanguages.entries.toList();
     List<DropdownMenuItem<String>> items() => [
           for (final e in langs)
-            DropdownMenuItem(value: e.key, child: Text(e.value)),
+            DropdownMenuItem(
+              value: e.key,
+              child: Text(e.value,
+                  style: const TextStyle(fontSize: 12.5),
+                  overflow: TextOverflow.ellipsis),
+            ),
         ];
+
+    // Compact dropdown box (v1.4.22: labels bigger, boxes smaller).
+    InputDecoration dropdownDecoration() => const InputDecoration(
+          isDense: true,
+          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          border: OutlineInputBorder(),
+        );
+
+    TextStyle labelStyle() => theme.textTheme.labelMedium!.copyWith(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        );
+
+    TextStyle valueStyle() => theme.textTheme.bodyMedium!.copyWith(
+          fontSize: 12.5,
+          color: theme.colorScheme.onSurface,
+        );
+
     return Row(
       children: [
         Icon(Icons.translate,
             size: 15, color: theme.colorScheme.onSurface.withOpacity(0.5)),
         const SizedBox(width: 6),
-        Text('Input', style: theme.textTheme.labelMedium),
+        Text('Input', style: labelStyle()),
         const SizedBox(width: 6),
         Expanded(
           child: DropdownButtonFormField<String>(
             initialValue: state.inputLang,
             isDense: true,
             isExpanded: true,
+            style: valueStyle(),
+            decoration: dropdownDecoration(),
             items: items(),
             onChanged: (v) {
               if (v != null) {
@@ -388,13 +413,15 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
         const SizedBox(width: 10),
         Icon(Icons.arrow_forward, size: 16, color: theme.colorScheme.primary),
         const SizedBox(width: 10),
-        Text('Output', style: theme.textTheme.labelMedium),
+        Text('Output', style: labelStyle()),
         const SizedBox(width: 6),
         Expanded(
           child: DropdownButtonFormField<String>(
             initialValue: state.outputLang,
             isDense: true,
             isExpanded: true,
+            style: valueStyle(),
+            decoration: dropdownDecoration(),
             items: items(),
             onChanged: (v) {
               if (v != null) {
@@ -490,16 +517,17 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
                 ElevatedButton.icon(
                   onPressed: _saveRecord,
                   style: ElevatedButton.styleFrom(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 11),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   icon: Icon(_editingId != null ? Icons.edit : Icons.save,
-                      size: 14),
+                      size: 16),
                   label: Text(
                     _editingId != null ? 'Update' : 'Save record',
-                    style: const TextStyle(fontSize: 12.5),
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -815,21 +843,22 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
                   onPressed:
                       state.generating ? null : () => _generate(filtered),
                   style: ElevatedButton.styleFrom(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 10),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   icon: state.generating
                       ? const SizedBox(
-                          width: 12,
-                          height: 12,
+                          width: 14,
+                          height: 14,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.auto_awesome, size: 14),
+                      : const Icon(Icons.auto_awesome, size: 15),
                   label: Text(
                     state.generating ? 'Generating...' : 'Generate',
-                    style: const TextStyle(fontSize: 12.5),
+                    style: const TextStyle(
+                        fontSize: 13.5, fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -882,12 +911,12 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
                     onPressed: () => _copySummary(state.result),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
+                          horizontal: 14, vertical: 8),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    icon: const Icon(Icons.copy, size: 13),
-                    label: const Text('Copy', style: TextStyle(fontSize: 11.5)),
+                    icon: const Icon(Icons.copy, size: 14),
+                    label: const Text('Copy', style: TextStyle(fontSize: 12.5)),
                   ),
                   const SizedBox(width: 8),
                   OutlinedButton.icon(
@@ -896,12 +925,12 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
                         : () => _download(state.result, markdown: true),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
+                          horizontal: 14, vertical: 8),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    icon: const Icon(Icons.download, size: 13),
-                    label: const Text('MD', style: TextStyle(fontSize: 11.5)),
+                    icon: const Icon(Icons.download, size: 14),
+                    label: const Text('MD', style: TextStyle(fontSize: 12.5)),
                   ),
                   const SizedBox(width: 8),
                   OutlinedButton.icon(
@@ -910,12 +939,12 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
                         : () => _download(state.result, markdown: false),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
+                          horizontal: 14, vertical: 8),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    icon: const Icon(Icons.download, size: 13),
-                    label: const Text('HTML', style: TextStyle(fontSize: 11.5)),
+                    icon: const Icon(Icons.download, size: 14),
+                    label: const Text('HTML', style: TextStyle(fontSize: 12.5)),
                   ),
                 ],
               ),

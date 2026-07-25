@@ -16,6 +16,7 @@ class TaskFlowApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final font = ref.watch(fontProvider);
     final fontScale = ref.watch(fontScaleProvider);
+    final fontWeight = ref.watch(fontWeightProvider);
 
     var theme = AppTheme.buildTheme(themeMode);
 
@@ -23,6 +24,9 @@ class TaskFlowApp extends ConsumerWidget {
     if (font.fontFamily != null) {
       theme = _applyFont(theme, font);
     }
+
+    // Apply the global font-weight preference (v1.4.22).
+    theme = _applyWeight(theme, fontWeight.weight);
 
     return MaterialApp.router(
       title: 'TaskFlow',
@@ -48,50 +52,73 @@ class TaskFlowApp extends ConsumerWidget {
     final family = font.fontFamily!;
 
     if (font.isGoogleFont) {
-      // Download via google_fonts package
-      final textTheme = _googleFontTextTheme(family, theme.brightness);
+      // Download via google_fonts package. IMPORTANT: use the app's own
+      // textTheme as the base so AppTheme's custom sizes, weights, colors
+      // and letter-spacing are preserved (v1.4.22 fix — previously the
+      // Material defaults were used, which made all text thinner and less
+      // legible whenever a Google font was selected).
+      final textTheme = _googleFontTextTheme(family, theme.textTheme);
       return theme.copyWith(textTheme: textTheme);
     }
 
-    // System font: apply fontFamily directly to all text styles
-    final base = theme.textTheme;
+    // System font: apply the family to every text style (v1.4.22: was only
+    // 7 hand-picked styles before, leaving e.g. bodySmall/labelLarge on the
+    // old family and producing inconsistent rendering).
     return theme.copyWith(
-      textTheme: base.copyWith(
-        headlineLarge: base.headlineLarge?.copyWith(fontFamily: family),
-        headlineMedium: base.headlineMedium?.copyWith(fontFamily: family),
-        titleLarge: base.titleLarge?.copyWith(fontFamily: family),
-        titleMedium: base.titleMedium?.copyWith(fontFamily: family),
-        bodyLarge: base.bodyLarge?.copyWith(fontFamily: family),
-        bodyMedium: base.bodyMedium?.copyWith(fontFamily: family),
-        labelSmall: base.labelSmall?.copyWith(fontFamily: family),
+      textTheme: theme.textTheme.apply(fontFamily: family),
+    );
+  }
+
+  /// Applies the user's global font-weight preference as a uniform delta
+  /// relative to Regular (w400), so the whole typographic hierarchy shifts
+  /// together — headings always stay heavier than body text.
+  ///
+  /// Note: we shift each style manually instead of using
+  /// `TextStyle.apply(fontWeightDelta:)` because that API asserts when the
+  /// style has no explicit fontWeight — and AppTheme's body styles don't.
+  ThemeData _applyWeight(ThemeData theme, FontWeight weight) {
+    final delta = weight.index - FontWeight.w400.index;
+    if (delta == 0) return theme;
+
+    TextStyle? shift(TextStyle? s) {
+      if (s == null) return null;
+      final base = s.fontWeight ?? FontWeight.w400;
+      final index = (base.index + delta).clamp(0, FontWeight.values.length - 1);
+      return s.copyWith(fontWeight: FontWeight.values[index]);
+    }
+
+    final t = theme.textTheme;
+    return theme.copyWith(
+      textTheme: t.copyWith(
+        displayLarge: shift(t.displayLarge),
+        displayMedium: shift(t.displayMedium),
+        displaySmall: shift(t.displaySmall),
+        headlineLarge: shift(t.headlineLarge),
+        headlineMedium: shift(t.headlineMedium),
+        headlineSmall: shift(t.headlineSmall),
+        titleLarge: shift(t.titleLarge),
+        titleMedium: shift(t.titleMedium),
+        titleSmall: shift(t.titleSmall),
+        bodyLarge: shift(t.bodyLarge),
+        bodyMedium: shift(t.bodyMedium),
+        bodySmall: shift(t.bodySmall),
+        labelLarge: shift(t.labelLarge),
+        labelMedium: shift(t.labelMedium),
+        labelSmall: shift(t.labelSmall),
       ),
     );
   }
 
-  TextTheme _googleFontTextTheme(String family, Brightness brightness) {
-    final base = brightness == Brightness.dark
-        ? ThemeData.dark().textTheme
-        : ThemeData.light().textTheme;
-
+  TextTheme _googleFontTextTheme(String family, TextTheme base) {
     switch (family) {
-      case 'Inter':
-        return GoogleFonts.interTextTheme(base);
       case 'Noto Sans SC':
         return GoogleFonts.notoSansScTextTheme(base);
-      case 'JetBrains Mono':
-        return GoogleFonts.jetBrainsMonoTextTheme(base);
-      case 'Roboto':
-        return GoogleFonts.robotoTextTheme(base);
-      case 'Lato':
-        return GoogleFonts.latoTextTheme(base);
+      case 'Noto Serif SC':
+        return GoogleFonts.notoSerifScTextTheme(base);
+      case 'LXGW WenKai TC':
+        return GoogleFonts.lxgwWenKaiTcTextTheme(base);
       case 'Poppins':
         return GoogleFonts.poppinsTextTheme(base);
-      case 'Montserrat':
-        return GoogleFonts.montserratTextTheme(base);
-      case 'Merriweather':
-        return GoogleFonts.merriweatherTextTheme(base);
-      case 'Source Code Pro':
-        return GoogleFonts.sourceCodeProTextTheme(base);
       default:
         return base;
     }

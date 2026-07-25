@@ -52,7 +52,7 @@ class AppColors {
     card: Color(0xFFFFFFFF),
     border: Color(0xFFE2E8F0),
     textPrimary: Color(0xFF1E293B),
-    textSecondary: Color(0xFF64748B),
+    textSecondary: Color(0xFF475569),
     primary: Color(0xFF6366F1),
     primaryLight: Color(0xFF818CF8),
     primaryDark: Color(0xFF4F46E5),
@@ -66,7 +66,7 @@ class AppColors {
     card: Color(0xFFFAFFFE),
     border: Color(0xFFD1E7DD),
     textPrimary: Color(0xFF1B3A2D),
-    textSecondary: Color(0xFF5F8A72),
+    textSecondary: Color(0xFF4A6E5B),
     primary: Color(0xFF34A853),
     primaryLight: Color(0xFF66BB6A),
     primaryDark: Color(0xFF2E7D42),
@@ -80,7 +80,7 @@ class AppColors {
     card: Color(0xFFFBFDFF),
     border: Color(0xFFD6E6F5),
     textPrimary: Color(0xFF16324F),
-    textSecondary: Color(0xFF5B7C9D),
+    textSecondary: Color(0xFF49637E),
     primary: Color(0xFF0EA5E9),
     primaryLight: Color(0xFF38BDF8),
     primaryDark: Color(0xFF0284C7),
@@ -94,7 +94,7 @@ class AppColors {
     card: Color(0xFFFFFBF5),
     border: Color(0xFFFED7AA),
     textPrimary: Color(0xFF431407),
-    textSecondary: Color(0xFF9A6A4F),
+    textSecondary: Color(0xFF7E5741),
     primary: Color(0xFFF97316),
     primaryLight: Color(0xFFFB923C),
     primaryDark: Color(0xFFEA580C),
@@ -108,7 +108,7 @@ class AppColors {
     card: Color(0xFFFFFBFC),
     border: Color(0xFFFBCFE8),
     textPrimary: Color(0xFF500724),
-    textSecondary: Color(0xFF9D6B85),
+    textSecondary: Color(0xFF81586D),
     primary: Color(0xFFEC4899),
     primaryLight: Color(0xFFF472B6),
     primaryDark: Color(0xFFDB2777),
@@ -122,7 +122,7 @@ class AppColors {
     card: Color(0xFFFDFAFF),
     border: Color(0xFFE9D5FF),
     textPrimary: Color(0xFF3B0764),
-    textSecondary: Color(0xFF7E6A9A),
+    textSecondary: Color(0xFF67577E),
     primary: Color(0xFFA855F7),
     primaryLight: Color(0xFFC084FC),
     primaryDark: Color(0xFF9333EA),
@@ -136,7 +136,7 @@ class AppColors {
     card: Color(0xFF1E293B),
     border: Color(0xFF334155),
     textPrimary: Color(0xFFF1F5F9),
-    textSecondary: Color(0xFF94A3B8),
+    textSecondary: Color(0xFFA6B7CE),
     primary: Color(0xFF818CF8),
     primaryLight: Color(0xFFA5B4FC),
     primaryDark: Color(0xFF6366F1),
@@ -149,13 +149,13 @@ class AppColors {
   static const Color lightCard = Color(0xFFFFFFFF);
   static const Color lightBorder = Color(0xFFE2E8F0);
   static const Color lightTextPrimary = Color(0xFF1E293B);
-  static const Color lightTextSecondary = Color(0xFF64748B);
+  static const Color lightTextSecondary = Color(0xFF475569);
   static const Color darkBg = Color(0xFF0F172A);
   static const Color darkSurface = Color(0xFF1E293B);
   static const Color darkCard = Color(0xFF1E293B);
   static const Color darkBorder = Color(0xFF334155);
   static const Color darkTextPrimary = Color(0xFFF1F5F9);
-  static const Color darkTextSecondary = Color(0xFF94A3B8);
+  static const Color darkTextSecondary = Color(0xFFA6B7CE);
   static const Color primary = Color(0xFF6366F1);
   static const Color primaryLight = Color(0xFF818CF8);
   static const Color primaryDark = Color(0xFF4F46E5);

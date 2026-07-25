@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -22,6 +23,10 @@ class FontOption {
 class AppFonts {
   AppFonts._();
 
+  /// Curated presets focused on crisp, beautiful mixed Chinese + English
+  /// rendering. (v1.4.22: removed Latin-only / mono / display fonts — Inter,
+  /// Roboto, Lato, Poppins-style duplicates, Montserrat, Merriweather,
+  /// JetBrains Mono, Source Code Pro — in favor of CJK-capable families.)
   static const List<FontOption> presets = [
     FontOption(
       id: 'system',
@@ -29,66 +34,31 @@ class AppFonts {
       labelEn: 'System Default',
     ),
     FontOption(
-      id: 'inter',
-      labelZh: 'Inter (现代无衬线)',
-      labelEn: 'Inter',
-      fontFamily: 'Inter',
-      isGoogleFont: true,
-    ),
-    FontOption(
       id: 'notoSansSC',
-      labelZh: 'Noto Sans SC (思源黑体)',
+      labelZh: 'Noto Sans SC (思源黑体 · 中英混排清晰)',
       labelEn: 'Noto Sans SC',
       fontFamily: 'Noto Sans SC',
       isGoogleFont: true,
     ),
     FontOption(
-      id: 'jetbrainsMono',
-      labelZh: 'JetBrains Mono (等宽)',
-      labelEn: 'JetBrains Mono',
-      fontFamily: 'JetBrains Mono',
+      id: 'notoSerifSC',
+      labelZh: 'Noto Serif SC (思源宋体 · 中英混排优雅)',
+      labelEn: 'Noto Serif SC',
+      fontFamily: 'Noto Serif SC',
       isGoogleFont: true,
     ),
     FontOption(
-      id: 'roboto',
-      labelZh: 'Roboto (Android 经典)',
-      labelEn: 'Roboto',
-      fontFamily: 'Roboto',
-      isGoogleFont: true,
-    ),
-    FontOption(
-      id: 'lato',
-      labelZh: 'Lato (温暖人文)',
-      labelEn: 'Lato',
-      fontFamily: 'Lato',
+      id: 'lxgwWenKaiTC',
+      labelZh: 'LXGW WenKai (霞鹜文楷 · 中英混排美观)',
+      labelEn: 'LXGW WenKai TC',
+      fontFamily: 'LXGW WenKai TC',
       isGoogleFont: true,
     ),
     FontOption(
       id: 'poppins',
-      labelZh: 'Poppins (几何圆润)',
+      labelZh: 'Poppins (几何圆润 · 英文为主)',
       labelEn: 'Poppins',
       fontFamily: 'Poppins',
-      isGoogleFont: true,
-    ),
-    FontOption(
-      id: 'montserrat',
-      labelZh: 'Montserrat (现代都市)',
-      labelEn: 'Montserrat',
-      fontFamily: 'Montserrat',
-      isGoogleFont: true,
-    ),
-    FontOption(
-      id: 'merriweather',
-      labelZh: 'Merriweather (优雅衬线)',
-      labelEn: 'Merriweather',
-      fontFamily: 'Merriweather',
-      isGoogleFont: true,
-    ),
-    FontOption(
-      id: 'sourceCodePro',
-      labelZh: 'Source Code Pro (等宽)',
-      labelEn: 'Source Code Pro',
-      fontFamily: 'Source Code Pro',
       isGoogleFont: true,
     ),
   ];
@@ -292,6 +262,94 @@ class FontScaleNotifier extends StateNotifier<double> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setDouble(_storageKey, state);
+    } catch (_) {
+      // Best-effort.
+    }
+  }
+}
+
+/// A selectable global font-weight option.
+class FontWeightOption {
+  final String id;
+  final String labelZh;
+  final String labelEn;
+  final FontWeight weight;
+
+  const FontWeightOption({
+    required this.id,
+    required this.labelZh,
+    required this.labelEn,
+    required this.weight,
+  });
+}
+
+/// Global font weight (applied app-wide to body text; headings that already
+/// use a heavier weight keep their own). Persisted across restarts.
+final fontWeightProvider =
+    StateNotifierProvider<FontWeightNotifier, FontWeightOption>((ref) {
+  return FontWeightNotifier();
+});
+
+class FontWeightNotifier extends StateNotifier<FontWeightOption> {
+  static const _storageKey = 'settings.fontWeight';
+
+  static const List<FontWeightOption> options = [
+    FontWeightOption(
+      id: 'light',
+      labelZh: '偏细',
+      labelEn: 'Light',
+      weight: FontWeight.w300,
+    ),
+    FontWeightOption(
+      id: 'regular',
+      labelZh: '标准',
+      labelEn: 'Regular',
+      weight: FontWeight.w400,
+    ),
+    FontWeightOption(
+      id: 'medium',
+      labelZh: '适中',
+      labelEn: 'Medium',
+      weight: FontWeight.w500,
+    ),
+    FontWeightOption(
+      id: 'semibold',
+      labelZh: '加粗',
+      labelEn: 'Semi-bold',
+      weight: FontWeight.w600,
+    ),
+  ];
+
+  FontWeightNotifier() : super(options[1]) {
+    _restore();
+  }
+
+  Future<void> _restore() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getInt(_storageKey);
+      if (saved != null && saved >= 0 && saved < options.length) {
+        state = options[saved];
+      }
+    } catch (_) {
+      // Persistence is best-effort; never block the app over it.
+    }
+  }
+
+  void setWeight(FontWeightOption option) {
+    state = option;
+    _persist();
+  }
+
+  void reset() {
+    state = options[1];
+    _persist();
+  }
+
+  Future<void> _persist() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_storageKey, options.indexOf(state));
     } catch (_) {
       // Best-effort.
     }

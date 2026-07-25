@@ -90,6 +90,18 @@ class SettingsScreen extends ConsumerWidget {
 
         const SizedBox(height: 36),
 
+        // ─── Font Weight ───
+        Text('Font Weight', style: theme.textTheme.titleLarge),
+        const SizedBox(height: 6),
+        Text(
+          'Adjust the global text weight — heavier text is easier to read',
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 16),
+        const _FontWeightCard(),
+
+        const SizedBox(height: 36),
+
         // ─── AI Assistant ───
         Text('AI Assistant', style: theme.textTheme.titleLarge),
         const SizedBox(height: 6),
@@ -410,8 +422,6 @@ class _CustomFontInputState extends ConsumerState<_CustomFontInput> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Row(
       children: [
         Expanded(
@@ -545,6 +555,151 @@ class _FontSizeCard extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Card with selectable weight chips + a live preview for the global font
+/// weight (v1.4.22). The preview line is rendered with the app theme, so it
+/// updates the moment a new weight is picked.
+class _FontWeightCard extends ConsumerWidget {
+  const _FontWeightCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final current = ref.watch(fontWeightProvider);
+    final notifier = ref.read(fontWeightProvider.notifier);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              ...FontWeightNotifier.options.map(
+                (option) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: _WeightChip(
+                    option: option,
+                    isSelected: current.id == option.id,
+                    onTap: () => notifier.setWeight(option),
+                  ),
+                ),
+              ),
+              const Spacer(),
+              // Reset (only when not on Regular)
+              if (current.id != 'regular')
+                Tooltip(
+                  message: 'Reset to Regular',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: notifier.reset,
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.restart_alt,
+                        size: 18,
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Live preview — automatically rendered at the current weight.
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'Preview 预览: The quick brown fox jumps over the lazy dog · '
+              '线束 EVT 测试电流 2.3A · 0123456789',
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeightChip extends StatelessWidget {
+  final FontWeightOption option;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _WeightChip({
+    required this.option,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Tooltip(
+      message: option.labelEn,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? theme.colorScheme.primary.withOpacity(0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outline.withOpacity(0.4),
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 'Aa' rendered at the actual weight so differences are visible.
+              Text(
+                'Aa',
+                textScaler: TextScaler.noScaling,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: option.weight,
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                option.labelZh,
+                textScaler: TextScaler.noScaling,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

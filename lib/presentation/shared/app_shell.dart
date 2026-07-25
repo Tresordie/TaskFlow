@@ -133,9 +133,9 @@ class _Sidebar extends StatelessWidget {
               child: Text(
                 'MENU',
                 style: theme.textTheme.labelSmall?.copyWith(
-                  fontSize: 10,
+                  fontSize: 10.5,
                   letterSpacing: 1.0,
-                  color: theme.colorScheme.onSurface.withOpacity(0.35),
+                  color: theme.colorScheme.onSurface.withOpacity(0.5),
                 ),
               ),
             ),
@@ -252,17 +252,17 @@ class _NavItem extends StatelessWidget {
                   size: 18,
                   color: isActive
                       ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withOpacity(0.5),
+                      : theme.colorScheme.onSurface.withOpacity(0.7),
                 ),
                 const SizedBox(width: 10),
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                    fontSize: 13.5,
+                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                     color: isActive
                         ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurface.withOpacity(0.65),
+                        : theme.colorScheme.onSurface.withOpacity(0.85),
                   ),
                 ),
               ],
