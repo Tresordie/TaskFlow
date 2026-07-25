@@ -4,11 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:taskflow/providers/font_provider.dart';
 
-/// Regression tests for the v1.4.22 font settings rework:
-///  - the preset list drops Latin-only / mono / display fonts and adds
+/// Regression tests for the font settings:
+///  - v1.4.22: preset list drops Latin-only / mono / display fonts and adds
 ///    CJK-capable families for crisp mixed Chinese + English rendering;
-///  - the new global font-weight provider defaults to Regular, persists its
-///    choice, and exposes exactly the four curated weight options.
+///  - v1.4.23: default font is Noto Sans SC (system/Segoe's CJK fallback —
+///    Microsoft YaHei — renders too light), and the global font weight is a
+///    numeric 100–900 value with migration from the old 4-option index.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -45,44 +46,70 @@ void main() {
     });
   });
 
-  group('FontWeightNotifier', () {
-    test('defaults to Regular (w400)', () {
+  group('AppFonts default font (v1.4.23)', () {
+    test('defaults to Noto Sans SC so Chinese is not rendered too light', () {
+      expect(AppFonts.defaultFont.id, 'notoSansSC');
+      expect(AppFonts.defaultFont.fontFamily, 'Noto Sans SC');
+      expect(AppFonts.defaultFont.isGoogleFont, isTrue);
+    });
+  });
+
+  group('FontWeightNotifier (numeric, v1.4.23)', () {
+    test('defaults to 400 (Regular)', () {
       SharedPreferences.setMockInitialValues({});
       final n = FontWeightNotifier();
-      expect(n.state.weight, FontWeight.w400);
-      expect(n.state.id, 'regular');
+      expect(n.state, 400);
+      expect(n.fontWeight, FontWeight.w400);
     });
 
-    test('exposes exactly four ordered weight options', () {
-      expect(FontWeightNotifier.options.length, 4);
-      expect(
-        FontWeightNotifier.options.map((o) => o.weight).toList(),
-        [FontWeight.w300, FontWeight.w400, FontWeight.w500, FontWeight.w600],
-      );
+    test('weightFrom maps values onto FontWeight', () {
+      expect(FontWeightNotifier.weightFrom(100), FontWeight.w100);
+      expect(FontWeightNotifier.weightFrom(400), FontWeight.w400);
+      expect(FontWeightNotifier.weightFrom(600), FontWeight.w600);
+      expect(FontWeightNotifier.weightFrom(900), FontWeight.w900);
     });
 
-    test('setWeight changes state and reset returns to Regular', () {
+    test('setWeight clamps into 100–900 and rounds to the nearest 100', () {
       SharedPreferences.setMockInitialValues({});
       final n = FontWeightNotifier();
-      n.setWeight(FontWeightNotifier.options[3]); // semi-bold
-      expect(n.state.weight, FontWeight.w600);
+      n.setWeight(550);
+      expect(n.state, 600); // rounds to nearest hundred
+      n.setWeight(5000);
+      expect(n.state, 900); // clamps high
+      n.setWeight(-50);
+      expect(n.state, 100); // clamps low
+    });
+
+    test('reset returns to 400', () {
+      SharedPreferences.setMockInitialValues({});
+      final n = FontWeightNotifier();
+      n.setWeight(700);
+      expect(n.state, 700);
       n.reset();
-      expect(n.state.weight, FontWeight.w400);
+      expect(n.state, 400);
     });
 
-    test('restores a persisted weight index', () async {
+    test('restores a persisted numeric weight', () async {
+      SharedPreferences.setMockInitialValues({'settings.fontWeight': 500});
+      final n = FontWeightNotifier();
+      await Future<void>.delayed(Duration.zero);
+      expect(n.state, 500);
+    });
+
+    test('migrates a legacy v1.4.22 index (0–3) to the actual weight',
+        () async {
+      // Legacy index 2 == Medium (500).
       SharedPreferences.setMockInitialValues({'settings.fontWeight': 2});
       final n = FontWeightNotifier();
-      // _restore() runs asynchronously right after construction.
       await Future<void>.delayed(Duration.zero);
-      expect(n.state.weight, FontWeight.w500);
+      expect(n.state, 500);
     });
 
-    test('ignores an out-of-range persisted index', () async {
-      SharedPreferences.setMockInitialValues({'settings.fontWeight': 99});
+    test('ignores an out-of-range persisted value', () async {
+      SharedPreferences.setMockInitialValues({'settings.fontWeight': 5000});
       final n = FontWeightNotifier();
       await Future<void>.delayed(Duration.zero);
-      expect(n.state.weight, FontWeight.w400);
+      expect(n.state, 400);
     });
   });
 }

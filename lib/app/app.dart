@@ -16,7 +16,7 @@ class TaskFlowApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final font = ref.watch(fontProvider);
     final fontScale = ref.watch(fontScaleProvider);
-    final fontWeight = ref.watch(fontWeightProvider);
+    final fontWeightValue = ref.watch(fontWeightProvider);
 
     var theme = AppTheme.buildTheme(themeMode);
 
@@ -25,8 +25,8 @@ class TaskFlowApp extends ConsumerWidget {
       theme = _applyFont(theme, font);
     }
 
-    // Apply the global font-weight preference (v1.4.22).
-    theme = _applyWeight(theme, fontWeight.weight);
+    // Apply the global font-weight preference (v1.4.22, numeric in v1.4.23).
+    theme = _applyWeight(theme, FontWeightNotifier.weightFrom(fontWeightValue));
 
     return MaterialApp.router(
       title: 'TaskFlow',

@@ -560,16 +560,16 @@ class _FontSizeCard extends ConsumerWidget {
   }
 }
 
-/// Card with selectable weight chips + a live preview for the global font
-/// weight (v1.4.22). The preview line is rendered with the app theme, so it
-/// updates the moment a new weight is picked.
+/// Card with a slider + numeric badge to adjust the global font weight
+/// (v1.4.23: numeric 100–900; was four fixed chips in v1.4.22). The preview
+/// line is rendered with the app theme, so it updates as the slider moves.
 class _FontWeightCard extends ConsumerWidget {
   const _FontWeightCard();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final current = ref.watch(fontWeightProvider);
+    final weight = ref.watch(fontWeightProvider); // int, 100–900
     final notifier = ref.read(fontWeightProvider.notifier);
 
     return Container(
@@ -586,21 +586,62 @@ class _FontWeightCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              ...FontWeightNotifier.options.map(
-                (option) => Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: _WeightChip(
-                    option: option,
-                    isSelected: current.id == option.id,
-                    onTap: () => notifier.setWeight(option),
+              // Thin "A" anchor (light end of the range)
+              Text(
+                'A',
+                textScaler: TextScaler.noScaling,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w200,
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                ),
+              ),
+              Expanded(
+                child: Slider(
+                  value: weight.toDouble(),
+                  min: FontWeightNotifier.minWeight.toDouble(),
+                  max: FontWeightNotifier.maxWeight.toDouble(),
+                  divisions: (FontWeightNotifier.maxWeight -
+                          FontWeightNotifier.minWeight) ~/
+                      100,
+                  label: '$weight',
+                  onChanged: (v) => notifier.setWeight(v.round()),
+                ),
+              ),
+              // Bold "A" anchor (heavy end of the range)
+              Text(
+                'A',
+                textScaler: TextScaler.noScaling,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Numeric badge
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$weight',
+                  textScaler: TextScaler.noScaling,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.primary,
                   ),
                 ),
               ),
-              const Spacer(),
-              // Reset (only when not on Regular)
-              if (current.id != 'regular')
+              // Reset (only when not the default 400)
+              if (weight != FontWeightNotifier.defaultWeight) ...[
+                const SizedBox(width: 6),
                 Tooltip(
-                  message: 'Reset to Regular',
+                  message: 'Reset to 400',
                   child: InkWell(
                     borderRadius: BorderRadius.circular(6),
                     onTap: notifier.reset,
@@ -614,6 +655,7 @@ class _FontWeightCard extends ConsumerWidget {
                     ),
                   ),
                 ),
+              ],
             ],
           ),
           const SizedBox(height: 10),
@@ -632,74 +674,6 @@ class _FontWeightCard extends ConsumerWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _WeightChip extends StatelessWidget {
-  final FontWeightOption option;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _WeightChip({
-    required this.option,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Tooltip(
-      message: option.labelEn,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? theme.colorScheme.primary.withOpacity(0.12)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.outline.withOpacity(0.4),
-              width: isSelected ? 1.5 : 1,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 'Aa' rendered at the actual weight so differences are visible.
-              Text(
-                'Aa',
-                textScaler: TextScaler.noScaling,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: option.weight,
-                  color: isSelected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                option.labelZh,
-                textScaler: TextScaler.noScaling,
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withOpacity(0.7),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

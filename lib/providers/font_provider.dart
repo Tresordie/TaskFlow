@@ -148,6 +148,18 @@ class AppFonts {
   ];
 
   static List<FontOption> get all => [...presets, ...systemFonts];
+
+  /// The out-of-the-box font (used until the user picks one).
+  ///
+  /// v1.4.23: defaults to Noto Sans SC instead of the system font. The system
+  /// default renders Latin via Segoe UI but Chinese via the Microsoft YaHei
+  /// fallback, which is visibly lighter than the Latin glyphs — so Chinese
+  /// text looked too faint. Noto Sans SC covers both scripts with true
+  /// 100–900 weights, so mixed Chinese + English renders evenly and crisply.
+  static FontOption get defaultFont => presets.firstWhere(
+        (f) => f.id == 'notoSansSC',
+        orElse: () => presets[0],
+      );
 }
 
 final fontProvider = StateNotifierProvider<FontNotifier, FontOption>((ref) {
@@ -158,7 +170,7 @@ class FontNotifier extends StateNotifier<FontOption> {
   static const _storageKey = 'settings.fontId';
   static const _customPrefix = 'custom_';
 
-  FontNotifier() : super(AppFonts.presets[0]) {
+  FontNotifier() : super(AppFonts.defaultFont) {
     _restore();
   }
 
@@ -268,88 +280,76 @@ class FontScaleNotifier extends StateNotifier<double> {
   }
 }
 
-/// A selectable global font-weight option.
-class FontWeightOption {
-  final String id;
-  final String labelZh;
-  final String labelEn;
-  final FontWeight weight;
-
-  const FontWeightOption({
-    required this.id,
-    required this.labelZh,
-    required this.labelEn,
-    required this.weight,
-  });
-}
-
-/// Global font weight (applied app-wide to body text; headings that already
-/// use a heavier weight keep their own). Persisted across restarts.
-final fontWeightProvider =
-    StateNotifierProvider<FontWeightNotifier, FontWeightOption>((ref) {
+/// Global font weight as a numeric value (100–900, step 100, default 400).
+/// Applied app-wide as a uniform delta relative to Regular (400) so the whole
+/// typographic hierarchy shifts together — headings always stay heavier than
+/// body text. Persisted across restarts.
+final fontWeightProvider = StateNotifierProvider<FontWeightNotifier, int>((
+  ref,
+) {
   return FontWeightNotifier();
 });
 
-class FontWeightNotifier extends StateNotifier<FontWeightOption> {
+class FontWeightNotifier extends StateNotifier<int> {
   static const _storageKey = 'settings.fontWeight';
+  static const minWeight = 100;
+  static const maxWeight = 900;
+  static const defaultWeight = 400;
 
-  static const List<FontWeightOption> options = [
-    FontWeightOption(
-      id: 'light',
-      labelZh: '偏细',
-      labelEn: 'Light',
-      weight: FontWeight.w300,
-    ),
-    FontWeightOption(
-      id: 'regular',
-      labelZh: '标准',
-      labelEn: 'Regular',
-      weight: FontWeight.w400,
-    ),
-    FontWeightOption(
-      id: 'medium',
-      labelZh: '适中',
-      labelEn: 'Medium',
-      weight: FontWeight.w500,
-    ),
-    FontWeightOption(
-      id: 'semibold',
-      labelZh: '加粗',
-      labelEn: 'Semi-bold',
-      weight: FontWeight.w600,
-    ),
-  ];
+  /// v1.4.22 stored an index (0–3) into a fixed 4-option list instead of the
+  /// weight itself. Used to migrate old values on first load.
+  static const _legacyWeights = [300, 400, 500, 600];
 
-  FontWeightNotifier() : super(options[1]) {
+  FontWeightNotifier() : super(defaultWeight) {
     _restore();
   }
+
+  /// Maps a numeric weight (e.g. 500) to the matching [FontWeight].
+  static FontWeight weightFrom(int value) {
+    final index = ((value ~/ 100) - 1).clamp(0, FontWeight.values.length - 1);
+    return FontWeight.values[index];
+  }
+
+  /// The current state as a [FontWeight].
+  FontWeight get fontWeight => weightFrom(state);
 
   Future<void> _restore() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getInt(_storageKey);
-      if (saved != null && saved >= 0 && saved < options.length) {
-        state = options[saved];
+      if (saved == null) return;
+      if (saved >= 0 && saved < _legacyWeights.length) {
+        // Legacy index from v1.4.22 — migrate to the actual weight value.
+        state = _legacyWeights[saved];
+      } else if (saved >= minWeight && saved <= maxWeight) {
+        state = _normalize(saved);
       }
     } catch (_) {
       // Persistence is best-effort; never block the app over it.
     }
   }
 
-  void setWeight(FontWeightOption option) {
-    state = option;
+  void setWeight(int weight) {
+    state = _normalize(weight);
     _persist();
   }
 
   void reset() {
-    state = options[1];
+    state = defaultWeight;
     _persist();
+  }
+
+  /// Clamps into 100–900 and rounds to the nearest hundred so the value
+  /// always maps onto a real [FontWeight].
+  static int _normalize(int weight) {
+    final clamped = weight.clamp(minWeight, maxWeight);
+    return (clamped / 100).round() * 100;
   }
 
   Future<void> _persist() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_storageKey, options.indexOf(state));
+      await prefs.setInt(_storageKey, state);
     } catch (_) {
       // Best-effort.
     }
