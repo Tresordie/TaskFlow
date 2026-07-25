@@ -9,6 +9,8 @@ import '../../data/services/ai_service.dart';
 import '../../providers/ai_provider.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
+import '../shared/app_markdown_body.dart';
+import '../shared/markdown_input.dart';
 
 /// Phase 2 — AI note parsing.
 /// Paste raw notes → LLM extracts structured tasks → one-click create.
@@ -22,6 +24,7 @@ class AiParseScreen extends ConsumerStatefulWidget {
 class _AiParseScreenState extends ConsumerState<AiParseScreen> {
   final _notesController = TextEditingController();
   final _scrollController = ScrollController();
+  late final FocusNode _notesFocus;
 
   bool _parsing = false;
   bool _creating = false;
@@ -30,8 +33,15 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
   List<ParsedTask> _results = [];
 
   @override
+  void initState() {
+    super.initState();
+    _notesFocus = markdownIndentFocusNode(_notesController);
+  }
+
+  @override
   void dispose() {
     _notesController.dispose();
+    _notesFocus.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -198,6 +208,15 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                     ],
                   ),
                 ),
+                // Formatting toolbar (Write mode only)
+                if (!_previewMode)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 6, 10, 0),
+                    child: MarkdownToolbar(
+                      controller: _notesController,
+                      refocus: _notesFocus,
+                    ),
+                  ),
                 // Content area
                 if (_previewMode)
                   Container(
@@ -214,9 +233,8 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                                   theme.colorScheme.onSurface.withOpacity(0.35),
                             ),
                           )
-                        : MarkdownBody(
+                        : AppMarkdownBody(
                             data: _notesController.text,
-                            selectable: true,
                             styleSheet:
                                 MarkdownStyleSheet.fromTheme(theme).copyWith(
                               p: const TextStyle(fontSize: 13, height: 1.5),
@@ -226,6 +244,7 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                 else
                   TextField(
                     controller: _notesController,
+                    focusNode: _notesFocus,
                     maxLines: 8,
                     minLines: 5,
                     style: const TextStyle(

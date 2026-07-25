@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -6,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
 import '../../providers/color_settings_provider.dart';
+import '../shared/app_markdown_body.dart';
 import '../shared/color_picker_dialog.dart';
 import '../shared/edit_task_dialog.dart';
 import '../shared/tree_indent.dart';
@@ -120,9 +122,17 @@ class _TaskDetailContent extends ConsumerWidget {
                   if (task.description != null &&
                       task.description!.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    Text(
-                      task.description!,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                    AppMarkdownBody(
+                      data: task.description!,
+                      hardenLineBreaks: true,
+                      styleSheet:
+                          MarkdownStyleSheet.fromTheme(Theme.of(context))
+                              .copyWith(
+                        p: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(height: 1.5),
+                      ),
                     ),
                   ],
                   const SizedBox(height: 12),

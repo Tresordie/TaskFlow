@@ -3,12 +3,13 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/markdown/html_export.dart';
 import '../../data/models/work_log.dart';
 import '../../providers/work_log_provider.dart';
+import '../shared/app_markdown_body.dart';
 import '../shared/markdown_input.dart';
 
 /// Work Log page — ported from the LinguaFlow Chrome extension's
@@ -314,7 +315,9 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
         ),
 
         // Two-column body: capture (input + records) on the left, AI output
-        // (summary + history) on the right — each scrolls independently.
+        // (summary + history) on the right. The bottom card of each column
+        // fills the remaining height and scrolls its list internally, so no
+        // bare page background is left below short content.
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(28, 18, 28, 28),
@@ -323,26 +326,25 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
               children: [
                 Expanded(
                   flex: 3,
-                  child: ListView(
-                    primary: false,
-                    padding: EdgeInsets.zero,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _buildInputCard(theme),
                       const SizedBox(height: 14),
-                      _buildRecordsCard(state, filtered, theme),
+                      Expanded(
+                          child: _buildRecordsCard(state, filtered, theme)),
                     ],
                   ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   flex: 2,
-                  child: ListView(
-                    primary: false,
-                    padding: EdgeInsets.zero,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _buildSummaryCard(state, notifier, filtered, theme),
                       const SizedBox(height: 14),
-                      _buildHistoryCard(state, theme),
+                      Expanded(child: _buildHistoryCard(state, theme)),
                     ],
                   ),
                 ),
@@ -374,6 +376,7 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
           child: DropdownButtonFormField<String>(
             initialValue: state.inputLang,
             isDense: true,
+            isExpanded: true,
             items: items(),
             onChanged: (v) {
               if (v != null) {
@@ -391,6 +394,7 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
           child: DropdownButtonFormField<String>(
             initialValue: state.outputLang,
             isDense: true,
+            isExpanded: true,
             items: items(),
             onChanged: (v) {
               if (v != null) {
@@ -416,9 +420,11 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
             Row(
               children: [
                 Icon(Icons.edit_note,
-                    size: 18, color: theme.colorScheme.primary),
+                    size: 17, color: theme.colorScheme.primary),
                 const SizedBox(width: 6),
-                Text('New record', style: theme.textTheme.titleMedium),
+                Text('New record',
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
                 if (_editingId != null) ...[
                   const SizedBox(width: 8),
                   Container(
@@ -446,11 +452,13 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
             TextField(
               controller: _inputController,
               focusNode: _inputFocus,
-              minLines: 5,
-              maxLines: 12,
+              minLines: 4,
+              maxLines: 8,
+              style: const TextStyle(fontSize: 13.5, height: 1.5),
               decoration: const InputDecoration(
                 hintText:
                     'Enter today\'s work...\n\ne.g.\n- Finished the login module front-end\n- Fixed the order-list pagination bug\n- Joined the requirements review meeting',
+                hintStyle: TextStyle(fontSize: 12.5),
                 border: OutlineInputBorder(),
               ),
             ),
@@ -459,23 +467,40 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
               children: [
                 Text(
                   'Ctrl+Enter to save · draft auto-saved',
-                  style: theme.textTheme.bodySmall?.copyWith(
+                  style: TextStyle(
+                      fontSize: 11.5,
                       color: theme.colorScheme.onSurface.withOpacity(0.45)),
                 ),
                 const Spacer(),
                 if (_editingId != null) ...[
                   OutlinedButton.icon(
                     onPressed: _cancelEdit,
-                    icon: const Icon(Icons.close, size: 16),
-                    label: const Text('Cancel'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 7),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    icon: const Icon(Icons.close, size: 14),
+                    label:
+                        const Text('Cancel', style: TextStyle(fontSize: 12.5)),
                   ),
                   const SizedBox(width: 8),
                 ],
                 ElevatedButton.icon(
                   onPressed: _saveRecord,
+                  style: ElevatedButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                   icon: Icon(_editingId != null ? Icons.edit : Icons.save,
-                      size: 16),
-                  label: Text(_editingId != null ? 'Update' : 'Save record'),
+                      size: 14),
+                  label: Text(
+                    _editingId != null ? 'Update' : 'Save record',
+                    style: const TextStyle(fontSize: 12.5),
+                  ),
                 ),
               ],
             ),
@@ -498,22 +523,80 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
+            // Title row (Spacer is only legal in a Flex, so the action
+            // buttons live here, not inside the chip Wrap below).
+            Row(
               children: [
                 Icon(Icons.list_alt,
-                    size: 18, color: theme.colorScheme.primary),
+                    size: 17, color: theme.colorScheme.primary),
                 const SizedBox(width: 6),
-                Text('Work records', style: theme.textTheme.titleMedium),
-                Text('${state.records.length}',
-                    style: theme.textTheme.bodySmall),
-                if (_hasFilter)
-                  Text('(filtered: ${filtered.length})',
-                      style: theme.textTheme.bodySmall?.copyWith(
+                Text('Work records',
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(width: 7),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Text('${state.records.length}',
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: theme.colorScheme.primary)),
+                ),
+                if (_hasFilter) ...[
+                  const SizedBox(width: 7),
+                  Text('filtered: ${filtered.length}',
+                      style: TextStyle(
+                          fontSize: 11,
                           color: theme.colorScheme.onSurface.withOpacity(0.5))),
-                const SizedBox(width: 12),
+                ],
+                if (_selectedIds.isNotEmpty) ...[
+                  const SizedBox(width: 7),
+                  Text('(${_selectedIds.length} selected)',
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary)),
+                ],
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () => _toggleSelectAll(filtered),
+                  icon: const Icon(Icons.checklist, size: 14),
+                  label: const Text('Select all',
+                      style: TextStyle(fontSize: 11.5)),
+                  style: TextButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: state.records.isEmpty ? null : _clearAllRecords,
+                  icon: const Icon(Icons.delete_sweep, size: 14),
+                  label:
+                      const Text('Clear all', style: TextStyle(fontSize: 11.5)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            // Filter chips row.
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
                 _filterChip(
                   label: _dateFrom == null
                       ? 'From date'
@@ -563,52 +646,73 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
                 if (_hasFilter)
                   TextButton(
                     onPressed: _clearFilter,
-                    child: const Text('Clear filter'),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text('Clear filter',
+                        style: TextStyle(fontSize: 11.5)),
                   ),
-                const SizedBox(width: 8),
-                TextButton.icon(
-                  onPressed: () => _toggleSelectAll(filtered),
-                  icon: const Icon(Icons.checklist, size: 16),
-                  label: const Text('Select all'),
-                ),
-                if (_selectedIds.isNotEmpty)
-                  Text('(${_selectedIds.length} selected)',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.primary)),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: state.records.isEmpty ? null : _clearAllRecords,
-                  icon: const Icon(Icons.delete_sweep, size: 16),
-                  label: const Text('Clear all'),
-                  style: TextButton.styleFrom(foregroundColor: Colors.red),
-                ),
               ],
             ),
             const Divider(height: 20),
-            if (filtered.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Center(
-                  child: Text(
-                    state.records.isEmpty
-                        ? 'No records yet — enter content above and click "Save record".'
-                        : 'No records match the current filter.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.5)),
-                  ),
-                ),
-              )
-            else
-              ...filtered.map((r) => _recordRow(r, dateFmt, timeFmt, theme)),
+            // Body: fills the remaining card height, scrolls internally.
+            Expanded(
+              child: filtered.isEmpty
+                  ? _buildEmptyRecords(theme)
+                  : ListView(
+                      primary: false,
+                      padding: EdgeInsets.zero,
+                      children: [
+                        for (final r in filtered)
+                          _recordRow(r, dateFmt, timeFmt, theme),
+                      ],
+                    ),
+            ),
           ],
         ),
       ),
     );
   }
 
+  /// Centered empty state for the records list — drawn inside the filled
+  /// card so a short list never leaves bare page background below.
+  Widget _buildEmptyRecords(ThemeData theme) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.inbox_outlined,
+              size: 38, color: theme.colorScheme.onSurface.withOpacity(0.22)),
+          const SizedBox(height: 10),
+          Text(
+            _hasFilter
+                ? 'No records match the current filter.'
+                : 'No work records yet',
+            style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: theme.colorScheme.onSurface.withOpacity(0.55)),
+          ),
+          if (!_hasFilter) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Enter content above and click "Save record" (Ctrl+Enter).',
+              style: TextStyle(
+                  fontSize: 11.5,
+                  color: theme.colorScheme.onSurface.withOpacity(0.38)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _filterChip({required String label, required VoidCallback onTap}) {
     return ActionChip(
-      label: Text(label, style: const TextStyle(fontSize: 12)),
+      label: Text(label, style: const TextStyle(fontSize: 11.5)),
       onPressed: onTap,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
@@ -619,7 +723,7 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
     final selected = _selectedIds.contains(r.id);
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         color: selected
             ? theme.colorScheme.primary.withOpacity(0.06)
@@ -642,16 +746,18 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
           ),
           const SizedBox(width: 8),
           SizedBox(
-            width: 78,
+            width: 74,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(dateFmt.format(r.dateTime),
-                    style: theme.textTheme.bodySmall?.copyWith(
+                    style: TextStyle(
+                        fontSize: 11,
                         color: theme.colorScheme.primary,
                         fontWeight: FontWeight.w600)),
                 Text(timeFmt.format(r.dateTime),
-                    style: theme.textTheme.bodySmall?.copyWith(
+                    style: TextStyle(
+                        fontSize: 10.5,
                         color: theme.colorScheme.onSurface.withOpacity(0.5))),
               ],
             ),
@@ -660,17 +766,22 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
           Expanded(
             child: Text(
               r.content,
-              style: theme.textTheme.bodyMedium,
+              style: TextStyle(
+                  fontSize: 13,
+                  height: 1.45,
+                  color: theme.colorScheme.onSurface.withOpacity(0.85)),
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.edit, size: 16),
+            icon: const Icon(Icons.edit, size: 15),
             tooltip: 'Edit',
+            visualDensity: VisualDensity.compact,
             onPressed: () => _editRecord(r),
           ),
           IconButton(
-            icon: const Icon(Icons.delete_outline, size: 16),
+            icon: const Icon(Icons.delete_outline, size: 15),
             tooltip: 'Delete',
+            visualDensity: VisualDensity.compact,
             onPressed: () => _deleteRecord(r),
           ),
         ],
@@ -691,22 +802,35 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.bolt, size: 18, color: theme.colorScheme.primary),
+                Icon(Icons.bolt, size: 17, color: theme.colorScheme.primary),
                 const SizedBox(width: 6),
-                Text('AI Key-Point Summary',
-                    style: theme.textTheme.titleMedium),
-                const Spacer(),
+                Flexible(
+                  child: Text('AI Key-Point Summary',
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed:
                       state.generating ? null : () => _generate(filtered),
+                  style: ElevatedButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                   icon: state.generating
                       ? const SizedBox(
-                          width: 14,
-                          height: 14,
+                          width: 12,
+                          height: 12,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.auto_awesome, size: 16),
-                  label: Text(state.generating ? 'Generating...' : 'Generate'),
+                      : const Icon(Icons.auto_awesome, size: 14),
+                  label: Text(
+                    state.generating ? 'Generating...' : 'Generate',
+                    style: const TextStyle(fontSize: 12.5),
+                  ),
                 ),
               ],
             ),
@@ -728,7 +852,7 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
-              constraints: const BoxConstraints(minHeight: 100),
+              constraints: const BoxConstraints(minHeight: 96, maxHeight: 280),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
@@ -739,13 +863,14 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
               child: state.result.isEmpty
                   ? Text(
                       'Pick a date range (or select records) and click "Generate" — the AI will distill your key points.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.45),
-                          fontStyle: FontStyle.italic),
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          fontStyle: FontStyle.italic,
+                          color: theme.colorScheme.onSurface.withOpacity(0.45)),
                     )
-                  : MarkdownBody(
-                      data: state.result,
-                      selectable: true,
+                  : SingleChildScrollView(
+                      primary: false,
+                      child: AppMarkdownBody(data: state.result),
                     ),
             ),
             if (state.result.isNotEmpty) ...[
@@ -755,24 +880,42 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
                 children: [
                   OutlinedButton.icon(
                     onPressed: () => _copySummary(state.result),
-                    icon: const Icon(Icons.copy, size: 15),
-                    label: const Text('Copy'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    icon: const Icon(Icons.copy, size: 13),
+                    label: const Text('Copy', style: TextStyle(fontSize: 11.5)),
                   ),
                   const SizedBox(width: 8),
                   OutlinedButton.icon(
                     onPressed: _exporting
                         ? null
                         : () => _download(state.result, markdown: true),
-                    icon: const Icon(Icons.download, size: 15),
-                    label: const Text('MD'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    icon: const Icon(Icons.download, size: 13),
+                    label: const Text('MD', style: TextStyle(fontSize: 11.5)),
                   ),
                   const SizedBox(width: 8),
                   OutlinedButton.icon(
                     onPressed: _exporting
                         ? null
                         : () => _download(state.result, markdown: false),
-                    icon: const Icon(Icons.download, size: 15),
-                    label: const Text('HTML'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    icon: const Icon(Icons.download, size: 13),
+                    label: const Text('HTML', style: TextStyle(fontSize: 11.5)),
                   ),
                 ],
               ),
@@ -797,100 +940,163 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.history, size: 18, color: theme.colorScheme.primary),
+                Icon(Icons.history, size: 17, color: theme.colorScheme.primary),
                 const SizedBox(width: 6),
-                Text('Summary history', style: theme.textTheme.titleMedium),
-                const SizedBox(width: 8),
-                Text('${state.summaries.length}',
-                    style: theme.textTheme.bodySmall),
+                Text('Summary history',
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(width: 7),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Text('${state.summaries.length}',
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: theme.colorScheme.primary)),
+                ),
                 const Spacer(),
                 TextButton.icon(
                   onPressed:
                       state.summaries.isEmpty ? null : _clearAllSummaries,
-                  icon: const Icon(Icons.delete_sweep, size: 16),
-                  label: const Text('Clear all'),
-                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  icon: const Icon(Icons.delete_sweep, size: 14),
+                  label:
+                      const Text('Clear all', style: TextStyle(fontSize: 11.5)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                 ),
               ],
             ),
             const Divider(height: 20),
-            if (state.summaries.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Center(
-                  child: Text(
-                    'No history yet — generated summaries are saved automatically.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.5)),
-                  ),
-                ),
-              )
-            else
-              ...state.summaries.map((s) => InkWell(
-                    onTap: () =>
-                        ref.read(workLogProvider.notifier).loadSummary(s),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                            color: theme.colorScheme.outline.withOpacity(0.2)),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+            // Body: fills the remaining card height, scrolls internally.
+            Expanded(
+              child: state.summaries.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          SizedBox(
-                            width: 78,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(dateFmt.format(s.dateTime),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.primary,
-                                        fontWeight: FontWeight.w600)),
-                                Text(timeFmt.format(s.dateTime),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.onSurface
-                                            .withOpacity(0.5))),
-                              ],
-                            ),
+                          Icon(Icons.auto_stories_outlined,
+                              size: 34,
+                              color: theme.colorScheme.onSurface
+                                  .withOpacity(0.22)),
+                          const SizedBox(height: 10),
+                          Text(
+                            'No history yet',
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.55)),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${s.dateRange} · ${kWorkLogLanguages[s.outputLang] ?? s.outputLang}',
-                                  style: theme.textTheme.bodySmall,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  s.content.length > 100
-                                      ? '${s.content.substring(0, 100)}...'
-                                      : s.content,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurface
-                                          .withOpacity(0.6)),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 16),
-                            onPressed: () => ref
-                                .read(workLogProvider.notifier)
-                                .deleteSummary(s.id),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Generated summaries are saved automatically.',
+                            style: TextStyle(
+                                fontSize: 11.5,
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.38)),
                           ),
                         ],
                       ),
+                    )
+                  : ListView(
+                      primary: false,
+                      padding: EdgeInsets.zero,
+                      children: [
+                        for (final s in state.summaries)
+                          InkWell(
+                            onTap: () => ref
+                                .read(workLogProvider.notifier)
+                                .loadSummary(s),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                    color: theme.colorScheme.outline
+                                        .withOpacity(0.2)),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(
+                                    width: 70,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(dateFmt.format(s.dateTime),
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                color:
+                                                    theme.colorScheme.primary,
+                                                fontWeight: FontWeight.w600)),
+                                        Text(timeFmt.format(s.dateTime),
+                                            style: TextStyle(
+                                                fontSize: 10.5,
+                                                color: theme
+                                                    .colorScheme.onSurface
+                                                    .withOpacity(0.5))),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${s.dateRange} · ${kWorkLogLanguages[s.outputLang] ?? s.outputLang}',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: theme.colorScheme.onSurface
+                                                  .withOpacity(0.7)),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          s.content.length > 100
+                                              ? '${s.content.substring(0, 100)}...'
+                                              : s.content,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                              fontSize: 11.5,
+                                              height: 1.4,
+                                              color: theme.colorScheme.onSurface
+                                                  .withOpacity(0.55)),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline,
+                                        size: 15),
+                                    visualDensity: VisualDensity.compact,
+                                    onPressed: () => ref
+                                        .read(workLogProvider.notifier)
+                                        .deleteSummary(s.id),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                  )),
+            ),
           ],
         ),
       ),
@@ -903,100 +1109,10 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
     if (ok) await ref.read(workLogProvider.notifier).clearSummaries();
   }
 
-  // ── Markdown → HTML export (ported from the extension) ───────────────
+  // ── Markdown → HTML export (logic lives in core/markdown/html_export.dart
+  //    so it is unit-testable; see test/html_export_test.dart) ────────────
 
-  String _wrapHtml(String body) {
-    return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8"/>\n'
-        '<title>Work Summary</title>\n'
-        '<style>\n'
-        '  body{font-family:Inter,"Segoe UI",sans-serif;background:#0a0a0f;color:#e8eaf0;'
-        'padding:40px 48px;max-width:960px;margin:0 auto;line-height:1.85;font-size:15px;}\n'
-        '  h2{color:#a78bfa;font-size:1.5rem;border-bottom:1px solid rgba(139,92,246,0.3);padding-bottom:10px;margin:32px 0 16px;}\n'
-        '  h3{color:#22d3ee;font-size:1.15rem;margin:24px 0 10px;}\n'
-        '  h4{color:#c4b5fd;font-size:1rem;margin:18px 0 8px;}\n'
-        '  ul,ol{margin:8px 0 16px 20px;}\n'
-        '  li{margin:6px 0;line-height:1.7;}\n'
-        '  strong{color:#c4b5fd;}\n'
-        '  hr{border:none;border-top:1px solid rgba(139,92,246,0.15);margin:24px 0;}\n'
-        '  p{margin:8px 0;}\n'
-        '  code{background:rgba(139,92,246,0.12);padding:2px 6px;border-radius:4px;font-size:0.9em;}\n'
-        '  a{color:#22d3ee;}\n'
-        '</style>\n</head>\n<body>\n$body\n</body>\n</html>';
-  }
+  String _wrapHtml(String body) => wrapHtmlExportPage(body);
 
-  String _markdownToHtml(String md) {
-    String escape(String s) => s
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;');
-
-    final lines = escape(md).split('\n');
-    final out = <String>[];
-    String? inList; // 'ul' | 'ol' | null
-
-    void closeList() {
-      if (inList != null) {
-        out.add('</$inList>');
-        inList = null;
-      }
-    }
-
-    for (final raw in lines) {
-      final line = raw.trim();
-      if (line.isEmpty) {
-        closeList();
-        continue;
-      }
-      if (RegExp(r'^---+\s*$').hasMatch(line)) {
-        closeList();
-        out.add('<hr>');
-        continue;
-      }
-      var m = RegExp(r'^##\s+(.+)').firstMatch(line);
-      if (m != null) {
-        closeList();
-        out.add('<h2>${m[1]}</h2>');
-        continue;
-      }
-      m = RegExp(r'^###\s+(.+)').firstMatch(line);
-      if (m != null) {
-        closeList();
-        out.add('<h3>${m[1]}</h3>');
-        continue;
-      }
-      m = RegExp(r'^####\s+(.+)').firstMatch(line);
-      if (m != null) {
-        closeList();
-        out.add('<h4>${m[1]}</h4>');
-        continue;
-      }
-      m = RegExp(r'^[-*]\s+(.+)').firstMatch(line);
-      if (m != null) {
-        if (inList != 'ul') {
-          closeList();
-          out.add('<ul>');
-          inList = 'ul';
-        }
-        out.add('<li>${m[1]}</li>');
-        continue;
-      }
-      m = RegExp(r'^\d+\.\s+(.+)').firstMatch(line);
-      if (m != null) {
-        if (inList != 'ol') {
-          closeList();
-          out.add('<ol>');
-          inList = 'ol';
-        }
-        out.add('<li>${m[1]}</li>');
-        continue;
-      }
-      closeList();
-      var text = line
-          .replaceAll(RegExp(r'\*\*(.+?)\*\*'), '<strong>\$1</strong>')
-          .replaceAll(RegExp(r'`(.+?)`'), '<code>\$1</code>');
-      out.add('<p>$text</p>');
-    }
-    closeList();
-    return out.join('\n');
-  }
+  String _markdownToHtml(String src) => markdownToHtmlExport(src);
 }

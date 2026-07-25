@@ -300,21 +300,34 @@ Rules:
   }) {
     if (outputChinese) {
       return '你是工作汇报总结助手。请阅读以下工作记录，提取关键要点并生成结构化的中文总结。\n\n'
-          '输出格式：\n'
+          '输出格式（严格遵守，不得增删层级，不得更换或省略emoji）：\n'
           '## 📋 工作总结 ($dateRange)\n'
           '### 🔑 要点总结\n'
           '- [要点]\n'
           '### 📝 要点详述\n'
-          '**1. [标题]** 详细阐述';
+          '#### 1. [标题]\n'
+          '详细阐述段落\n\n'
+          '硬性规则：\n'
+          '- 只输出纯Markdown，严禁输出LaTeX、美元符号或"\$1"之类的编号占位符；\n'
+          '- 编号一律使用纯数字"1. 2. 3."；\n'
+          '- 每个"#### N. 标题"之后另起一段写详述内容。';
     }
     return 'Role: work summarizer.\n'
         'Rule: read the input but write ONLY in the requested output language.\n'
-        'Format:\n'
+        'Output EXACTLY this Markdown structure (do not add or remove levels, '
+        'do not swap or drop the emoji):\n'
         '## 📋 Work Summary\n'
         '### 🔑 Key Points\n'
         '- point\n'
         '### 📝 Detailed Breakdown\n'
-        '**1. title** elaboration.';
+        '#### 1. Title\n'
+        'Elaboration paragraph\n\n'
+        'Hard rules:\n'
+        '- Output plain Markdown only. NEVER output LaTeX, dollar signs, or '
+        '"\$1"-style numbering placeholders.\n'
+        '- Number items with plain digits "1. 2. 3.".\n'
+        '- Each "#### N. Title" heading is followed by its elaboration '
+        'paragraph on a new line.';
   }
 
   /// User prompt for the work-log summarizer (exposed for tests).
@@ -373,6 +386,14 @@ Rules:
     'fa': 'Persian',
   };
 
+  /// Strips `"$1"`-style numbering placeholders that some models emit
+  /// (e.g. `#### $1. Title` or a bare `$1` line). The digit is kept and the
+  /// dollar sign dropped, so `#### $1. Title` becomes `#### 1. Title`.
+  /// Real inline LaTeX is left alone because genuine TeX rarely starts with
+  /// a bare integer right after `$`.
+  static String stripDollarPlaceholders(String text) =>
+      text.replaceAllMapped(RegExp(r'\$(\d+)\$?'), (m) => m.group(1) ?? '');
+
   /// Normalizes LLM output whitespace/markdown the same way the extension
   /// did: unify newlines, trim trailing spaces, collapse 3+ blank lines,
   /// strip leading/trailing blanks, tidy list-marker spacing and CJK
@@ -383,10 +404,18 @@ Rules:
     t = t.split('\n').map((l) => l.trimRight()).join('\n');
     t = t.replaceAll(RegExp(r'\n{3,}'), '\n\n');
     t = t.replaceAll(RegExp(r'^\n+'), '').replaceAll(RegExp(r'\n+$'), '');
-    t = t.replaceAll(RegExp(r'^([\s]*[-*+])\s{2,}', multiLine: true), r'$1 ');
-    t = t.replaceAll(RegExp(r'^([\s]*\d+\.)\s{2,}', multiLine: true), r'$1 ');
-    t = t.replaceAll(RegExp(r'([。！？；])([^\n\s])'), r'$1 $2');
-    t = t.replaceAll(RegExp(r'\s+([。！？，；：、])'), r'$1');
+    t = stripDollarPlaceholders(t);
+    // NOTE: these use replaceAllMapped because Dart's replaceAll does NOT
+    // interpret "$1"-style group references — it would insert the literal
+    // text "$1" into the output (which is exactly the artifact that leaked
+    // into exported summaries before v1.4.21).
+    t = t.replaceAllMapped(
+        RegExp(r'^([\s]*[-*+])\s{2,}', multiLine: true), (m) => '${m[1]} ');
+    t = t.replaceAllMapped(
+        RegExp(r'^([\s]*\d+\.)\s{2,}', multiLine: true), (m) => '${m[1]} ');
+    t = t.replaceAllMapped(
+        RegExp(r'([。！？；])([^\n\s])'), (m) => '${m[1]} ${m[2]}');
+    t = t.replaceAllMapped(RegExp(r'\s+([。！？，；：、])'), (m) => '${m[1]}');
     return t;
   }
 

@@ -4,13 +4,12 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../core/markdown/latex_support.dart';
-import '../../core/markdown/line_breaks.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/open_folder.dart';
 import '../../data/models/task.dart';
 import '../../data/services/attachment_service.dart';
 import '../../providers/task_providers.dart';
+import '../shared/app_markdown_body.dart';
 import '../shared/markdown_input.dart';
 import 'edit_entry_dialog.dart';
 
@@ -632,16 +631,10 @@ class _LogEntryItem extends StatelessWidget {
                   ),
                   if (entry.content.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    MarkdownBody(
-                      data: hardenMarkdownLineBreaks(entry.content),
+                    AppMarkdownBody(
+                      data: entry.content,
+                      hardenLineBreaks: true,
                       styleSheet: _markdownStyleSheet(context),
-                      inlineSyntaxes: LatexMarkdown.syntaxes(),
-                      builders: LatexMarkdown.builders(
-                        Theme.of(context)
-                            .textTheme
-                            .bodyLarge
-                            ?.copyWith(fontSize: 14),
-                      ),
                       onTapLink: (text, href, title) {
                         if (href == null) return;
                         final uri = Uri.tryParse(href);

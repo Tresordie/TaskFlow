@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
+import 'markdown_input.dart';
 import 'suggestion_field.dart';
 import 'tree_indent.dart';
 
@@ -30,6 +31,7 @@ class EditTaskDialog extends ConsumerStatefulWidget {
 class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
+  late final FocusNode _descriptionFocus;
   late final TextEditingController _projectController;
   final _subStepController = TextEditingController();
   late List<SubStep> _subSteps;
@@ -49,6 +51,7 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
     _titleController = TextEditingController(text: widget.task.title);
     _descriptionController =
         TextEditingController(text: widget.task.description ?? '');
+    _descriptionFocus = markdownIndentFocusNode(_descriptionController);
     _projectController = TextEditingController(text: widget.task.project);
     // Deep copy: a shallow List.from would share SubStep instances with
     // the live task, leaking in-place edits even when Cancel is pressed.
@@ -70,6 +73,7 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _descriptionFocus.dispose();
     _projectController.dispose();
     _subStepController.dispose();
     _addChildController.dispose();
@@ -213,12 +217,18 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
                 // Description field
                 Text('Description', style: theme.textTheme.labelLarge),
                 const SizedBox(height: 6),
+                MarkdownToolbar(
+                  controller: _descriptionController,
+                  refocus: _descriptionFocus,
+                ),
+                const SizedBox(height: 8),
                 TextField(
                   controller: _descriptionController,
+                  focusNode: _descriptionFocus,
                   maxLines: 4,
                   minLines: 2,
                   decoration: const InputDecoration(
-                    hintText: 'Add more details (optional)',
+                    hintText: 'Add more details (optional, Markdown supported)',
                   ),
                 ),
                 const SizedBox(height: 16),

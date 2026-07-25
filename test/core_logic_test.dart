@@ -1219,6 +1219,49 @@ void main() {
     test('autoFormatResult collapses blank lines and trims edges', () {
       expect(AiService.autoFormatResult('\n\na  \n\n\n\nb\n\n'), 'a\n\nb');
     });
+
+    test('system prompts prescribe "#### 1." breakdown headings', () {
+      final zh = AiService.workLogSystemPrompt(
+          outputChinese: true, dateRange: '2026-07-21');
+      final en = AiService.workLogSystemPrompt(
+          outputChinese: false, dateRange: '2026-07-21');
+      expect(zh, contains('#### 1.'));
+      expect(en, contains('#### 1.'));
+      // Both variants explicitly ban placeholder numbering.
+      expect(zh, contains('占位符'));
+      expect(en.toLowerCase(), contains('placeholder'));
+    });
+
+    test('stripDollarPlaceholders converts "\$1" artifacts to plain digits',
+        () {
+      expect(AiService.stripDollarPlaceholders('#### \$1. Fix bug'),
+          '#### 1. Fix bug');
+      expect(AiService.stripDollarPlaceholders('\$1'), '1');
+      expect(AiService.stripDollarPlaceholders('\$1\$'), '1');
+      expect(AiService.stripDollarPlaceholders('\$2. 第二点'), '2. 第二点');
+    });
+
+    test('stripDollarPlaceholders leaves real LaTeX alone', () {
+      expect(AiService.stripDollarPlaceholders(r'$x^2$ and $E=mc^2$'),
+          r'$x^2$ and $E=mc^2$');
+    });
+
+    test('autoFormatResult strips "\$1" placeholders end-to-end', () {
+      final out =
+          AiService.autoFormatResult('### 📝 要点详述\n#### \$1. 修复bug\n\$2. 第二点');
+      expect(out, contains('#### 1. 修复bug'));
+      expect(out, contains('2. 第二点'));
+      expect(out, isNot(contains('\$1')));
+    });
+
+    test('autoFormatResult tidies markers/punctuation via real group refs', () {
+      // These rules silently inserted literal "\$1"/"\$2" before v1.4.21
+      // (Dart replaceAll does not expand group references).
+      expect(AiService.autoFormatResult('-  point'), '- point');
+      expect(AiService.autoFormatResult('1.  point'), '1. point');
+      expect(AiService.autoFormatResult('完成。下一步'), '完成。 下一步');
+      expect(AiService.autoFormatResult('标题 ：内容'), '标题：内容');
+    });
   });
 
   group('WorkLog models JSON round-trip', () {
