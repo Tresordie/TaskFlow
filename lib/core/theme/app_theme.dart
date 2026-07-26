@@ -92,17 +92,16 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: mode.brightness,
-      // Segoe UI is the Windows system font (excellent Latin rendering);
-      // when unavailable Flutter falls back to bundled Roboto. The
-      // fallback chain gives CJK glyphs a consistent modern sans
-      // (YaHei on Windows, PingFang/Hiragino on macOS) so mixed
-      // Chinese/English text renders evenly.
-      fontFamily: 'Segoe UI',
+      // v1.4.29 aesthetics: bundled Inter for Latin + HarmonyOS Sans SC for
+      // CJK. Flutter's per-glyph fallback renders English with Inter and
+      // Chinese with HarmonyOS automatically, giving even, modern mixed
+      // text on every machine. System fonts remain as a final safety net.
+      fontFamily: 'Inter',
       fontFamilyFallback: const [
+        'HarmonyOS Sans SC',
         'Microsoft YaHei UI',
         'Microsoft YaHei',
         'PingFang SC',
-        'Hiragino Sans GB',
         'Noto Sans SC',
         'sans-serif',
       ],
@@ -142,81 +141,131 @@ class AppTheme {
         foregroundColor: p.textPrimary,
         surfaceTintColor: Colors.transparent,
       ),
+      // v1.4.29: a refined type scale tuned for Inter + HarmonyOS Sans SC.
+      // Slightly tighter letter-spacing on headings, a touch more line-height
+      // on body text, and clearer weight contrast make mixed CJK/Latin text
+      // noticeably easier to scan.
       textTheme: TextTheme(
         headlineLarge: TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.w700,
           color: p.textPrimary,
-          letterSpacing: -0.5,
+          letterSpacing: -0.6,
+          height: 1.25,
         ),
         headlineMedium: TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.w600,
           color: p.textPrimary,
+          letterSpacing: -0.3,
+          height: 1.3,
         ),
         titleLarge: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: p.textPrimary,
+          letterSpacing: -0.2,
+          height: 1.35,
         ),
         titleMedium: TextStyle(
           fontSize: 15,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
           color: p.textPrimary,
+          letterSpacing: 0,
+          height: 1.4,
         ),
         bodyLarge: TextStyle(
           fontSize: 15,
+          fontWeight: FontWeight.w400,
           color: p.textPrimary,
-          height: 1.5,
+          letterSpacing: 0.1,
+          height: 1.55,
         ),
         bodyMedium: TextStyle(
           fontSize: 14,
+          fontWeight: FontWeight.w400,
           color: p.textSecondary,
-          height: 1.4,
+          letterSpacing: 0.1,
+          height: 1.5,
         ),
         labelSmall: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          letterSpacing: 0.5,
+          letterSpacing: 0.6,
           color: p.textSecondary,
+          height: 1.3,
         ),
       ),
+      // v1.4.29: softer, more refined input fields — a slightly larger
+      // radius, a subtle filled tint, and a clearer focus ring.
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: isDark ? p.bg : p.bg,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: p.border),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: p.border.withOpacity(0.9)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: p.border),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: p.border.withOpacity(0.9)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: p.primary, width: 1.5),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: p.primary, width: 1.6),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
+      // v1.4.29: buttons get a touch more presence — a hair more vertical
+      // padding, a semi-bold label, and a soft shadow that lifts on hover.
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: p.primary,
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+          shadowColor: p.primary.withOpacity(0.35),
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),
+      // v1.4.29: outlined + text buttons share the same radius & label weight
+      // so all button types feel like one family.
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: p.primary,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          side: BorderSide(color: p.border.withOpacity(1.0), width: 1.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: p.primary,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
       chipTheme: ChipThemeData(
         backgroundColor: p.primaryGhost,
-        selectedColor: p.primary.withOpacity(0.2),
+        selectedColor: p.primary.withOpacity(0.22),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(20),
         ),
         side: BorderSide.none,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         labelStyle: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,
@@ -224,14 +273,65 @@ class AppTheme {
         ),
       ),
       dividerTheme: DividerThemeData(
-        color: p.border,
+        color: p.border.withOpacity(0.8),
         thickness: 1,
       ),
       dialogTheme: DialogThemeData(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
         ),
         backgroundColor: p.surface,
+        elevation: isDark ? 0 : 8,
+        shadowColor: Colors.black.withOpacity(0.18),
+      ),
+      // v1.4.29: rounded, floating snackbars + tooltips + popup menus so
+      // transient UI matches the card/dialog radius language.
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: isDark ? p.card : const Color(0xFF1E293B),
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        contentTextStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: Colors.white,
+        ),
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: isDark ? p.card : const Color(0xFF334155),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        textStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: Colors.white,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: p.surface,
+        elevation: isDark ? 0 : 8,
+        shadowColor: Colors.black.withOpacity(0.16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: p.border.withOpacity(0.7), width: 1),
+        ),
+      ),
+      listTileTheme: ListTileThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       ),
       // v1.4.24: slim, rounded scrollbars that brighten on hover — a small
       // detail that makes the desktop UI feel much more polished.

@@ -10,4 +10,4 @@
 /// Displaying the real version matters for support: before v1.4.27 the
 /// About card was hard-coded to "v1.0.0", making it impossible to tell
 /// whether a reported bug was observed on the latest build.
-const String kAppVersion = '1.4.27';
+const String kAppVersion = '1.4.29';

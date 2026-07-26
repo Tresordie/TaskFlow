@@ -318,37 +318,51 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
         // (summary + history) on the right. The bottom card of each column
         // fills the remaining height and scrolls its list internally, so no
         // bare page background is left below short content.
+        //
+        // v1.4.28: each column is its own selection scope. The disabled
+        // barrier hides both columns from the app-wide SelectionArea, and
+        // each column's own SelectionArea restores drag selection inside
+        // it. Without the barrier, one drag across the AI summary could
+        // extend the document-order selection range into the left column
+        // and highlight the New record / Work records text too.
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(28, 18, 28, 28),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildInputCard(theme),
-                      const SizedBox(height: 14),
-                      Expanded(
-                          child: _buildRecordsCard(state, filtered, theme)),
-                    ],
+            child: SelectionContainer.disabled(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: SelectionArea(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildInputCard(theme),
+                          const SizedBox(height: 14),
+                          Expanded(
+                              child:
+                                  _buildRecordsCard(state, filtered, theme)),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildSummaryCard(state, notifier, filtered, theme),
-                      const SizedBox(height: 14),
-                      Expanded(child: _buildHistoryCard(state, theme)),
-                    ],
+                  const SizedBox(width: 14),
+                  Expanded(
+                    flex: 2,
+                    child: SelectionArea(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildSummaryCard(state, notifier, filtered, theme),
+                          const SizedBox(height: 14),
+                          Expanded(child: _buildHistoryCard(state, theme)),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -484,7 +498,12 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
               style: const TextStyle(fontSize: 13.5, height: 1.5),
               decoration: const InputDecoration(
                 hintText:
-                    'Enter today\'s work...\n\ne.g.\n- Finished the login module front-end\n- Fixed the order-list pagination bug\n- Joined the requirements review meeting',
+                    '''Enter today's work...
+
+e.g.
+- Finished the login module front-end
+- Fixed the order-list pagination bug
+- Joined the requirements review meeting''',
                 hintStyle: TextStyle(fontSize: 12.5),
                 border: OutlineInputBorder(),
               ),
@@ -773,21 +792,33 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
             ),
           ),
           const SizedBox(width: 8),
+          // Date + time are merged into a SINGLE Text.rich (v1.4.28): as two
+          // separate Text selectables, a drag that starts at the content's
+          // top-left landed "above" the time Text, whose adjustDragOffset()
+          // snapped the start edge back to offset 0 (SelectionResult.previous)
+          // and the app-wide _initSelection stopped before ever reaching the
+          // content — so records could not be selected left-to-right. One
+          // selectable spanning both lines removes that geometric dead-zone.
           SizedBox(
             width: 74,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(dateFmt.format(r.dateTime),
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '${dateFmt.format(r.dateTime)}\n',
                     style: TextStyle(
                         fontSize: 11,
                         color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w600)),
-                Text(timeFmt.format(r.dateTime),
+                        fontWeight: FontWeight.w600),
+                  ),
+                  TextSpan(
+                    text: timeFmt.format(r.dateTime),
                     style: TextStyle(
                         fontSize: 10.5,
-                        color: theme.colorScheme.onSurface.withOpacity(0.5))),
-              ],
+                        color: theme.colorScheme.onSurface.withOpacity(0.5)),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 8),

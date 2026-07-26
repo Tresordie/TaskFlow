@@ -46,17 +46,20 @@ class AppColors {
   static const Color info = Color(0xFF3B82F6);
 
   // ─── Default (Indigo) Light ───
+  // v1.4.29: textSecondary deepened a touch (475569 → 526077) for better
+  // contrast on white; primaryGhost softened so tinted backgrounds feel
+  // lighter and airier.
   static const ThemePalette indigoLight = ThemePalette(
-    bg: Color(0xFFF8FAFC),
+    bg: Color(0xFFF7F8FC),
     surface: Color(0xFFFFFFFF),
     card: Color(0xFFFFFFFF),
-    border: Color(0xFFE2E8F0),
-    textPrimary: Color(0xFF1E293B),
-    textSecondary: Color(0xFF475569),
+    border: Color(0xFFE4E8F0),
+    textPrimary: Color(0xFF1A2233),
+    textSecondary: Color(0xFF526077),
     primary: Color(0xFF6366F1),
     primaryLight: Color(0xFF818CF8),
     primaryDark: Color(0xFF4F46E5),
-    primaryGhost: Color(0xFFEEF2FF),
+    primaryGhost: Color(0xFFF0F1FE),
   );
 
   // ─── Fresh Green (清新淡绿) ───
@@ -130,17 +133,22 @@ class AppColors {
   );
 
   // ─── Dark ───
+  // v1.4.29: card lifted slightly above surface (1E293B → 253047) so panels
+  // read as distinct layers instead of one flat grey. Text tones are pulled
+  // DOWN from near-white to a soft warm-grey (F1F5F9 → CBD4E1) — full-white
+  // text on a dark background is glaring/harsh; the softer tone keeps contrast
+  // comfortable for long reading while staying clearly legible.
   static const ThemePalette dark = ThemePalette(
-    bg: Color(0xFF0F172A),
-    surface: Color(0xFF1E293B),
-    card: Color(0xFF1E293B),
-    border: Color(0xFF334155),
-    textPrimary: Color(0xFFF1F5F9),
-    textSecondary: Color(0xFFA6B7CE),
+    bg: Color(0xFF0B1120),
+    surface: Color(0xFF1A2333),
+    card: Color(0xFF253047),
+    border: Color(0xFF36435C),
+    textPrimary: Color(0xFFCBD4E1),
+    textSecondary: Color(0xFF9AA9BF),
     primary: Color(0xFF818CF8),
     primaryLight: Color(0xFFA5B4FC),
     primaryDark: Color(0xFF6366F1),
-    primaryGhost: Color(0xFF1E1B4B),
+    primaryGhost: Color(0xFF232055),
   );
 
   // ─── Legacy aliases (for existing code compatibility) ───
@@ -154,8 +162,8 @@ class AppColors {
   static const Color darkSurface = Color(0xFF1E293B);
   static const Color darkCard = Color(0xFF1E293B);
   static const Color darkBorder = Color(0xFF334155);
-  static const Color darkTextPrimary = Color(0xFFF1F5F9);
-  static const Color darkTextSecondary = Color(0xFFA6B7CE);
+  static const Color darkTextPrimary = Color(0xFFCBD4E1);
+  static const Color darkTextSecondary = Color(0xFF9AA9BF);
   static const Color primary = Color(0xFF6366F1);
   static const Color primaryLight = Color(0xFF818CF8);
   static const Color primaryDark = Color(0xFF4F46E5);

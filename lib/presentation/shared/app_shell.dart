@@ -20,7 +20,9 @@ class AppShell extends StatelessWidget {
     // (above the Navigator) throws in debug and silently breaks selection
     // in release. Do not add screen-local SelectionAreas below this: the
     // nesting also breaks drag selection.
-    final content = SelectionArea(child: child);
+    final content = SelectionArea(
+      child: child,
+    );
 
     return Scaffold(
       body: Column(
@@ -219,7 +221,7 @@ class _Sidebar extends StatelessWidget {
   }
 }
 
-class _NavItem extends StatelessWidget {
+class _NavItem extends StatefulWidget {
   final IconData icon;
   final IconData activeIcon;
   final String label;
@@ -235,8 +237,23 @@ class _NavItem extends StatelessWidget {
   });
 
   @override
+  State<_NavItem> createState() => _NavItemState();
+}
+
+class _NavItemState extends State<_NavItem> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isActive = widget.isActive;
+    // v1.4.29: active item gets a leading accent bar + a soft tinted pill;
+    // hover (when inactive) reveals a faint wash so the nav feels alive.
+    final bg = isActive
+        ? theme.colorScheme.primary.withOpacity(0.12)
+        : _hovered
+            ? theme.colorScheme.onSurface.withOpacity(0.05)
+            : Colors.transparent;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 1),
@@ -245,20 +262,34 @@ class _NavItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
-          onTap: onTap,
+          onTap: widget.onTap,
+          onHover: (h) => setState(() => _hovered = h),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: isActive
-                  ? theme.colorScheme.primary.withOpacity(0.12)
-                  : Colors.transparent,
+              color: bg,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               children: [
+                // Leading accent bar for the active item.
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  curve: Curves.easeOutCubic,
+                  width: 3,
+                  height: 18,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? theme.colorScheme.primary
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
                 Icon(
-                  isActive ? activeIcon : icon,
+                  isActive ? widget.activeIcon : widget.icon,
                   size: 18,
                   color: isActive
                       ? theme.colorScheme.primary
@@ -266,7 +297,7 @@ class _NavItem extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  label,
+                  widget.label,
                   style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,

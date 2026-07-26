@@ -27,8 +27,11 @@ class TaskTagProjectMeta extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colors = ref.watch(colorSettingsProvider);
+    // v1.4.29: dark-mode fallback uses the soft body-text tone instead of the
+    // (much darker) border color — darkBorder is meant for hairlines, so using
+    // it for Project/Tag text made them nearly illegible on dark surfaces.
     final muted = theme.brightness == Brightness.dark
-        ? AppColors.darkBorder
+        ? AppColors.darkTextSecondary
         : AppColors.lightTextSecondary;
 
     final project = task.project.trim();

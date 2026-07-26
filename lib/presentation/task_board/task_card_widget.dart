@@ -20,6 +20,9 @@ class TaskCard extends ConsumerStatefulWidget {
 class _TaskCardState extends ConsumerState<TaskCard> {
   bool _isHovered = false;
   bool _isDragOver = false;
+  // v1.4.29: brief press-down state so the card gives a subtle "dips then
+  // springs back" tactile feedback on tap, in addition to the hover lift.
+  bool _isPressed = false;
 
   @override
   Widget build(BuildContext context) {
@@ -124,13 +127,18 @@ class _TaskCardState extends ConsumerState<TaskCard> {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: () => context.push('/task/${task.id}'),
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) => setState(() => _isPressed = false),
+        onTapCancel: () => setState(() => _isPressed = false),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
           padding: const EdgeInsets.all(16),
-          transform: _isHovered
-              ? (Matrix4.identity()..translate(0.0, -1.0))
-              : Matrix4.identity(),
+          transform: _isPressed
+              ? (Matrix4.identity()..scale(0.985))
+              : _isHovered
+                  ? (Matrix4.identity()..translate(0.0, -2.0))
+                  : Matrix4.identity(),
           decoration: BoxDecoration(
             color: palette.surface,
             borderRadius: BorderRadius.circular(14),
@@ -138,27 +146,27 @@ class _TaskCardState extends ConsumerState<TaskCard> {
               color: isCompleted
                   ? AppColors.success.withOpacity(0.3)
                   : _isHovered
-                      ? priorityColor.withOpacity(0.4)
+                      ? priorityColor.withOpacity(0.45)
                       : palette.outline.withOpacity(0.6),
             ),
             boxShadow: _isHovered
                 ? [
                     BoxShadow(
-                      color: priorityColor.withOpacity(0.08),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      color: priorityColor.withOpacity(0.10),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
                     ),
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
                     ),
                   ]
                 : [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
                     ),
                   ],
           ),

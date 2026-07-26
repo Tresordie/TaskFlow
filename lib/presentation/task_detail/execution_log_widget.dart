@@ -9,8 +9,8 @@ import '../../core/utils/open_folder.dart';
 import '../../data/models/task.dart';
 import '../../data/services/attachment_service.dart';
 import '../../providers/task_providers.dart';
-import '../shared/app_markdown_body.dart';
 import '../shared/markdown_input.dart';
+import '../shared/selectable_markdown_body.dart';
 import 'edit_entry_dialog.dart';
 
 class ExecutionLogWidget extends ConsumerStatefulWidget {
@@ -631,12 +631,17 @@ class _LogEntryItem extends StatelessWidget {
                   ),
                   if (entry.content.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    AppMarkdownBody(
+                    // SelectableMarkdownBody renders the WHOLE Note as a single
+                    // SelectableText.rich, so the user can drag-select across
+                    // lines/paragraphs and the highlight is painted by
+                    // SelectableText itself — unaffected by the AOT detached
+                    // repaint-boundary issue that broke the app-wide
+                    // SelectionArea here (v1.4.28 fix).
+                    SelectableMarkdownBody(
                       data: entry.content,
                       hardenLineBreaks: true,
-                      styleSheet: _markdownStyleSheet(context),
-                      onTapLink: (text, href, title) {
-                        if (href == null) return;
+                      baseStyle: _markdownStyleSheet(context).p,
+                      onTapLink: (href) {
                         final uri = Uri.tryParse(href);
                         if (uri == null) return;
                         if (uri.scheme == 'file') {

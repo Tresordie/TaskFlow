@@ -1,7 +1,7 @@
 name: taskflow
 description: Cross-platform task management app for hardware test engineers.
 publish_to: 'none'
-version: 1.4.27+1
+version: 1.4.29+1
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -43,6 +43,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
   flutter_lints: ^4.0.0
   build_runner: ^2.4.9
   isar_generator: ^3.1.0+1
@@ -50,3 +52,29 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Bundled fonts (v1.4.29 aesthetics): Inter for Latin, HarmonyOS Sans SC
+  # for CJK. Bundling both gives consistent, modern mixed Chinese/English
+  # rendering on every machine (no dependence on which system fonts happen
+  # to be installed). Weights are kept minimal to bound app size.
+  fonts:
+    # English / Latin — Inter (open source, SIL OFL)
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+    # Chinese / CJK — HarmonyOS Sans SC (Huawei, free for commercial use)
+    - family: HarmonyOS Sans SC
+      fonts:
+        - asset: assets/fonts/HarmonyOS_Sans_SC_Regular.ttf
+          weight: 400
+        - asset: assets/fonts/HarmonyOS_Sans_SC_Medium.ttf
+          weight: 500
+        - asset: assets/fonts/HarmonyOS_Sans_SC_Bold.ttf
+          weight: 700
