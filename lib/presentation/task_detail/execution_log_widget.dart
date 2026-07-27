@@ -586,7 +586,7 @@ class _LogEntryItem extends StatelessWidget {
                       ),
                       const Spacer(),
                       Text(
-                        DateFormat('HH:mm:ss').format(entry.timestamp),
+                        DateFormat('MMM d, yyyy · HH:mm:ss').format(entry.timestamp),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               color: AppColors.lightTextSecondary,
                             ),
