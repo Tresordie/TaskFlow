@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -10,6 +11,7 @@ import '../../core/markdown/html_export.dart';
 import '../../data/models/work_log.dart';
 import '../../providers/work_log_provider.dart';
 import '../shared/app_markdown_body.dart';
+import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
 
 /// Work Log page — ported from the LinguaFlow Chrome extension's
@@ -490,23 +492,24 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
               refocus: _inputFocus,
             ),
             const SizedBox(height: 8),
-            TextField(
+            MarkdownEditorField(
               controller: _inputController,
               focusNode: _inputFocus,
               minLines: 4,
               maxLines: 8,
               style: const TextStyle(fontSize: 13.5, height: 1.5),
-              decoration: const InputDecoration(
-                hintText:
-                    '''Enter today's work...
+              hintText:
+                  '''Enter today's work...
 
 e.g.
 - Finished the login module front-end
 - Fixed the order-list pagination bug
 - Joined the requirements review meeting''',
-                hintStyle: TextStyle(fontSize: 12.5),
-                border: OutlineInputBorder(),
-              ),
+              hardenLineBreaks: true,
+              // Preview with the SAME style sheet used to render the saved
+              // records below, so the preview is a true WYSIWYG of what gets
+              // stored.
+              styleSheet: _recordMarkdownStyleSheet(theme),
             ),
             const SizedBox(height: 10),
             Row(
@@ -765,6 +768,19 @@ e.g.
     );
   }
 
+  /// Shared Markdown styling for work records. Used by BOTH the input
+  /// Preview and the saved record rows so the preview is a true WYSIWYG of
+  /// what gets stored ("input-as-preview").
+  MarkdownStyleSheet _recordMarkdownStyleSheet(ThemeData theme) {
+    return MarkdownStyleSheet(
+      p: TextStyle(
+          fontSize: 13,
+          height: 1.45,
+          color: theme.colorScheme.onSurface.withOpacity(0.85)),
+      listIndent: 16,
+    );
+  }
+
   Widget _recordRow(WorkLogRecord r, DateFormat dateFmt, DateFormat timeFmt,
       ThemeData theme) {
     final selected = _selectedIds.contains(r.id);
@@ -823,12 +839,10 @@ e.g.
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              r.content,
-              style: TextStyle(
-                  fontSize: 13,
-                  height: 1.45,
-                  color: theme.colorScheme.onSurface.withOpacity(0.85)),
+            child: AppMarkdownBody(
+              data: r.content,
+              hardenLineBreaks: true,
+              styleSheet: _recordMarkdownStyleSheet(theme),
             ),
           ),
           IconButton(

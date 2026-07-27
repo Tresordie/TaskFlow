@@ -473,12 +473,19 @@ class _ParsedTaskCard extends ConsumerWidget {
                           ),
                           if (task.description.isNotEmpty) ...[
                             const SizedBox(height: 4),
-                            Text(
-                              task.description,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurface
-                                    .withOpacity(0.6),
-                                height: 1.45,
+                            // Render the AI-extracted description as Markdown
+                            // so rich output (bold, lists, code) displays
+                            // formatted instead of as raw source.
+                            AppMarkdownBody(
+                              data: task.description,
+                              styleSheet:
+                                  MarkdownStyleSheet.fromTheme(theme).copyWith(
+                                p: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.6),
+                                  height: 1.45,
+                                ),
+                                pPadding: const EdgeInsets.only(bottom: 4),
                               ),
                             ),
                           ],

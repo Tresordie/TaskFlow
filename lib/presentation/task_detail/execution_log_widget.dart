@@ -9,8 +9,9 @@ import '../../core/utils/open_folder.dart';
 import '../../data/models/task.dart';
 import '../../data/services/attachment_service.dart';
 import '../../providers/task_providers.dart';
+import '../shared/app_markdown_body.dart';
+import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
-import '../shared/selectable_markdown_body.dart';
 import 'edit_entry_dialog.dart';
 
 class ExecutionLogWidget extends ConsumerStatefulWidget {
@@ -229,28 +230,24 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
               ),
               const SizedBox(height: 6),
 
-              // Text input (height controlled by the grip handle above)
+              // Text input with Write/Preview toggle (height controlled by
+              // the grip handle above)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(
-                    child: SizedBox(
-                      height: _textAreaHeight,
-                      child: TextField(
-                        controller: _entryController,
-                        focusNode: _entryFocus,
-                        maxLines: null,
-                        expands: true,
-                        textAlignVertical: TextAlignVertical.top,
-                        decoration: InputDecoration(
-                          hintText:
-                              'Record what you did, observed, measured... (Markdown supported, Tab to indent)',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        onSubmitted: (_) => _addEntry(),
-                      ),
+                    child: MarkdownEditorField(
+                      controller: _entryController,
+                      focusNode: _entryFocus,
+                      height: _textAreaHeight + 30,
+                      hintText:
+                          'Record what you did, observed, measured... (Markdown supported, Tab to indent)',
+                      hardenLineBreaks: true,
+                      // Preview with the SAME style sheet used to render the
+                      // saved Note below, so what the user previews is exactly
+                      // what gets recorded (WYSIWYG).
+                      styleSheet: _markdownStyleSheet(context),
+                      onSubmitted: (_) => _addEntry(),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -631,17 +628,19 @@ class _LogEntryItem extends StatelessWidget {
                   ),
                   if (entry.content.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    // SelectableMarkdownBody renders the WHOLE Note as a single
-                    // SelectableText.rich, so the user can drag-select across
-                    // lines/paragraphs and the highlight is painted by
-                    // SelectableText itself — unaffected by the AOT detached
-                    // repaint-boundary issue that broke the app-wide
-                    // SelectionArea here (v1.4.28 fix).
-                    SelectableMarkdownBody(
+                    // Render the saved Note with the SAME full-block renderer
+                    // used by the input Preview (AppMarkdownBody), so the
+                    // recorded entry looks exactly like the preview the user
+                    // saw before sending. selectable: true keeps per-block
+                    // text selection working in Release/AOT builds (the
+                    // app-wide SelectionArea is unreliable there — v1.4.28).
+                    AppMarkdownBody(
                       data: entry.content,
+                      selectable: true,
                       hardenLineBreaks: true,
-                      baseStyle: _markdownStyleSheet(context).p,
-                      onTapLink: (href) {
+                      styleSheet: _markdownStyleSheet(context),
+                      onTapLink: (text, href, title) {
+                        if (href == null) return;
                         final uri = Uri.tryParse(href);
                         if (uri == null) return;
                         if (uri.scheme == 'file') {
@@ -680,55 +679,58 @@ class _LogEntryItem extends StatelessWidget {
     }
   }
 
-  /// Theme-adaptive Markdown styling for log entries (light & dark).
-  MarkdownStyleSheet _markdownStyleSheet(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final base = MarkdownStyleSheet.fromTheme(theme);
+}
 
-    return base.copyWith(
-      p: theme.textTheme.bodyLarge?.copyWith(fontSize: 14, height: 1.55),
-      pPadding: const EdgeInsets.only(bottom: 6),
-      h1: theme.textTheme.titleLarge?.copyWith(fontSize: 18),
-      h2: theme.textTheme.titleMedium?.copyWith(fontSize: 16),
-      h3: theme.textTheme.titleMedium?.copyWith(fontSize: 15),
-      h4: theme.textTheme.titleSmall?.copyWith(fontSize: 14),
-      h5: theme.textTheme.titleSmall?.copyWith(fontSize: 14),
-      h6: theme.textTheme.titleSmall?.copyWith(fontSize: 14),
-      a: TextStyle(
-        color: theme.colorScheme.primary,
-        decoration: TextDecoration.underline,
-      ),
-      code: TextStyle(
-        fontFamily: 'monospace',
-        fontSize: 13,
-        color: isDark ? Colors.teal.shade200 : Colors.teal.shade800,
-        backgroundColor: isDark
-            ? Colors.white.withOpacity(0.08)
-            : Colors.black.withOpacity(0.05),
-      ),
-      codeblockDecoration: BoxDecoration(
+/// Theme-adaptive Markdown styling for log entries (light & dark). Shared by
+/// the input Preview and the saved Note rows so the two render identically
+/// (WYSIWYG "input-as-preview").
+MarkdownStyleSheet _markdownStyleSheet(BuildContext context) {
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
+  final base = MarkdownStyleSheet.fromTheme(theme);
+
+  return base.copyWith(
+    p: theme.textTheme.bodyLarge?.copyWith(fontSize: 14, height: 1.55),
+    pPadding: const EdgeInsets.only(bottom: 6),
+    h1: theme.textTheme.titleLarge?.copyWith(fontSize: 18),
+    h2: theme.textTheme.titleMedium?.copyWith(fontSize: 16),
+    h3: theme.textTheme.titleMedium?.copyWith(fontSize: 15),
+    h4: theme.textTheme.titleSmall?.copyWith(fontSize: 14),
+    h5: theme.textTheme.titleSmall?.copyWith(fontSize: 14),
+    h6: theme.textTheme.titleSmall?.copyWith(fontSize: 14),
+    a: TextStyle(
+      color: theme.colorScheme.primary,
+      decoration: TextDecoration.underline,
+    ),
+    code: TextStyle(
+      fontFamily: 'monospace',
+      fontSize: 13,
+      color: isDark ? Colors.teal.shade200 : Colors.teal.shade800,
+      backgroundColor: isDark
+          ? Colors.white.withOpacity(0.08)
+          : Colors.black.withOpacity(0.05),
+    ),
+    codeblockDecoration: BoxDecoration(
+      color: isDark
+          ? Colors.white.withOpacity(0.07)
+          : Colors.black.withOpacity(0.04),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(
         color: isDark
-            ? Colors.white.withOpacity(0.07)
-            : Colors.black.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withOpacity(0.1)
-              : Colors.black.withOpacity(0.08),
-        ),
+            ? Colors.white.withOpacity(0.1)
+            : Colors.black.withOpacity(0.08),
       ),
-      codeblockPadding: const EdgeInsets.all(10),
-      blockquoteDecoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withOpacity(0.05)
-            : Colors.black.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      blockquotePadding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
-      listIndent: 20,
-    );
-  }
+    ),
+    codeblockPadding: const EdgeInsets.all(10),
+    blockquoteDecoration: BoxDecoration(
+      color: isDark
+          ? Colors.white.withOpacity(0.05)
+          : Colors.black.withOpacity(0.03),
+      borderRadius: BorderRadius.circular(6),
+    ),
+    blockquotePadding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+    listIndent: 20,
+  );
 }
 
 /// Renders the attachments of a saved log entry: image thumbnails (tap to
