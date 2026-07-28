@@ -292,6 +292,61 @@ Rules:
     }
   }
 
+  /// Generates a COMPLETE structured report in one LLM call, following the
+  /// report-generation spec (see [ReportService.fullReportPrompt]). The
+  /// model receives every task with its full in-period execution log and
+  /// produces the entire Markdown document — unlike [enhanceTask] which
+  /// only yields a per-task title translation + short summary.
+  ///
+  /// [systemPrompt] carries the spec rules; [taskData] is the formatted
+  /// input block (date range + all tasks). Throws [AiServiceException] on
+  /// any failure — callers fall back to the deterministic template.
+  Future<String> generateFullReport({
+    required String systemPrompt,
+    required String taskData,
+  }) async {
+    final uri = _buildUri();
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 15);
+    try {
+      final request =
+          await client.postUrl(uri).timeout(const Duration(seconds: 15));
+      request.headers.set('Content-Type', 'application/json; charset=utf-8');
+      request.headers.set('Authorization', 'Bearer $apiKey');
+      request.add(utf8.encode(jsonEncode({
+        'model': model,
+        // Low temperature for factual, structured output.
+        'temperature': 0.3,
+        // A full report with 15-20 tasks typically needs 3000-6000 tokens.
+        'max_tokens': 8192,
+        'messages': [
+          {'role': 'system', 'content': systemPrompt},
+          {'role': 'user', 'content': taskData},
+        ],
+      })));
+      final response =
+          await request.close().timeout(const Duration(seconds: 180));
+      final text = await response.transform(utf8.decoder).join();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw AiServiceException(
+            'API error ${response.statusCode}: ${_shorten(text)}');
+      }
+      var content = _extractContentMultiLine(text);
+      // Strip wrapping code fences some models emit around the document.
+      content = _stripFences(content);
+      if (content.trim().isEmpty) {
+        throw AiServiceException('AI returned an empty report.');
+      }
+      return content.trim();
+    } on SocketException catch (e) {
+      throw AiServiceException('Network error: ${e.message}');
+    } on TimeoutException {
+      throw AiServiceException('Full-report generation timed out.');
+    } finally {
+      client.close(force: true);
+    }
+  }
+
   /// Generates a structured work summary from free-form work-log records
   /// (ported from the LinguaFlow Chrome extension's workreport page).
   ///

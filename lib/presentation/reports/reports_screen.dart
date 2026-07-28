@@ -295,13 +295,19 @@ class ReportController extends StateNotifier<ReportsState> {
             filter: filter, onlyUids: onlyUids);
       }
 
-      // Optional AI pass: summarize each task's in-period execution logs
-      // (Details column) and translate titles into the report language.
+      // AI pass. Two tiers:
+      //  1. FULL generation — one LLM call produces the entire report
+      //     following the spec rules (weekly_report_ai_summary_prompts.md):
+      //     deep log comprehension, synthesis, task decomposition, etc.
+      //  2. FALLBACK — if the full call fails (timeout, API error, empty
+      //     reply), fall back to the deterministic template with per-task
+      //     AI enhancement (title translation + short summaries).
       Map<Task, String>? summaries;
       Map<Task, String>? titles;
       Map<String, String>? terms;
       String? aiWarning;
       var aiWarningNeedsConfig = false;
+      String? markdown;
       final aiCfg = ref.read(aiConfigProvider);
       if (state.useAiSummary) {
         if (aiCfg.isConfigured) {
@@ -310,18 +316,28 @@ class ReportController extends StateNotifier<ReportsState> {
             apiKey: aiCfg.apiKey,
             model: aiCfg.model,
           );
-          final r = await service.aiEnhance(data, ai, state.lang);
-          summaries = r.summaries;
-          titles = r.titles;
-          terms = r.terms;
-          if (r.failed > 0) {
-            final total = data.touchedTasks.length;
-            aiWarning = r.failed >= total
-                ? 'AI enhancement failed for all $total tasks — '
-                    '${r.firstError}. Titles and Details fell back to raw '
-                    'task content.'
-                : 'AI enhancement failed for ${r.failed}/$total tasks — '
-                    '${r.firstError}. Those rows use raw task content.';
+          // Tier 1: full spec-driven report generation.
+          try {
+            markdown = await ai.generateFullReport(
+              systemPrompt: ReportService.fullReportPrompt(state.lang),
+              taskData: service.formatTaskData(data),
+            );
+          } catch (e) {
+            // Tier 2: template + per-task enhancement.
+            aiWarning = 'Full AI report generation failed (${e.toString()}). '
+                'Fell back to the template with per-task AI summaries.';
+          }
+          if (markdown == null) {
+            final r = await service.aiEnhance(data, ai, state.lang);
+            summaries = r.summaries;
+            titles = r.titles;
+            terms = r.terms;
+            if (r.failed > 0) {
+              final total = data.touchedTasks.length;
+              aiWarning = '$aiWarning\n'
+                  'AI enhancement failed for ${r.failed}/$total tasks — '
+                  '${r.firstError}. Those rows use raw task content.';
+            }
           }
         } else {
           aiWarning = 'AI summary is enabled but no AI endpoint is '
@@ -339,13 +355,14 @@ class ReportController extends StateNotifier<ReportsState> {
         aiTerms: terms,
         aiWarning: aiWarning,
         aiWarningNeedsConfig: aiWarningNeedsConfig,
-        markdown: service.toMarkdown(
-          data,
-          lang: state.lang,
-          aiSummaries: summaries,
-          aiTitles: titles,
-          aiTerms: terms,
-        ),
+        markdown: markdown ??
+            service.toMarkdown(
+              data,
+              lang: state.lang,
+              aiSummaries: summaries,
+              aiTitles: titles,
+              aiTerms: terms,
+            ),
         editing: false,
         generating: false,
       );
