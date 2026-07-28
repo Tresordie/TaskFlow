@@ -921,6 +921,38 @@ void main() {
     });
   });
 
+  group('Reasoning-model detection (temperature handling)', () {
+    // Reasoning models reject any temperature other than 1 (HTTP 400
+    // "invalid temperature"); _chat omits the parameter for these.
+    test('known reasoning models are detected', () {
+      for (final m in [
+        'kimi-k3',
+        'kimi-k3-thinking',
+        'deepseek-reasoner',
+        'qwq-32b',
+        'o1',
+        'o3-mini',
+        'o4-mini',
+        'some-reasoning-model',
+      ]) {
+        expect(AiService.isReasoningModelForTest(m), isTrue, reason: m);
+      }
+    });
+
+    test('regular chat models are NOT flagged', () {
+      for (final m in [
+        'deepseek-v4-pro',
+        'deepseek-chat',
+        'gpt-4o',
+        'gpt-4o-mini',
+        'qwen-plus',
+        'gpt-4.1',
+      ]) {
+        expect(AiService.isReasoningModelForTest(m), isFalse, reason: m);
+      }
+    });
+  });
+
   group('Nested sub-steps (max 3 levels)', () {
     SubStep step(String uid, {String? parent, int depth = 0}) => SubStep()
       ..uid = uid

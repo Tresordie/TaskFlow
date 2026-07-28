@@ -57,6 +57,88 @@ class AiService {
   static String _sanitizeApiKey(String raw) =>
       raw.replaceAll(RegExp(r'[\u0000-\u0020\u007f\u3000]+'), '');
 
+  /// Sends one chat-completions request and returns the raw response body.
+  ///
+  /// Centralizes sampling-parameter handling so EVERY feature copes with
+  /// reasoning models: kimi-k3, deepseek-reasoner, OpenAI o-series, QwQ and
+  /// similar models reject any `temperature` other than 1 (HTTP 400
+  /// "invalid temperature: only 1 is allowed"). For those
+  /// ([_isReasoningModel]) the parameter is omitted outright; and as a safety
+  /// net for any model we did not anticipate, a 400 whose body mentions
+  /// "temperature" triggers exactly one automatic retry without it.
+  /// [extraBody] carries request-specific fields such as `response_format`.
+  Future<String> _chat({
+    required List<Map<String, String>> messages,
+    double? temperature,
+    int? maxTokens,
+    Map<String, dynamic>? extraBody,
+    Duration connectTimeout = const Duration(seconds: 15),
+    Duration requestTimeout = const Duration(seconds: 15),
+    Duration responseTimeout = const Duration(seconds: 60),
+  }) async {
+    Future<String> send({required bool includeTemperature}) async {
+      final uri = _buildUri();
+      final client = HttpClient()..connectionTimeout = connectTimeout;
+      try {
+        final request = await client.postUrl(uri).timeout(requestTimeout);
+        request.headers.set('Content-Type', 'application/json; charset=utf-8');
+        request.headers.set('Authorization', 'Bearer $apiKey');
+        final body = <String, dynamic>{
+          'model': model,
+          'messages': messages,
+          if (maxTokens != null) 'max_tokens': maxTokens,
+          if (includeTemperature &&
+              temperature != null &&
+              !_isReasoningModel(model))
+            'temperature': temperature,
+          if (extraBody != null) ...extraBody,
+        };
+        // add() writes raw UTF-8 bytes; write() would default to latin1 and
+        // throw on Chinese content ("Invalid argument (string)").
+        request.add(utf8.encode(jsonEncode(body)));
+        final response = await request.close().timeout(responseTimeout);
+        final text = await response.transform(utf8.decoder).join();
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          throw AiServiceException(
+              'API error ${response.statusCode}: ${_shorten(text)}');
+        }
+        return text;
+      } finally {
+        client.close(force: true);
+      }
+    }
+
+    try {
+      return await send(includeTemperature: true);
+    } on AiServiceException catch (e) {
+      // Reactive safety net: a model we did not recognise as reasoning-only
+      // still rejected the sampling parameter — retry once without it.
+      if (temperature != null &&
+          e.message.toLowerCase().contains('temperature')) {
+        return await send(includeTemperature: false);
+      }
+      rethrow;
+    }
+  }
+
+  /// Heuristic: reasoning / "thinking" models only accept their default
+  /// temperature (usually 1) and reject explicit values with HTTP 400. Match
+  /// the well-known families by name so [_chat] omits the parameter for them.
+  /// Anything this misses is still caught by [_chat]'s reactive retry.
+  static bool _isReasoningModel(String model) {
+    final m = model.toLowerCase();
+    if (m.contains('reasoner') ||
+        m.contains('reasoning') ||
+        m.contains('thinking') ||
+        m.contains('qwq') ||
+        m.contains('kimi-k3')) {
+      return true;
+    }
+    // OpenAI o-series: o1 / o3 / o4 and their -mini / -pro variants, without
+    // matching e.g. "gpt-4o" (the 'o' there follows a digit).
+    return RegExp(r'(^|[^a-z0-9])o[134]($|[^0-9])').hasMatch(m);
+  }
+
   static const _systemPrompt = '''
 You are a task-extraction assistant for a hardware test engineer.
 The user pastes raw work notes (meeting notes, test logs, to-do scribbles,
@@ -77,48 +159,24 @@ Rules:
 
   /// Sends [notes] to the LLM and returns the parsed task list.
   Future<List<ParsedTask>> parseNotes(String notes) async {
-    final uri = _buildUri();
-
-    final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 15);
-
     try {
-      final request =
-          await client.postUrl(uri).timeout(const Duration(seconds: 20));
-      request.headers.set('Content-Type', 'application/json; charset=utf-8');
-      request.headers.set('Authorization', 'Bearer $apiKey');
-
-      final body = jsonEncode({
-        'model': model,
-        'temperature': 0.2,
-        'response_format': {'type': 'json_object'},
-        'messages': [
+      final text = await _chat(
+        temperature: 0.2,
+        extraBody: {
+          'response_format': {'type': 'json_object'}
+        },
+        requestTimeout: const Duration(seconds: 20),
+        responseTimeout: const Duration(seconds: 90),
+        messages: [
           {'role': 'system', 'content': _systemPrompt},
           {'role': 'user', 'content': notes},
         ],
-      });
-      // write() would encode via the request's latin1 default and throw
-      // on Chinese text in the notes ("Invalid argument (string)");
-      // add() writes raw UTF-8 bytes instead. (request.encoding itself
-      // is immutable on HttpClientRequest.)
-      request.add(utf8.encode(body));
-
-      final response =
-          await request.close().timeout(const Duration(seconds: 90));
-      final text = await response.transform(utf8.decoder).join();
-
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw AiServiceException(
-            'API error ${response.statusCode}: ${_shorten(text)}');
-      }
-
+      );
       return _parseResponse(text);
     } on SocketException catch (e) {
       throw AiServiceException('Network error: ${e.message}');
     } on TimeoutException catch (_) {
       throw AiServiceException('Request timed out. Check base URL / network.');
-    } finally {
-      client.close(force: true);
     }
   }
 
@@ -171,46 +229,29 @@ Rules:
     required bool chinese,
     List<ExecutionEntry> periodEntries = const [],
   }) async {
-    final uri = _buildUri();
-    final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 10);
     try {
-      final request =
-          await client.postUrl(uri).timeout(const Duration(seconds: 15));
-      request.headers.set('Content-Type', 'application/json; charset=utf-8');
-      request.headers.set('Authorization', 'Bearer $apiKey');
-      // The digest always contains the raw (usually Chinese) task title;
-      // write() would encode it as latin1 and dart:io would throw
-      // "Invalid argument (string): Contains invalid characters." — so
-      // write raw UTF-8 bytes instead.
-      request.add(utf8.encode(jsonEncode({
-        'model': model,
-        'temperature': 0.3,
+      // The digest carries the raw (usually Chinese) task title; _chat
+      // writes raw UTF-8 bytes so dart:io's latin1 "Invalid argument"
+      // never fires.
+      final text = await _chat(
+        temperature: 0.3,
         // 200 was too tight: a long task title ate most of the completion
         // budget, so replies got cut off BEFORE the SUMMARY section
         // (completed tasks silently fell back to the "done MM-dd"
         // heuristic) or mid-bullet ("…BMS"). 1000 leaves ample room for
         // the TITLE line plus three full bullets in either language.
-        'max_tokens': 1000,
-        'messages': [
+        maxTokens: 1000,
+        responseTimeout: const Duration(seconds: 60),
+        messages: [
           {'role': 'system', 'content': _enhancePrompt(chinese)},
           {'role': 'user', 'content': _taskDigest(t, periodEntries)},
         ],
-      })));
-      final response =
-          await request.close().timeout(const Duration(seconds: 60));
-      final text = await response.transform(utf8.decoder).join();
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw AiServiceException(
-            'API error ${response.statusCode}: ${_shorten(text)}');
-      }
+      );
       return _parseEnhance(_extractContentMultiLine(text), t.title);
     } on SocketException catch (e) {
       throw AiServiceException('Network error: ${e.message}');
     } on TimeoutException {
       throw AiServiceException('Summary request timed out.');
-    } finally {
-      client.close(force: true);
     }
   }
 
@@ -225,34 +266,20 @@ Rules:
     final unique = terms.where((t) => t.trim().isNotEmpty).toSet().toList();
     if (unique.isEmpty) return const {};
     final target = toChinese ? 'Chinese' : 'English';
-    final uri = _buildUri();
-    final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 10);
     try {
-      final request =
-          await client.postUrl(uri).timeout(const Duration(seconds: 15));
-      request.headers.set('Content-Type', 'application/json; charset=utf-8');
-      request.headers.set('Authorization', 'Bearer $apiKey');
       final prompt = 'Translate the following ${unique.length} short work '
           'terms into $target. Output EXACTLY ${unique.length} lines, one '
           'translation per line, in the SAME ORDER as given. Output ONLY the '
           'translations — no numbering, no bullets, no explanations. Keep '
           'model numbers / acronyms unchanged. If a term is already in '
           '$target, output it unchanged.\n\n${unique.join('\n')}';
-      request.add(utf8.encode(jsonEncode({
-        'model': model,
-        'temperature': 0.1,
-        'messages': [
+      final text = await _chat(
+        temperature: 0.1,
+        responseTimeout: const Duration(seconds: 60),
+        messages: [
           {'role': 'user', 'content': prompt},
         ],
-      })));
-      final response =
-          await request.close().timeout(const Duration(seconds: 60));
-      final text = await response.transform(utf8.decoder).join();
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw AiServiceException(
-            'API error ${response.statusCode}: ${_shorten(text)}');
-      }
+      );
       final content = _extractContentMultiLine(text);
       // Parse tolerantly: prefer "original => translation" lines, else zip
       // bare translation lines with the input by order.
@@ -287,8 +314,6 @@ Rules:
       throw AiServiceException('Network error: ${e.message}');
     } on TimeoutException {
       throw AiServiceException('Translation request timed out.');
-    } finally {
-      client.close(force: true);
     }
   }
 
@@ -305,32 +330,18 @@ Rules:
     required String systemPrompt,
     required String taskData,
   }) async {
-    final uri = _buildUri();
-    final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 15);
     try {
-      final request =
-          await client.postUrl(uri).timeout(const Duration(seconds: 15));
-      request.headers.set('Content-Type', 'application/json; charset=utf-8');
-      request.headers.set('Authorization', 'Bearer $apiKey');
-      request.add(utf8.encode(jsonEncode({
-        'model': model,
+      final text = await _chat(
         // Low temperature for factual, structured output.
-        'temperature': 0.3,
+        temperature: 0.3,
         // A full report with 15-20 tasks typically needs 3000-6000 tokens.
-        'max_tokens': 8192,
-        'messages': [
+        maxTokens: 8192,
+        responseTimeout: const Duration(seconds: 180),
+        messages: [
           {'role': 'system', 'content': systemPrompt},
           {'role': 'user', 'content': taskData},
         ],
-      })));
-      final response =
-          await request.close().timeout(const Duration(seconds: 180));
-      final text = await response.transform(utf8.decoder).join();
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw AiServiceException(
-            'API error ${response.statusCode}: ${_shorten(text)}');
-      }
+      );
       var content = _extractContentMultiLine(text);
       // Strip wrapping code fences some models emit around the document.
       content = _stripFences(content);
@@ -342,8 +353,6 @@ Rules:
       throw AiServiceException('Network error: ${e.message}');
     } on TimeoutException {
       throw AiServiceException('Full-report generation timed out.');
-    } finally {
-      client.close(force: true);
     }
   }
 
@@ -361,18 +370,12 @@ Rules:
     required String inputLang,
     required String outputLang,
   }) async {
-    final uri = _buildUri();
-    final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 15);
     try {
-      final request =
-          await client.postUrl(uri).timeout(const Duration(seconds: 20));
-      request.headers.set('Content-Type', 'application/json; charset=utf-8');
-      request.headers.set('Authorization', 'Bearer $apiKey');
-      request.add(utf8.encode(jsonEncode({
-        'model': model,
-        'temperature': 0.1,
-        'messages': [
+      final text = await _chat(
+        temperature: 0.1,
+        requestTimeout: const Duration(seconds: 20),
+        responseTimeout: const Duration(seconds: 120),
+        messages: [
           {
             'role': 'system',
             'content': workLogSystemPrompt(
@@ -388,14 +391,7 @@ Rules:
             ),
           },
         ],
-      })));
-      final response =
-          await request.close().timeout(const Duration(seconds: 120));
-      final text = await response.transform(utf8.decoder).join();
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw AiServiceException(
-            'API error ${response.statusCode}: ${_shorten(text)}');
-      }
+      );
       final result = _extractContentMultiLine(text).trim();
       if (result.isEmpty) {
         throw AiServiceException('Empty summary returned by the model.');
@@ -405,8 +401,6 @@ Rules:
       throw AiServiceException('Network error: ${e.message}');
     } on TimeoutException {
       throw AiServiceException('Summary request timed out.');
-    } finally {
-      client.close(force: true);
     }
   }
 
@@ -644,6 +638,13 @@ Rules:
   /// be asserted without making a network call.
   @visibleForTesting
   static String enhancePromptForTest(bool chinese) => _enhancePrompt(chinese);
+
+  /// Exposed for tests so the reasoning-model detection (which decides
+  /// whether `temperature` is omitted) can be asserted without a network
+  /// call.
+  @visibleForTesting
+  static bool isReasoningModelForTest(String model) =>
+      _isReasoningModel(model);
 
   /// Compact plain-text digest of a task fed to the summarizer. Includes
   /// EVERY execution-log entry inside the report period ([periodEntries]).
