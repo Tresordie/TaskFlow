@@ -436,7 +436,13 @@ class ReportService {
     final chinese = lang == ReportLanguage.chinese;
     var failed = 0;
     String? firstError;
-    for (final t in d.touchedTasks) {
+    // Process every task that may appear in ANY report section — not just
+    // touchedTasks (dashboard/details) but also overdue tasks that show up
+    // in Risks/Blockers and Asks. Without this, an overdue task that was
+    // never started and has no in-period log entries would keep its raw
+    // (Chinese) title in an English report.
+    final allReportTasks = <Task>{...d.touchedTasks, ...d.overdue};
+    for (final t in allReportTasks) {
       try {
         final r = await ai.enhanceTask(
           t,
@@ -456,8 +462,8 @@ class ReportService {
     var terms = <String, String>{};
     try {
       final allTerms = <String>[
-        for (final t in d.touchedTasks) t.project.trim(),
-        for (final t in d.touchedTasks) ...t.tags,
+        for (final t in allReportTasks) t.project.trim(),
+        for (final t in allReportTasks) ...t.tags,
       ];
       terms = await ai.translateTerms(allTerms, toChinese: chinese);
     } catch (_) {
