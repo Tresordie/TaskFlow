@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -72,20 +71,24 @@ void main() {
   });
 
   testWidgets(
-      'execution log entries support cross-block drag selection via the app-wide SelectionArea',
+      'execution log Note is a single selectable unit (multi-block = one SelectableText)',
       (tester) async {
     // Selection history: v1.2.9 added a screen-local SelectionArea; v1.4.24
-    // added an app-wide one in MaterialApp.builder (broken: it sits above
-    // the Navigator's Overlay, which SelectionArea's SelectableRegion
-    // requires); v1.4.25 moved it into AppShell but markdown still rendered
-    // as SelectableText (selectable: true), whose per-block gesture
-    // detectors only allowed single-block selection — no cross-block drag,
-    // no select-all. v1.4.26 renders markdown as Text.rich (selectable:
-    // false), which registers with the SelectionArea for unified
-    // cross-block selection. Mirror AppShell here: one SelectionArea
-    // wrapping the page inside the route.
+    // added an app-wide one in MaterialApp.builder; v1.4.26 rendered markdown
+    // as Text.rich registered with the SelectionArea (worked in debug but
+    // unreliable in Release/AOT); v1.4.31 regressed to per-block SelectableText
+    // (MarkdownBody selectable: true) — no cross-block drag, no select-all,
+    // and the cursor flickered I-Beam/arrow across blocks. v1.4.32 renders
+    // each Note through SelectableMarkdownBody as ONE SelectableText, so the
+    // whole Note is a single selectable unit: drag-select spans blocks and
+    // select-all grabs the entire Note. This test guards that contract.
     await tester.binding.setSurfaceSize(const Size(1280, 1024));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+    const multiBlock = '# Heading block\n\n'
+        'First paragraph block of the note.\n\n'
+        '- bullet block one\n'
+        '- bullet block two';
 
     final task = Task()
       ..id = 1
@@ -96,14 +99,9 @@ void main() {
       ..createdAt = DateTime(2026, 7, 22, 9, 0);
     task.executionLog.add(ExecutionEntry()
       ..uid = 'e1'
-      ..content = 'first selectable log entry body'
+      ..content = multiBlock
       ..type = EntryType.note
       ..timestamp = DateTime(2026, 7, 22, 10, 30));
-    task.executionLog.add(ExecutionEntry()
-      ..uid = 'e2'
-      ..content = 'second selectable log entry body'
-      ..type = EntryType.note
-      ..timestamp = DateTime(2026, 7, 22, 11, 0));
 
     await tester.pumpWidget(
       ProviderScope(
@@ -121,45 +119,22 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(SelectionArea), findsOneWidget);
-
-    // Both entries render through AppMarkdownBody as Text.rich and are
-    // registered with the SelectionArea. The log lists entries
-    // newest-first, so the SECOND entry (11:00) renders ABOVE the first
-    // (10:30). Drag the mouse top-down across both: the unified selection
-    // must cover BOTH paragraphs (this is the block selection the user
-    // performs).
-    final topFinder = find.textContaining('second selectable log entry body',
-        findRichText: true);
-    final bottomFinder = find.textContaining('first selectable log entry body',
-        findRichText: true);
-    expect(topFinder, findsOneWidget);
-    expect(bottomFinder, findsOneWidget);
-
-    final topRect = tester.getRect(topFinder);
-    final bottomRect = tester.getRect(bottomFinder);
-    final gesture = await tester.startGesture(
-      topRect.topLeft + const Offset(2, 2),
-      kind: PointerDeviceKind.mouse,
-    );
-    addTearDown(gesture.removePointer);
-    await tester.pump();
-
-    // Incremental moves with pumps in between, mirroring Flutter's own
-    // scrollable_selection_test gesture sequence.
-    await gesture.moveTo(topRect.bottomRight - const Offset(2, 2));
-    await tester.pump();
-    await gesture.moveTo(bottomRect.bottomRight - const Offset(2, 2));
-    await tester.pump();
-    await gesture.up();
-    await tester.pump();
-
-    final topParagraph = tester.renderObject<RenderParagraph>(topFinder);
-    final bottomParagraph = tester.renderObject<RenderParagraph>(bottomFinder);
-    expect(topParagraph.selections.any((s) => !s.isCollapsed), isTrue,
-        reason: 'cross-block drag must select the top entry');
-    expect(bottomParagraph.selections.any((s) => !s.isCollapsed), isTrue,
-        reason: 'cross-block drag must extend into the bottom entry');
+    // The multi-block Note must render as EXACTLY ONE SelectableText whose
+    // plain text spans every block — not one SelectableText per block (the
+    // v1.4.31 regression that broke cross-block drag-select and select-all).
+    final noteFinder = find.byWidgetPredicate((w) =>
+        w is SelectableText &&
+        (w.textSpan?.toPlainText() ?? w.data ?? '')
+            .contains('First paragraph block'));
+    expect(noteFinder, findsOneWidget,
+        reason: 'the Note must be a single SelectableText');
+    final note = tester.widget<SelectableText>(noteFinder);
+    final plain = note.textSpan?.toPlainText() ?? note.data ?? '';
+    expect(plain, contains('Heading block'));
+    expect(plain, contains('First paragraph block'));
+    expect(plain, contains('bullet block one'));
+    expect(plain, contains('bullet block two'),
+        reason: 'every block must live inside the ONE selectable unit');
   });
 
   testWidgets(
@@ -241,20 +216,19 @@ void main() {
     // The app-wide SelectionArea comes from AppShell — exactly one.
     expect(find.byType(SelectionArea), findsOneWidget);
 
-    final headFinder = find.textContaining('Work Summary', findRichText: true);
-    final bulletFinder = find.textContaining(
-        'current mapping file does not include',
-        findRichText: true);
-    final tailFinder =
-        find.textContaining('Detailed Breakdown', findRichText: true);
-    expect(headFinder, findsOneWidget);
-    expect(bulletFinder, findsOneWidget);
-    expect(tailFinder, findsOneWidget);
+    // The Note renders through SelectableMarkdownBody as ONE SelectableText
+    // — the whole document is a single selectable unit, which is what makes
+    // cross-block drag selection (and select-all) work inside a Note. This
+    // is the v1.4.32 fix for the per-block SelectableText regression.
+    final noteFinder = find.byWidgetPredicate((w) =>
+        w is SelectableText &&
+        (w.textSpan?.toPlainText() ?? w.data ?? '').contains('Work Summary'));
+    expect(noteFinder, findsOneWidget,
+        reason: 'the rich Note must render as a single SelectableText');
 
-    final headRect = tester.getRect(headFinder);
-    final tailRect = tester.getRect(tailFinder);
-    final start = headRect.topLeft + const Offset(2, 2);
-    final end = tailRect.bottomRight - const Offset(2, 2);
+    final noteRect = tester.getRect(noteFinder);
+    final start = noteRect.topLeft + const Offset(4, 4);
+    final end = noteRect.bottomRight - const Offset(4, 4);
     final gesture =
         await tester.startGesture(start, kind: PointerDeviceKind.mouse);
     addTearDown(gesture.removePointer);
@@ -270,17 +244,20 @@ void main() {
     await gesture.up();
     await tester.pump();
 
-    RenderParagraph paragraphOf(Finder f) =>
-        tester.renderObject<RenderParagraph>(f);
-    expect(
-        paragraphOf(headFinder).selections.any((s) => !s.isCollapsed), isTrue,
-        reason: 'section header block must be selected');
-    expect(
-        paragraphOf(bulletFinder).selections.any((s) => !s.isCollapsed), isTrue,
-        reason: 'middle bullet block must be inside the selection range');
-    expect(
-        paragraphOf(tailFinder).selections.any((s) => !s.isCollapsed), isTrue,
-        reason: 'tail block must be selected');
+    // The drag must leave a non-collapsed selection spanning the blocks:
+    // from the header block down into the tail block.
+    final editableFinder = find.descendant(
+        of: noteFinder, matching: find.byType(EditableText));
+    final editableState = tester.state<EditableTextState>(editableFinder);
+    final value = editableState.textEditingValue;
+    expect(value.selection.isCollapsed, isFalse,
+        reason: 'drag across the Note must produce an active selection');
+    final selected =
+        value.text.substring(value.selection.start, value.selection.end);
+    expect(selected, contains('Work Summary'),
+        reason: 'section header block must be inside the selection');
+    expect(selected, contains('Detailed Breakdown'),
+        reason: 'selection must extend down to the tail block');
   });
 
   testWidgets(

@@ -54,6 +54,7 @@ class ReportsState {
   final bool aiWarningNeedsConfig;
   final Map<Task, String>? aiSummaries;
   final Map<Task, String>? aiTitles;
+  final Map<String, String>? aiTerms;
 
   ReportsState({
     this.period = ReportPeriod.weekly,
@@ -76,6 +77,7 @@ class ReportsState {
     this.aiWarningNeedsConfig = false,
     this.aiSummaries,
     this.aiTitles,
+    this.aiTerms,
   }) : anchor = anchor ?? DateTime.now();
 
   ReportsState copyWith({
@@ -99,6 +101,7 @@ class ReportsState {
     bool? aiWarningNeedsConfig,
     Object? aiSummaries = _unset,
     Object? aiTitles = _unset,
+    Object? aiTerms = _unset,
   }) {
     return ReportsState(
       period: period ?? this.period,
@@ -133,6 +136,9 @@ class ReportsState {
       aiTitles: identical(aiTitles, _unset)
           ? this.aiTitles
           : aiTitles as Map<Task, String>?,
+      aiTerms: identical(aiTerms, _unset)
+          ? this.aiTerms
+          : aiTerms as Map<String, String>?,
     );
   }
 }
@@ -293,6 +299,7 @@ class ReportController extends StateNotifier<ReportsState> {
       // (Details column) and translate titles into the report language.
       Map<Task, String>? summaries;
       Map<Task, String>? titles;
+      Map<String, String>? terms;
       String? aiWarning;
       var aiWarningNeedsConfig = false;
       final aiCfg = ref.read(aiConfigProvider);
@@ -306,6 +313,7 @@ class ReportController extends StateNotifier<ReportsState> {
           final r = await service.aiEnhance(data, ai, state.lang);
           summaries = r.summaries;
           titles = r.titles;
+          terms = r.terms;
           if (r.failed > 0) {
             final total = data.touchedTasks.length;
             aiWarning = r.failed >= total
@@ -328,6 +336,7 @@ class ReportController extends StateNotifier<ReportsState> {
         data: data,
         aiSummaries: summaries,
         aiTitles: titles,
+        aiTerms: terms,
         aiWarning: aiWarning,
         aiWarningNeedsConfig: aiWarningNeedsConfig,
         markdown: service.toMarkdown(
@@ -335,6 +344,7 @@ class ReportController extends StateNotifier<ReportsState> {
           lang: state.lang,
           aiSummaries: summaries,
           aiTitles: titles,
+          aiTerms: terms,
         ),
         editing: false,
         generating: false,
@@ -381,7 +391,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         // Export the current (possibly user-edited) Markdown verbatim.
         content = s.markdown ??
             service.toMarkdown(data,
-                lang: s.lang, aiSummaries: s.aiSummaries, aiTitles: s.aiTitles);
+                lang: s.lang,
+                aiSummaries: s.aiSummaries,
+                aiTitles: s.aiTitles,
+                aiTerms: s.aiTerms);
         fileName = service.suggestFileName(data, ext);
       } else if (ext == 'email') {
         // Dedicated email-client HTML (table layout, no <style> block).
@@ -391,6 +404,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             lang: s.lang,
             aiSummaries: s.aiSummaries,
             aiTitles: s.aiTitles,
+            aiTerms: s.aiTerms,
             email: true);
         fileName = service
             .suggestFileName(data, 'html')
@@ -400,7 +414,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         // HTML so the exported file reflects the user's edits.
         final source = s.markdown ??
             service.toMarkdown(data,
-                lang: s.lang, aiSummaries: s.aiSummaries, aiTitles: s.aiTitles);
+                lang: s.lang,
+                aiSummaries: s.aiSummaries,
+                aiTitles: s.aiTitles,
+                aiTerms: s.aiTerms);
         content = service.markdownToStyledHtml(source, title: data.titlePrefix);
         fileName = service.suggestFileName(data, ext);
       }

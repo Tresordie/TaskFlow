@@ -909,7 +909,7 @@ void main() {
       // English and never emit Chinese — the digest it receives is usually
       // Chinese, so without this rule the SUMMARY bullets leaked Chinese.
       expect(p, contains('English'));
-      expect(p, contains('NEVER output any Chinese characters'));
+      expect(p, contains('ZERO Chinese'));
       // The English prompt template itself must contain no CJK characters.
       expect(RegExp(r'[\u4e00-\u9fff]').hasMatch(p), isFalse,
           reason: 'English prompt must not contain Chinese characters');
@@ -1220,13 +1220,13 @@ void main() {
       expect(AiService.autoFormatResult('\n\na  \n\n\n\nb\n\n'), 'a\n\nb');
     });
 
-    test('system prompts prescribe "#### 1." breakdown headings', () {
+    test('system prompts prescribe "**N." bold breakdown topics', () {
       final zh = AiService.workLogSystemPrompt(
           outputChinese: true, dateRange: '2026-07-21');
       final en = AiService.workLogSystemPrompt(
           outputChinese: false, dateRange: '2026-07-21');
-      expect(zh, contains('#### 1.'));
-      expect(en, contains('#### 1.'));
+      expect(zh, contains('**1.'));
+      expect(en, contains('**1.'));
       // Both variants explicitly ban placeholder numbering.
       expect(zh, contains('占位符'));
       expect(en.toLowerCase(), contains('placeholder'));

@@ -43,14 +43,20 @@ void main() {
     // summary, history (right column).
     final cards = find.byType(Card).evaluate().toList();
     expect(cards.length, 4);
-    final inputBox = cards[0].renderObject as RenderBox;
     final recordsBox = cards[1].renderObject as RenderBox;
 
     // The records card must stretch to fill everything below the input card,
-    // not hug its single row of content (old bug left a large gray gap).
-    expect(recordsBox.size.height, greaterThan(300));
-    // And it must be strictly taller than the input card.
-    expect(recordsBox.size.height, greaterThan(inputBox.size.height));
+    // down to the bottom of its column — not hug its single row of content
+    // (the old bug left a large gray gap below short lists). Both columns
+    // stretch to the same bottom edge (Row crossAxisAlignment.stretch), so
+    // the records card's bottom must align with the history card's bottom.
+    final recordsRect = tester.getRect(find.byType(Card).at(1));
+    final historyRect = tester.getRect(find.byType(Card).at(3));
+    expect(recordsRect.bottom, closeTo(historyRect.bottom, 1.0),
+        reason: 'records card must fill to the bottom of its column (no gray gap)');
+    // And it must stretch well beyond what its single row of content needs
+    // (proof it expanded to fill rather than hugged the content).
+    expect(recordsBox.size.height, greaterThan(200));
   });
 
   testWidgets('empty state is centered and no layout exceptions',

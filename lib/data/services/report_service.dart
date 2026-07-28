@@ -423,6 +423,7 @@ class ReportService {
       ({
         Map<Task, String> summaries,
         Map<Task, String> titles,
+        Map<String, String> terms,
         int failed,
         String? firstError,
       })> aiEnhance(
@@ -449,9 +450,23 @@ class ReportService {
         firstError ??= e.toString();
       }
     }
+    // Translate project names + tags in ONE batch call so an English report
+    // contains no Chinese group headers or tag text. Failure here is
+    // non-fatal: the renderer falls back to the raw values.
+    var terms = <String, String>{};
+    try {
+      final allTerms = <String>[
+        for (final t in d.touchedTasks) t.project.trim(),
+        for (final t in d.touchedTasks) ...t.tags,
+      ];
+      terms = await ai.translateTerms(allTerms, toChinese: chinese);
+    } catch (_) {
+      // Keep terms empty -> raw project/tag text is shown.
+    }
     return (
       summaries: summaries,
       titles: titles,
+      terms: terms,
       failed: failed,
       firstError: firstError,
     );
@@ -464,6 +479,7 @@ class ReportService {
     ReportLanguage lang = ReportLanguage.english,
     Map<Task, String>? aiSummaries,
     Map<Task, String>? aiTitles,
+    Map<String, String>? aiTerms,
   }) {
     final l = _L(lang);
     final b = StringBuffer();
@@ -487,7 +503,7 @@ class ReportService {
       final done =
           g.value.where((t) => t.status == TaskStatus.completed).length;
       b.writeln(
-          '| ${g.key} | ${rag.emoji} ${rag.label} | $done/${g.value.length} | ${_mdEscape(_groupHeadline(g.value, l, aiTitles))} |');
+          '| ${_term(g.key, aiTerms)} | ${rag.emoji} ${rag.label} | $done/${g.value.length} | ${_mdEscape(_groupHeadline(g.value, l, aiTitles))} |');
     }
     b.writeln();
     final overall = _overallRag(groups, d, l);
@@ -507,7 +523,7 @@ class ReportService {
       b.writeln('- ${l.noneThisPeriod}');
     } else {
       for (final t in d.completed) {
-        b.writeln('- **${_mdEscape(_title(t, aiTitles))}**${_tagSuffix(t)} '
+        b.writeln('- **${_mdEscape(_title(t, aiTitles))}**${_tagSuffix(t, aiTerms)} '
             '(${l.doneOn(DateFormat('MM-dd').format(t.completedAt!))})');
         final sub = _firstSummary(t, aiSummaries);
         if (sub != null) b.writeln('  - ${_mdEscape(sub)}');
@@ -521,7 +537,7 @@ class ReportService {
       for (final t in d.inProgress) {
         final done = t.subSteps.where((s) => s.completed).length;
         b.writeln(
-            '- **${_mdEscape(_title(t, aiTitles))}** — ${l.subStepsCount(done, t.subSteps.length)}${_tagSuffix(t)}');
+            '- **${_mdEscape(_title(t, aiTitles))}** — ${l.subStepsCount(done, t.subSteps.length)}${_tagSuffix(t, aiTerms)}');
         final sub = _firstSummary(t, aiSummaries);
         if (sub != null) b.writeln('  - ${_mdEscape(sub)}');
       }
@@ -545,7 +561,7 @@ class ReportService {
     b.writeln('*${l.groupedByProject}*');
     b.writeln();
     for (final g in groups.entries) {
-      b.writeln('### ${g.key}');
+      b.writeln('### ${_term(g.key, aiTerms)}');
       b.writeln();
       b.writeln('| ${l.item} | ${l.status} | ${l.details} |');
       b.writeln('|:-----|:------:|:--------|');
@@ -572,7 +588,7 @@ class ReportService {
         final due =
             t.dueDate != null ? DateFormat('MM-dd').format(t.dueDate!) : '—';
         b.writeln(
-            '| $group | ${_mdEscape(_title(t, aiTitles))} | $due | ${t.priority.shortLabel} |');
+            '| ${_term(group, aiTerms)} | ${_mdEscape(_title(t, aiTitles))} | $due | ${t.priority.shortLabel} |');
       }
     }
     b.writeln();
@@ -669,8 +685,18 @@ class ReportService {
     return l.noActivity;
   }
 
-  String _tagSuffix(Task t) =>
-      t.tags.isEmpty ? '' : ' — ${t.tags.map((x) => '#$x').join(' ')}';
+  String _tagSuffix(Task t, [Map<String, String>? aiTerms]) =>
+      t.tags.isEmpty
+          ? ''
+          : ' — ${t.tags.map((x) => '#${_term(x, aiTerms)}').join(' ')}';
+
+  /// Translates a project name / tag via the AI-produced [aiTerms] map,
+  /// falling back to the raw value when no translation is available. This
+  /// is what keeps Chinese project names and tags out of English reports.
+  String _term(String raw, Map<String, String>? aiTerms) {
+    final tr = aiTerms?[raw];
+    return (tr != null && tr.trim().isNotEmpty) ? tr : raw;
+  }
 
   String _taskStatusEmoji(Task t, ReportData d) {
     if (t.status == TaskStatus.completed) return '🟩';
@@ -807,6 +833,7 @@ class ReportService {
     ReportLanguage lang = ReportLanguage.english,
     Map<Task, String>? aiSummaries,
     Map<Task, String>? aiTitles,
+    Map<String, String>? aiTerms,
     bool email = false,
   }) {
     final l = _L(lang);
@@ -1044,7 +1071,7 @@ $bodyOpen$innerHead''');
       final rag = _ragForGroup(g.value, d, l);
       final done =
           g.value.where((t) => t.status == TaskStatus.completed).length;
-      b.write('<tr><td class="title" style="$tdT">${esc(g.key)}</td>'
+      b.write('<tr><td class="title" style="$tdT">${esc(_term(g.key, aiTerms))}</td>'
           '<td class="center" style="$tdC">${ragPill(rag)}</td>'
           '<td class="center" style="$tdC">$done/${g.value.length}</td>'
           '<td style="$tdL">${esc(_groupHeadline(g.value, l, aiTitles))}</td></tr>\n');
@@ -1064,7 +1091,7 @@ $bodyOpen$innerHead''');
       b.write('<ul class="sum" style="$sumUlS">');
       for (final t in d.completed) {
         b.write(
-            '<li style="$sumLiS"><strong>${esc(_title(t, aiTitles))}</strong>${esc(_tagSuffix(t))} '
+            '<li style="$sumLiS"><strong>${esc(_title(t, aiTitles))}</strong>${esc(_tagSuffix(t, aiTerms))} '
             '(${esc(l.doneOn(DateFormat('MM-dd').format(t.completedAt!)))})');
         final sub = _firstSummary(t, aiSummaries);
         if (sub != null) {
@@ -1086,7 +1113,7 @@ $bodyOpen$innerHead''');
       for (final t in d.inProgress) {
         final done = t.subSteps.where((s) => s.completed).length;
         b.write(
-            '<li style="$sumLiS"><strong>${esc(_title(t, aiTitles))}</strong> — ${esc(l.subStepsCount(done, t.subSteps.length))}${esc(_tagSuffix(t))}');
+            '<li style="$sumLiS"><strong>${esc(_title(t, aiTitles))}</strong> — ${esc(l.subStepsCount(done, t.subSteps.length))}${esc(_tagSuffix(t, aiTerms))}');
         final sub = _firstSummary(t, aiSummaries);
         if (sub != null) {
           b.write(
@@ -1116,7 +1143,7 @@ $bodyOpen$innerHead''');
     b.write('<h2 style="$h2S">3. ${l.progressDetails}</h2>');
     for (final g in groups.entries) {
       b.write(
-          '<div class="group-head" style="$groupHeadS">${esc(g.key)}</div>');
+          '<div class="group-head" style="$groupHeadS">${esc(_term(g.key, aiTerms))}</div>');
       b.write(
           '$tableOpen$headTrOpen<th style="$thL">${l.item}</th><th class="center" style="$thC">${l.status}</th><th style="$thL">${l.details}</th></tr>');
       for (final t in g.value) {
@@ -1140,7 +1167,7 @@ $bodyOpen$innerHead''');
         final due =
             t.dueDate != null ? DateFormat('MM-dd').format(t.dueDate!) : '—';
         b.write(
-            '<tr><td style="$tdL">${esc(group)}</td><td class="title" style="$tdT">${esc(_title(t, aiTitles))}</td>'
+            '<tr><td style="$tdL">${esc(_term(group, aiTerms))}</td><td class="title" style="$tdT">${esc(_title(t, aiTitles))}</td>'
             '<td class="center" style="$tdC">$due</td><td class="center" style="$tdC">${t.priority.shortLabel}</td></tr>');
       }
       b.write('</table>');

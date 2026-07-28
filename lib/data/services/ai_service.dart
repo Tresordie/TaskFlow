@@ -214,6 +214,84 @@ Rules:
     }
   }
 
+  /// Translates a batch of short terms (project names, tags) into the report
+  /// language in ONE call. Returns a map from original term to translation;
+  /// terms that fail to translate are omitted so the caller falls back to the
+  /// raw value. Used to keep English reports free of Chinese project/tag text.
+  Future<Map<String, String>> translateTerms(
+    List<String> terms, {
+    required bool toChinese,
+  }) async {
+    final unique = terms.where((t) => t.trim().isNotEmpty).toSet().toList();
+    if (unique.isEmpty) return const {};
+    final target = toChinese ? 'Chinese' : 'English';
+    final uri = _buildUri();
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 10);
+    try {
+      final request =
+          await client.postUrl(uri).timeout(const Duration(seconds: 15));
+      request.headers.set('Content-Type', 'application/json; charset=utf-8');
+      request.headers.set('Authorization', 'Bearer $apiKey');
+      final prompt = 'Translate the following ${unique.length} short work '
+          'terms into $target. Output EXACTLY ${unique.length} lines, one '
+          'translation per line, in the SAME ORDER as given. Output ONLY the '
+          'translations — no numbering, no bullets, no explanations. Keep '
+          'model numbers / acronyms unchanged. If a term is already in '
+          '$target, output it unchanged.\n\n${unique.join('\n')}';
+      request.add(utf8.encode(jsonEncode({
+        'model': model,
+        'temperature': 0.1,
+        'messages': [
+          {'role': 'user', 'content': prompt},
+        ],
+      })));
+      final response =
+          await request.close().timeout(const Duration(seconds: 60));
+      final text = await response.transform(utf8.decoder).join();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw AiServiceException(
+            'API error ${response.statusCode}: ${_shorten(text)}');
+      }
+      final content = _extractContentMultiLine(text);
+      // Parse tolerantly: prefer "original => translation" lines, else zip
+      // bare translation lines with the input by order.
+      final result = <String, String>{};
+      final arrowLines = content
+          .split('\n')
+          .map((l) => l.trim())
+          .where((l) => l.contains('=>'))
+          .toList();
+      if (arrowLines.length >= unique.length) {
+        for (final line in arrowLines) {
+          final idx = line.indexOf('=>');
+          final orig = line
+              .substring(0, idx)
+              .trim()
+              .replaceFirst(RegExp(r'^[-*\d.\s]+'), '');
+          final trans = line.substring(idx + 2).trim();
+          if (orig.isNotEmpty && trans.isNotEmpty) result[orig] = trans;
+        }
+      } else {
+        final lines = content
+            .split('\n')
+            .map((l) => l.trim().replaceFirst(RegExp(r'^[-*\d.\s]+'), ''))
+            .where((l) => l.isNotEmpty)
+            .toList();
+        for (var i = 0; i < unique.length && i < lines.length; i++) {
+          result[unique[i]] = lines[i];
+        }
+      }
+      return result;
+    } on SocketException catch (e) {
+      throw AiServiceException('Network error: ${e.message}');
+    } on TimeoutException {
+      throw AiServiceException('Translation request timed out.');
+    } finally {
+      client.close(force: true);
+    }
+  }
+
   /// Generates a structured work summary from free-form work-log records
   /// (ported from the LinguaFlow Chrome extension's workreport page).
   ///
@@ -299,35 +377,77 @@ Rules:
     required String dateRange,
   }) {
     if (outputChinese) {
-      return '你是工作汇报总结助手。请阅读以下工作记录，提取关键要点并生成结构化的中文总结。\n\n'
+      return '你是工作汇报总结助手。请先通读全部工作记录、理解整体上下文：'
+          '识别主要工作主题，将相互关联的事项归类到同一工作类别（同一项目、'
+          '同一专项或同类事务），把握时间脉络与因果关联，'
+          '区分已完成、进行中与受阻的工作；在充分理解、归类和思考的基础上，'
+          '再提炼关键要点，生成结构化的中文总结。\n\n'
           '输出格式（严格遵守，不得增删层级，不得更换或省略emoji）：\n'
           '## 📋 工作总结 ($dateRange)\n'
           '### 🔑 要点总结\n'
-          '- [要点]\n'
+          '- （3-5 条，概括本次工作记录的核心结论）\n'
           '### 📝 要点详述\n'
-          '#### 1. [标题]\n'
-          '详细阐述段落\n\n'
+          '**1. 议题标题**\n'
+          '- 要点\n'
+          '  - 细节\n'
+          '    - 更细的细节\n'
+          '**2. 议题标题**\n'
+          '- 要点\n'
+          '  - 子项\n\n'
           '硬性规则：\n'
           '- 只输出纯Markdown，严禁输出LaTeX、美元符号或"\$1"之类的编号占位符；\n'
-          '- 编号一律使用纯数字"1. 2. 3."；\n'
-          '- 每个"#### N. 标题"之后另起一段写详述内容。';
+          '- 保持层级结构：一级以"- "开头，二级用两个空格缩进"  - "，'
+          '三级用四个空格缩进"    - "，严禁把所有内容写成平铺的段落；\n'
+          '- 每条一个事实：一行只说一件事，不要把多件事合并到一行；\n'
+          '- 原文的技术术语、编号、缩写、料号、设备名全部原样保留，不要改写或泛化；\n'
+          '- 已经存在的机制在条目末尾标注 (already in place)，待办事项标注 *To-do*；\n'
+          '- 议题标题用"**N. 标题**"加粗格式，编号用纯数字"1. 2. 3."；'
+          '每个议题代表一个工作类别或主题，把相互关联的记录归并到同一议题，'
+          '不要按时间顺序逐条流水账式罗列；\n'
+          '- 思考过程只在内部进行，不要输出任何分析步骤或额外说明。';
     }
     return 'Role: work summarizer.\n'
+        'First read ALL the records and understand the overall context: '
+        'identify the main work themes, categorize related items into the '
+        'same work category (same project, same initiative, or similar type '
+        'of work), follow the chronological progression and cause-effect '
+        'links, and distinguish completed vs in-progress vs blocked work. '
+        'Only after this understanding, categorization and reflection, '
+        'distill the key points and write the '
+        'summary.\n'
         'Rule: read the input but write ONLY in the requested output language.\n'
         'Output EXACTLY this Markdown structure (do not add or remove levels, '
         'do not swap or drop the emoji):\n'
         '## 📋 Work Summary\n'
         '### 🔑 Key Points\n'
-        '- point\n'
+        '- (3-5 bullets summarizing the core conclusions of these records)\n'
         '### 📝 Detailed Breakdown\n'
-        '#### 1. Title\n'
-        'Elaboration paragraph\n\n'
+        '**1. Topic title**\n'
+        '- point\n'
+        '  - detail\n'
+        '    - finer detail\n'
+        '**2. Topic title**\n'
+        '- point\n'
+        '  - sub-item\n\n'
         'Hard rules:\n'
         '- Output plain Markdown only. NEVER output LaTeX, dollar signs, or '
         '"\$1"-style numbering placeholders.\n'
-        '- Number items with plain digits "1. 2. 3.".\n'
-        '- Each "#### N. Title" heading is followed by its elaboration '
-        'paragraph on a new line.';
+        '- Preserve the hierarchy: level 1 starts with "- ", level 2 is '
+        'indented with two spaces "  - ", level 3 with four spaces "    - ". '
+        'NEVER flatten everything into plain paragraphs.\n'
+        '- One fact per line: each bullet states a single fact — do not merge '
+        'multiple facts into one line.\n'
+        '- Keep ALL technical terms, numbers, abbreviations, part numbers and '
+        'station names from the source verbatim — do not rewrite or '
+        'generalize them.\n'
+        '- Append (already in place) to items describing existing mechanisms, '
+        'and mark to-do items with *To-do*.\n'
+        '- Topic titles use the bold form "**N. Title**" numbered with plain '
+        'digits "1. 2. 3."; each topic represents ONE work category or theme '
+        '— group related records into the same topic instead of listing them '
+        'chronologically one by one.\n'
+        '- Keep your reasoning internal — output ONLY the final summary, no '
+        'analysis steps or extra commentary.';
   }
 
   /// User prompt for the work-log summarizer (exposed for tests).
@@ -422,29 +542,43 @@ Rules:
   // ------------------------------------------------------------------
 
   static String _enhancePrompt(bool chinese) => chinese
-      ? '你是工作汇报助手。针对用户给出的单个任务，按以下格式输出：\n'
+      ? '你是工作汇报助手。请先整体理解该任务：结合标题、描述、子步骤与报告期内的'
+          '执行日志，思考任务的实际进展、关键成果与因果关联；再把报告期内的执行日志'
+          '按工作类别归类（如排查定位、方案实施、验证测试、协调沟通等），'
+          '在理解与归类的基础上提炼要点，再按以下格式输出：\n'
           'TITLE: <把任务标题翻译成中文，保留型号/缩写等技术术语>\n'
           'SUMMARY:\n'
           '- <要点1>\n'
           '- <要点2>\n'
           '要求：SUMMARY 下用 1~3 个要点总结该任务在报告期内的执行日志'
-          '（已完成的任务要总结实际完成的内容）；每个要点单独一行、以"- "开头、'
+          '（已完成的任务要总结实际完成的内容）；每个要点覆盖一个工作类别/方面、'
+          '把同类工作合并到同一要点，不要逐条罗列日志；每个要点单独一行、以"- "开头、'
           '信息必须完整自洽、禁止在半途截断（单条建议不超过40个汉字）；'
           '若期内无日志则总结任务当前状态。'
           '除 TITLE 行与 SUMMARY 要点外，不要任何额外说明、引号或markdown。'
-      : 'You are a work-report assistant. For the single task given by the '
-          'user, output in this exact format:\n'
+      : 'You are a work-report assistant. First understand the task as a '
+          'whole — relate its title, description, sub-steps and the execution '
+          'logs inside the reporting period, and reason about what actually '
+          'progressed and what was accomplished; then categorize those '
+          'execution-log entries into work categories (e.g. investigation, '
+          'implementation, verification, coordination) and distill the key '
+          'points from that categorization. Then output in this exact '
+          'format:\n'
           'TITLE: <the task title translated into English, keeping model '
           'numbers / acronyms unchanged>\n'
           'SUMMARY:\n'
           '- <point 1>\n'
           '- <point 2>\n'
           'Rules: write the TITLE and EVERY SUMMARY bullet in English. The '
-          'task information below may be in Chinese — translate it into '
-          'English; NEVER output any Chinese characters. Under SUMMARY, '
-          'give 1-3 bullet points summarizing the '
+          'task information below may be in Chinese — translate ALL of it '
+          'into English; your ENTIRE output must contain ZERO Chinese '
+          'characters (any Chinese character in the output is a failure). '
+          'Under SUMMARY, give 1-3 bullet points summarizing the '
           "task's execution logs inside the reporting period (for completed "
-          'tasks, summarize WHAT was accomplished); each point on its own '
+          'tasks, summarize WHAT was accomplished); each bullet covers ONE '
+          'work category/aspect — merge same-category work into the same '
+          'bullet instead of listing log entries one by one; each point on '
+          'its own '
           'line starting with "- ", complete and self-contained — NEVER cut '
           'a phrase short (aim for one line, roughly 100 chars max); if '
           'there are no logs in the period, summarize the current task '

@@ -9,9 +9,9 @@ import '../../core/utils/open_folder.dart';
 import '../../data/models/task.dart';
 import '../../data/services/attachment_service.dart';
 import '../../providers/task_providers.dart';
-import '../shared/app_markdown_body.dart';
 import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
+import '../shared/selectable_markdown_body.dart';
 import 'edit_entry_dialog.dart';
 
 class ExecutionLogWidget extends ConsumerStatefulWidget {
@@ -183,7 +183,17 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
                           visualDensity: VisualDensity.compact,
                         ),
                       )),
-                  const Spacer(),
+                  const SizedBox(width: 12),
+                  // Markdown formatting toolbar shares the same row as the type
+                  // chips so the controls sit on one horizontal line; it fills
+                  // the remaining width and scrolls internally when narrow.
+                  Expanded(
+                    child: MarkdownToolbar(
+                      controller: _entryController,
+                      refocus: _entryFocus,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   // Attach image
                   _AttachButton(
                     icon: Icons.image_outlined,
@@ -221,14 +231,6 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
                 ),
               ],
               const SizedBox(height: 10),
-
-              // Markdown formatting toolbar (bold/italic/code/headings/lists/
-              // quote + indent/outdent). Tab & Shift+Tab also indent inline.
-              MarkdownToolbar(
-                controller: _entryController,
-                refocus: _entryFocus,
-              ),
-              const SizedBox(height: 6),
 
               // Text input with Write/Preview toggle (height controlled by
               // the grip handle above)
@@ -628,19 +630,19 @@ class _LogEntryItem extends StatelessWidget {
                   ),
                   if (entry.content.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    // Render the saved Note with the SAME full-block renderer
-                    // used by the input Preview (AppMarkdownBody), so the
-                    // recorded entry looks exactly like the preview the user
-                    // saw before sending. selectable: true keeps per-block
-                    // text selection working in Release/AOT builds (the
-                    // app-wide SelectionArea is unreliable there — v1.4.28).
-                    AppMarkdownBody(
+                    // Render the saved Note as ONE selectable document so the
+                    // user can drag-select across lines/paragraphs and use
+                    // select-all — including in Release/AOT builds, where the
+                    // app-wide SelectionArea's highlight is unreliable inside
+                    // this ListView (v1.4.28). Using the SAME style sheet as
+                    // the input Preview keeps the recorded entry's typography
+                    // (headings / code / quote / link) matching what the user
+                    // saw before sending (WYSIWYG).
+                    SelectableMarkdownBody(
                       data: entry.content,
-                      selectable: true,
                       hardenLineBreaks: true,
                       styleSheet: _markdownStyleSheet(context),
-                      onTapLink: (text, href, title) {
-                        if (href == null) return;
+                      onTapLink: (href) {
                         final uri = Uri.tryParse(href);
                         if (uri == null) return;
                         if (uri.scheme == 'file') {

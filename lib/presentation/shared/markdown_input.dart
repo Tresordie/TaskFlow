@@ -363,77 +363,93 @@ class MarkdownToolbar extends StatelessWidget {
       );
     }
 
-    const gap = SizedBox(width: 4);
+    // Group separator: a thin vertical rule so related buttons read as
+    // clusters instead of one long undifferentiated run.
+    final gap = Container(
+      width: 1,
+      height: 14,
+      margin: const EdgeInsets.symmetric(horizontal: 5),
+      color: theme.colorScheme.outline.withOpacity(0.22),
+    );
 
-    // Single row; scrolls horizontally when the window is too narrow
-    // instead of wrapping or truncating buttons.
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          textBtn('H1', 'Heading 1 (# )',
-              () => MarkdownInput.setHeading(controller, 1)),
-          textBtn('H2', 'Heading 2 (## )',
-              () => MarkdownInput.setHeading(controller, 2)),
-          textBtn('H3', 'Heading 3 (### )',
-              () => MarkdownInput.setHeading(controller, 3)),
-          gap,
-          btn(Icons.format_bold, 'Bold (**text**)',
-              () => MarkdownInput.wrapSelection(controller, '**', '**')),
-          btn(Icons.format_italic, 'Italic (*text*)',
-              () => MarkdownInput.wrapSelection(controller, '*', '*')),
-          btn(Icons.strikethrough_s, 'Strikethrough (~~text~~)',
-              () => MarkdownInput.wrapSelection(controller, '~~', '~~')),
-          btn(Icons.format_underlined, 'Underline (++text++)',
-              () => MarkdownInput.wrapSelection(controller, '++', '++')),
-          btn(Icons.highlight, 'Highlight (==text==)',
-              () => MarkdownInput.wrapSelection(controller, '==', '==')),
-          gap,
-          SizedBox(
-            width: 26,
-            height: 26,
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              iconSize: 15,
-              tooltip: 'Font color (<font color>)',
-              onPressed: () => _pickColor(context),
-              icon: Icon(Icons.format_color_text, color: iconColor),
+    // A single row wrapped in a subtle pill container so the bar reads as
+    // one cohesive formatting toolbar; it scrolls horizontally when the
+    // window is too narrow instead of wrapping or truncating buttons.
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.onSurface.withOpacity(0.045),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.14)),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            textBtn('H1', 'Heading 1 (# )',
+                () => MarkdownInput.setHeading(controller, 1)),
+            textBtn('H2', 'Heading 2 (## )',
+                () => MarkdownInput.setHeading(controller, 2)),
+            textBtn('H3', 'Heading 3 (### )',
+                () => MarkdownInput.setHeading(controller, 3)),
+            gap,
+            btn(Icons.format_bold, 'Bold (**text**)',
+                () => MarkdownInput.wrapSelection(controller, '**', '**')),
+            btn(Icons.format_italic, 'Italic (*text*)',
+                () => MarkdownInput.wrapSelection(controller, '*', '*')),
+            btn(Icons.strikethrough_s, 'Strikethrough (~~text~~)',
+                () => MarkdownInput.wrapSelection(controller, '~~', '~~')),
+            btn(Icons.format_underlined, 'Underline (++text++)',
+                () => MarkdownInput.wrapSelection(controller, '++', '++')),
+            btn(Icons.highlight, 'Highlight (==text==)',
+                () => MarkdownInput.wrapSelection(controller, '==', '==')),
+            gap,
+            SizedBox(
+              width: 26,
+              height: 26,
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                iconSize: 15,
+                tooltip: 'Font color (<font color>)',
+                onPressed: () => _pickColor(context),
+                icon: Icon(Icons.format_color_text, color: iconColor),
+              ),
             ),
-          ),
-          SizedBox(
-            width: 26,
-            height: 26,
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              iconSize: 15,
-              tooltip: 'Font size (<font size>)',
-              onPressed: () => _pickSize(context),
-              icon: Icon(Icons.format_size, color: iconColor),
+            SizedBox(
+              width: 26,
+              height: 26,
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                iconSize: 15,
+                tooltip: 'Font size (<font size>)',
+                onPressed: () => _pickSize(context),
+                icon: Icon(Icons.format_size, color: iconColor),
+              ),
             ),
-          ),
-          gap,
-          btn(Icons.format_quote, 'Quote (> )',
-              () => MarkdownInput.prefixLines(controller, '> ')),
-          btn(Icons.link, 'Hyperlink ([text](url))',
-              () => _insertLink(context)),
-          btn(Icons.fact_check_outlined, 'Task list (- [ ] )',
-              () => MarkdownInput.prefixLines(controller, '- [ ] ')),
-          btn(Icons.format_list_bulleted, 'Bullet list (- )',
-              () => MarkdownInput.prefixLines(controller, '- ')),
-          btn(Icons.format_list_numbered, 'Numbered list (1. )',
-              () => MarkdownInput.prefixLines(controller, '1. ')),
-          gap,
-          btn(Icons.code, 'Inline code (`code`)',
-              () => MarkdownInput.wrapSelection(controller, '`', '`')),
-          btn(Icons.terminal, 'Code block (```)',
-              () => MarkdownInput.codeBlock(controller)),
-          gap,
-          btn(Icons.format_indent_increase, 'Indent (Tab)',
-              () => MarkdownInput.indent(controller)),
-          btn(Icons.format_indent_decrease, 'Outdent (Shift+Tab)',
-              () => MarkdownInput.outdent(controller)),
-        ],
+            gap,
+            btn(Icons.format_quote, 'Quote (> )',
+                () => MarkdownInput.prefixLines(controller, '> ')),
+            btn(Icons.link, 'Hyperlink ([text](url))',
+                () => _insertLink(context)),
+            btn(Icons.fact_check_outlined, 'Task list (- [ ] )',
+                () => MarkdownInput.prefixLines(controller, '- [ ] ')),
+            btn(Icons.format_list_bulleted, 'Bullet list (- )',
+                () => MarkdownInput.prefixLines(controller, '- ')),
+            btn(Icons.format_list_numbered, 'Numbered list (1. )',
+                () => MarkdownInput.prefixLines(controller, '1. ')),
+            gap,
+            btn(Icons.code, 'Inline code (`code`)',
+                () => MarkdownInput.wrapSelection(controller, '`', '`')),
+            btn(Icons.terminal, 'Code block (```)',
+                () => MarkdownInput.codeBlock(controller)),
+            gap,
+            btn(Icons.format_indent_increase, 'Indent (Tab)',
+                () => MarkdownInput.indent(controller)),
+            btn(Icons.format_indent_decrease, 'Outdent (Shift+Tab)',
+                () => MarkdownInput.outdent(controller)),
+          ],
+        ),
       ),
     );
   }
