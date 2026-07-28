@@ -46,16 +46,17 @@ class AppColors {
   static const Color info = Color(0xFF3B82F6);
 
   // ─── Default (Indigo) Light ───
-  // v1.4.29: textSecondary deepened a touch (475569 → 526077) for better
-  // contrast on white; primaryGhost softened so tinted backgrounds feel
-  // lighter and airier.
+  // v1.4.39: textPrimary softened from near-black (1A2233) to a deep blue-
+  // slate (273350) and the background lifted a touch — the old near-black
+  // text on pale grey read as "heavy/dull". Contrast stays comfortably
+  // above WCAG AA while the whole canvas feels lighter and airier.
   static const ThemePalette indigoLight = ThemePalette(
-    bg: Color(0xFFF7F8FC),
+    bg: Color(0xFFF8F9FE),
     surface: Color(0xFFFFFFFF),
     card: Color(0xFFFFFFFF),
     border: Color(0xFFE4E8F0),
-    textPrimary: Color(0xFF1A2233),
-    textSecondary: Color(0xFF526077),
+    textPrimary: Color(0xFF273350),
+    textSecondary: Color(0xFF5F6E88),
     primary: Color(0xFF6366F1),
     primaryLight: Color(0xFF818CF8),
     primaryDark: Color(0xFF4F46E5),
@@ -64,12 +65,12 @@ class AppColors {
 
   // ─── Fresh Green (清新淡绿) ───
   static const ThemePalette freshGreen = ThemePalette(
-    bg: Color(0xFFF0F9F4),
+    bg: Color(0xFFF2FBF6),
     surface: Color(0xFFFFFFFF),
-    card: Color(0xFFFAFFFE),
+    card: Color(0xFFFBFFFE),
     border: Color(0xFFD1E7DD),
-    textPrimary: Color(0xFF1B3A2D),
-    textSecondary: Color(0xFF4A6E5B),
+    textPrimary: Color(0xFF23503C),
+    textSecondary: Color(0xFF567E6A),
     primary: Color(0xFF34A853),
     primaryLight: Color(0xFF66BB6A),
     primaryDark: Color(0xFF2E7D42),
@@ -78,12 +79,12 @@ class AppColors {
 
   // ─── Ocean Blue (海洋蓝) ───
   static const ThemePalette oceanBlue = ThemePalette(
-    bg: Color(0xFFF0F7FF),
+    bg: Color(0xFFF2F8FF),
     surface: Color(0xFFFFFFFF),
-    card: Color(0xFFFBFDFF),
+    card: Color(0xFFFCFDFF),
     border: Color(0xFFD6E6F5),
-    textPrimary: Color(0xFF16324F),
-    textSecondary: Color(0xFF49637E),
+    textPrimary: Color(0xFF1F4266),
+    textSecondary: Color(0xFF55718C),
     primary: Color(0xFF0EA5E9),
     primaryLight: Color(0xFF38BDF8),
     primaryDark: Color(0xFF0284C7),
@@ -92,12 +93,12 @@ class AppColors {
 
   // ─── Sunset Orange (日落橙) ───
   static const ThemePalette sunsetOrange = ThemePalette(
-    bg: Color(0xFFFFF7ED),
+    bg: Color(0xFFFFF8F0),
     surface: Color(0xFFFFFFFF),
-    card: Color(0xFFFFFBF5),
+    card: Color(0xFFFFFCF7),
     border: Color(0xFFFED7AA),
-    textPrimary: Color(0xFF431407),
-    textSecondary: Color(0xFF7E5741),
+    textPrimary: Color(0xFF57281A),
+    textSecondary: Color(0xFF8C6650),
     primary: Color(0xFFF97316),
     primaryLight: Color(0xFFFB923C),
     primaryDark: Color(0xFFEA580C),
@@ -106,12 +107,12 @@ class AppColors {
 
   // ─── Sakura Pink (樱花粉) ───
   static const ThemePalette sakuraPink = ThemePalette(
-    bg: Color(0xFFFFF5F7),
+    bg: Color(0xFFFFF6F8),
     surface: Color(0xFFFFFFFF),
-    card: Color(0xFFFFFBFC),
+    card: Color(0xFFFFFCFD),
     border: Color(0xFFFBCFE8),
-    textPrimary: Color(0xFF500724),
-    textSecondary: Color(0xFF81586D),
+    textPrimary: Color(0xFF63183A),
+    textSecondary: Color(0xFF8F687D),
     primary: Color(0xFFEC4899),
     primaryLight: Color(0xFFF472B6),
     primaryDark: Color(0xFFDB2777),
@@ -120,12 +121,12 @@ class AppColors {
 
   // ─── Lavender Purple (薰衣草紫) ───
   static const ThemePalette lavenderPurple = ThemePalette(
-    bg: Color(0xFFFAF5FF),
+    bg: Color(0xFFFBF6FF),
     surface: Color(0xFFFFFFFF),
-    card: Color(0xFFFDFAFF),
+    card: Color(0xFFFEFBFF),
     border: Color(0xFFE9D5FF),
-    textPrimary: Color(0xFF3B0764),
-    textSecondary: Color(0xFF67577E),
+    textPrimary: Color(0xFF4A1B78),
+    textSecondary: Color(0xFF756590),
     primary: Color(0xFFA855F7),
     primaryLight: Color(0xFFC084FC),
     primaryDark: Color(0xFF9333EA),
@@ -133,37 +134,41 @@ class AppColors {
   );
 
   // ─── Dark ───
-  // v1.4.29: card lifted slightly above surface (1E293B → 253047) so panels
-  // read as distinct layers instead of one flat grey. Text tones are pulled
-  // DOWN from near-white to a soft warm-grey (F1F5F9 → CBD4E1) — full-white
-  // text on a dark background is glaring/harsh; the softer tone keeps contrast
-  // comfortable for long reading while staying clearly legible.
+  // v1.4.39: the whole dark palette is lifted noticeably — the previous
+  // near-black surfaces (0B1120 / 1A2333) and muted text (CBD4E1) read as
+  // "too dim/dull". Surfaces move up to a soft charcoal-blue, borders get a
+  // touch more presence, and text brightens to a clear off-white (E4EAF4)
+  // that stays below pure white to avoid glare while feeling fresh and
+  // readable. The primary indigo is nudged brighter for more vibrancy.
   static const ThemePalette dark = ThemePalette(
-    bg: Color(0xFF0B1120),
-    surface: Color(0xFF1A2333),
-    card: Color(0xFF253047),
-    border: Color(0xFF36435C),
-    textPrimary: Color(0xFFCBD4E1),
-    textSecondary: Color(0xFF9AA9BF),
-    primary: Color(0xFF818CF8),
-    primaryLight: Color(0xFFA5B4FC),
-    primaryDark: Color(0xFF6366F1),
-    primaryGhost: Color(0xFF232055),
+    bg: Color(0xFF142036),
+    surface: Color(0xFF1E2B42),
+    card: Color(0xFF273650),
+    border: Color(0xFF3E5070),
+    textPrimary: Color(0xFFE4EAF4),
+    textSecondary: Color(0xFFB7C3D8),
+    primary: Color(0xFF8F9AFF),
+    primaryLight: Color(0xFFB8C3FF),
+    primaryDark: Color(0xFF6E74F2),
+    primaryGhost: Color(0xFF2C3066),
   );
 
   // ─── Legacy aliases (for existing code compatibility) ───
-  static const Color lightBg = Color(0xFFF8FAFC);
+  // v1.4.39: kept in sync with the indigo-light / dark palettes above so the
+  // hard-coded `isDark ? darkX : lightX` usages (dates, tags, icons, meta)
+  // brighten together with the rest of the theme instead of staying dim.
+  static const Color lightBg = Color(0xFFF8F9FE);
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightCard = Color(0xFFFFFFFF);
-  static const Color lightBorder = Color(0xFFE2E8F0);
-  static const Color lightTextPrimary = Color(0xFF1E293B);
-  static const Color lightTextSecondary = Color(0xFF475569);
-  static const Color darkBg = Color(0xFF0F172A);
-  static const Color darkSurface = Color(0xFF1E293B);
-  static const Color darkCard = Color(0xFF1E293B);
-  static const Color darkBorder = Color(0xFF334155);
-  static const Color darkTextPrimary = Color(0xFFCBD4E1);
-  static const Color darkTextSecondary = Color(0xFF9AA9BF);
+  static const Color lightBorder = Color(0xFFE4E8F0);
+  static const Color lightTextPrimary = Color(0xFF273350);
+  static const Color lightTextSecondary = Color(0xFF5F6E88);
+  static const Color darkBg = Color(0xFF142036);
+  static const Color darkSurface = Color(0xFF1E2B42);
+  static const Color darkCard = Color(0xFF273650);
+  static const Color darkBorder = Color(0xFF3E5070);
+  static const Color darkTextPrimary = Color(0xFFE4EAF4);
+  static const Color darkTextSecondary = Color(0xFFB7C3D8);
   static const Color primary = Color(0xFF6366F1);
   static const Color primaryLight = Color(0xFF818CF8);
   static const Color primaryDark = Color(0xFF4F46E5);
