@@ -137,6 +137,82 @@ class AiService {
     }
   }
 
+  /// Streaming variant of [_chat], used by [generateFullReport] for reasoning
+  /// models whose "thinking" can take many minutes. A non-streaming request
+  /// must wait for the WHOLE document before the response completes, so it
+  /// trips the response timeout (the "Full-report generation timed out"
+  /// failure on kimi-k3). Streaming receives tokens continuously — we only
+  /// guard the gap BETWEEN chunks ([chunkTimeout]) — so the total generation
+  /// may run as long as the model needs. Returns the accumulated assistant
+  /// content; reasoning/thinking deltas (`reasoning_content`) are ignored.
+  Future<String> _chatStream({
+    required List<Map<String, String>> messages,
+    double? temperature,
+    int? maxTokens,
+    Map<String, dynamic>? extraBody,
+    Duration connectTimeout = const Duration(seconds: 15),
+    Duration requestTimeout = const Duration(seconds: 15),
+    Duration chunkTimeout = const Duration(seconds: 180),
+  }) async {
+    final uri = _buildUri();
+    final client = HttpClient()..connectionTimeout = connectTimeout;
+    try {
+      final request = await client.postUrl(uri).timeout(requestTimeout);
+      request.headers.set('Content-Type', 'application/json; charset=utf-8');
+      request.headers.set('Authorization', 'Bearer $apiKey');
+      request.headers.set('Accept', 'text/event-stream');
+      final body = <String, dynamic>{
+        'model': model,
+        'stream': true,
+        'messages': messages,
+        // Reasoning models: omit max_tokens (thinking shares the budget) and
+        // temperature (only 1 allowed) — same rationale as [_chat].
+        if (maxTokens != null && !_isReasoningModel(model))
+          'max_tokens': maxTokens,
+        if (temperature != null && !_isReasoningModel(model))
+          'temperature': temperature,
+        if (extraBody != null) ...extraBody,
+      };
+      request.add(utf8.encode(jsonEncode(body)));
+      final response = await request.close().timeout(chunkTimeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final text = await response.transform(utf8.decoder).join();
+        throw AiServiceException(
+            'API error ${response.statusCode}: ${_shorten(text)}');
+      }
+      final content = StringBuffer();
+      // Server-Sent Events: one `data: {json}` line per chunk, terminated by
+      // `data: [DONE]`. `.timeout` guards the gap between chunks so a stalled
+      // stream still fails instead of hanging forever.
+      final lines = response
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .timeout(chunkTimeout);
+      await for (final raw in lines) {
+        final line = raw.trim();
+        if (line.isEmpty || line.startsWith(':')) continue; // comment/keep-alive
+        if (!line.startsWith('data:')) continue;
+        final data = line.substring('data:'.length).trim();
+        if (data == '[DONE]') break;
+        try {
+          final decoded = jsonDecode(data);
+          final choices = decoded is Map ? decoded['choices'] : null;
+          if (choices is List && choices.isNotEmpty) {
+            final delta =
+                choices.first is Map ? choices.first['delta'] : null;
+            final c = delta is Map ? delta['content'] : null;
+            if (c is String) content.write(c);
+          }
+        } catch (_) {
+          // Ignore malformed/partial keep-alive chunks.
+        }
+      }
+      return content.toString();
+    } finally {
+      client.close(force: true);
+    }
+  }
+
   /// Heuristic: reasoning / "thinking" models only accept their default
   /// temperature (usually 1) and reject explicit values with HTTP 400. Match
   /// the well-known families by name so [_chat] omits the parameter for them.
@@ -347,18 +423,33 @@ Rules:
     required String taskData,
   }) async {
     try {
-      final text = await _chat(
-        // Low temperature for factual, structured output.
-        temperature: 0.3,
-        // A full report with 15-20 tasks typically needs 3000-6000 tokens.
-        maxTokens: 8192,
-        responseTimeout: const Duration(seconds: 180),
-        messages: [
-          {'role': 'system', 'content': systemPrompt},
-          {'role': 'user', 'content': taskData},
-        ],
-      );
-      var content = _extractContentMultiLine(text);
+      final messages = [
+        {'role': 'system', 'content': systemPrompt},
+        {'role': 'user', 'content': taskData},
+      ];
+      String content;
+      if (_isReasoningModel(model)) {
+        // Reasoning models "think" for many minutes on a full report — a
+        // non-streaming request would trip the response timeout (kimi-k3
+        // "Full-report generation timed out"). Stream instead so the long
+        // generation is bounded only by the gap between chunks.
+        content = await _chatStream(
+          // Low temperature for factual output (omitted for reasoning
+          // models inside _chatStream).
+          temperature: 0.3,
+          maxTokens: 8192,
+          messages: messages,
+        );
+      } else {
+        final text = await _chat(
+          temperature: 0.3,
+          // A full report with 15-20 tasks typically needs 3000-6000 tokens.
+          maxTokens: 8192,
+          responseTimeout: const Duration(seconds: 180),
+          messages: messages,
+        );
+        content = _extractContentMultiLine(text);
+      }
       // Strip wrapping code fences some models emit around the document.
       content = _stripFences(content);
       if (content.trim().isEmpty) {
