@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:intl/intl.dart';
 import 'package:markdown/markdown.dart' as md;
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -510,6 +511,16 @@ class ReportService {
           b.writeln('  [${s.completed ? 'x' : ' '}] ${s.title}');
         }
       }
+      // Task description (free-text detail on the task page). The spec
+      // requires summaries to draw from BOTH the description and the
+      // execution log, so include it (whitespace-collapsed, generously
+      // capped to keep the prompt bounded).
+      final desc = t.description?.replaceAll(RegExp(r'\s+'), ' ').trim();
+      if (desc != null && desc.isNotEmpty) {
+        var dd = desc;
+        if (dd.length > 2000) dd = '${dd.substring(0, 2000)}…';
+        b.writeln('Description: $dd');
+      }
       final entries = d.logActivity[t] ?? const <ExecutionEntry>[];
       if (entries.isNotEmpty) {
         b.writeln('Execution Log (${entries.length} entries in period):');
@@ -545,8 +556,9 @@ class ReportService {
       'task has an Execution Log — a chronological series of Notes '
       'documenting progress, decisions, blockers, and outcomes.\n\n'
       'PROCESSING RULES — before generating output you MUST:\n'
-      '1. Read and comprehend EVERY Execution Log Note across all tasks. '
-      'Do not skim or skip entries.\n'
+      '1. Read and comprehend every task\'s description AND every Execution '
+      'Log Note across all tasks. Do not skim or skip entries. Both sources '
+      'are equally important for generating accurate summaries.\n'
       '2. Classify each task under its Project.\n'
       '3. Synthesize — distill raw notes into concise, meaningful '
       'summaries. Preserve all technical terminology, part numbers, '
@@ -650,19 +662,28 @@ class ReportService {
       'title in the summary body.\n\n'
       '3. Progress Details:\n'
       '- Group tasks under their Project heading (H3).\n'
+      '- Table alignment (STRICT): every project table MUST use identical '
+      'fixed column widths — Item 25%, Status 8%, Details 67%. In HTML '
+      'output enforce via <colgroup><col style="width:25%"><col '
+      'style="width:8%"><col style="width:67%"></colgroup> inside each '
+      '<table>; do NOT let content auto-size columns differently.\n'
       '- Status icons: 🟩 Completed, 🟨 In Progress, 🟥 Blocked/overdue, '
       '⬜ Planned.\n'
       '- Details column (MANDATORY for ALL tasks regardless of status): '
-      'summarize ALL Execution Log Notes within the period — this applies '
-      'equally to Completed, In Progress, Blocked, and Planned tasks. '
-      'Maximum 5 bullets per task (use • separated by <br>). Each bullet '
-      '= one distinct fact or milestone — do not merge unrelated facts. '
-      'Preserve technical specifics: part numbers, firmware versions, '
-      'voltage/current values, dates, vendor names, tracking numbers. '
-      'Completed tasks are NOT exempt — their Details must contain a full '
-      'summary of what was done, how, and the outcome. For tasks with no '
-      'log entries in the period, write: "No execution logs in the '
-      'reporting period; {brief status note}."\n\n'
+      'summarize from BOTH the task description AND the Execution Log '
+      'Notes, combining both sources into a coherent summary — this '
+      'applies equally to Completed, In Progress, Blocked, and Planned '
+      'tasks. Maximum 5 bullets per task (use • separated by <br>). Each '
+      'bullet = one distinct fact or milestone — do not merge unrelated '
+      'facts. Preserve technical specifics: part numbers, firmware '
+      'versions, voltage/current values, dates, vendor names, tracking '
+      'numbers. Completed tasks are NOT exempt — their Details must '
+      'contain a full summary of what was done, how, and the outcome. '
+      'NEVER dismiss a task that has content: if a task has a description '
+      'or ANY Execution Log entry (even slightly outside the period), you '
+      'MUST summarize it. The fallback "No execution logs in the reporting '
+      'period" is ONLY allowed when the task has literally NO description '
+      'AND NO log entries at all.\n\n'
       '4. Plan for Next Period (MANDATORY — never omit):\n'
       '- This section is REQUIRED in every report. If there are no '
       'upcoming tasks, still include the section header with a note.\n'
@@ -703,6 +724,8 @@ class ReportService {
       'paragraphs anywhere.\n'
       '- Executive Summary bullets ≤ 2 sentences each.\n'
       '- Progress Details bullets ≤ 5 per task.\n'
+      '- All Progress Details project tables use identical column widths '
+      '(25%/8%/67%) — visually aligned.\n'
       '- Status Dashboard progress fractions arithmetically correct.\n'
       '- Plan rows form contiguous per-project blocks (no interleaving), '
       'ordered by priority within each block.\n'
@@ -718,7 +741,8 @@ class ReportService {
       '任务按项目组织，每个任务包含执行日志——按时间顺序记录进展、决策、'
       '阻塞和结果的 Note 条目。\n\n'
       '处理规则——生成输出前必须：\n'
-      '1. 通读并理解所有任务的全部执行日志，不得跳过任何条目。\n'
+      '1. 通读并理解每个任务的描述（description）以及全部执行日志，'
+      '不得跳过任何条目；两类来源对生成准确总结同等重要。\n'
       '2. 将每个任务归类到其项目下。\n'
       '3. 综合提炼——将原始日志提炼为简洁、有意义的总结。完整保留所有'
       '技术术语、物料编号、固件版本、测量值、缩写和专有名词，'
@@ -788,12 +812,18 @@ class ReportService {
       '意义、不超 2 句，禁止写成段落，保持精炼可扫读；进行中含'
       '子步骤比例与剩余工作；风险含逾期任务和阻塞日志条目，'
       '必须说明根因与进度影响。\n\n'
-      '3. 进度明细：按项目分组（H3）；状态图标 🟩已完成 🟨进行中 '
-      '🟥阻塞/逾期 ⬜计划中；详情列（对所有状态的任务都必填）总结'
-      '期内全部日志——已完成、进行中、阻塞、计划中任务一视同仁，'
-      '每任务最多 5 个要点（• 用 <br> 分隔），每个要点=一个独立事实，'
-      '保留技术细节；已完成任务不可豁免，其详情必须完整总结做了什么、'
-      '如何做、结果如何；无日志的任务写"报告期内无执行日志；{简要状态}"。\n\n'
+      '3. 进度明细：按项目分组（H3）。表格对齐（严格）：每个项目表必须'
+      '使用相同的固定列宽——事项 25%、状态 8%、详情 67%；HTML 输出中'
+      '用 <colgroup><col style="width:25%"><col style="width:8%"><col '
+      'style="width:67%"></colgroup> 强制，禁止内容自适应导致各表列宽'
+      '不一。状态图标 🟩已完成 🟨进行中 🟥阻塞/逾期 ⬜计划中；详情列'
+      '（对所有状态的任务都必填）综合任务描述与执行日志两类来源总结——'
+      '已完成、进行中、阻塞、计划中任务一视同仁，每任务最多 5 个要点'
+      '（• 用 <br> 分隔），每个要点=一个独立事实，保留技术细节；'
+      '已完成任务不可豁免，其详情必须完整总结做了什么、如何做、结果如何；'
+      '禁止轻易略过有内容的任务：只要任务有描述或任何执行日志（即使'
+      '时间略超出报告期）就必须总结；仅当任务既无描述也无任何日志时，'
+      '才写"报告期内无执行日志；{简要状态}"。\n\n'
       '4. 下期计划（必填，禁止省略）：每份报告都必须有此章节；'
       '即使没有后续任务，也要保留标题并加说明。含计划中、进行中'
       '（剩余工作）、阻塞（解除步骤）的任务。分组（严格）：行必须'
@@ -809,7 +839,8 @@ class ReportService {
       '需决策事项）全部齐备；每个任务至少出现在一个章节；技术术语、'
       '物料编号、缩写、测量值原样保留不得改写；每个要点只讲一个事实、'
       '不合并多事实；所有总结用嵌套列表层级、全报告零平铺段落；'
-      '摘要不超 2 句；明细每任务不超 5 条；进度分数算术正确；'
+      '摘要不超 2 句；明细每任务不超 5 条；进度明细各项目表列宽一致'
+      '（25%/8%/67%）视觉对齐；进度分数算术正确；'
       '下期计划按项目连续成块不交叉、块内按优先级排序；'
       '报告应连贯、可在 2 分钟内扫读完毕。'
       '仅输出 Markdown 报告本身，不要额外说明或代码围栏。';
@@ -1545,10 +1576,13 @@ $bodyOpen$innerHead''');
   /// and inline `<br>` produced by [toMarkdown] are handled via the GitHub
   /// extension set.
   String markdownToStyledHtml(String markdown, {String? title}) {
-    final body = md.markdownToHtml(
+    var body = md.markdownToHtml(
       markdown,
       extensionSet: md.ExtensionSet.gitHubWeb,
     );
+    // Align the Progress Details tables (fixed 25%/8%/67% column widths) so
+    // every project table lines up identically, per the report spec.
+    body = _alignProgressTables(body);
     final docTitle =
         (title == null || title.isEmpty) ? 'TaskFlow Report' : title;
     return '''<!DOCTYPE html>
@@ -1592,6 +1626,136 @@ $body
 </body>
 </html>''';
   }
+
+  /// Converts the report Markdown (the SAME source as Export.md / Export.html)
+  /// into a standalone Gmail-safe HTML document: table-based page layout and
+  /// pure inline styles (mail clients strip <style> blocks), 6-digit hex
+  /// colors. Content is identical to the other exports — only the styling is
+  /// adapted for mail clients.
+  String markdownToEmailHtml(String markdown, {String? title}) {
+    var body = md.markdownToHtml(
+      markdown,
+      extensionSet: md.ExtensionSet.gitHubWeb,
+    );
+    body = _alignProgressTables(body);
+    body = _inlineEmailStyles(body);
+    final docTitle =
+        (title == null || title.isEmpty) ? 'TaskFlow Report' : title;
+    return '''<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>$docTitle</title>
+</head>
+<body style="margin:0;padding:0;background-color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,'Noto Sans SC','Microsoft YaHei',sans-serif;color:#1E293B;">
+<table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#ffffff;margin:0;padding:20px 0;">
+<tr>
+<td align="center">
+<table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:1000px;padding:0 16px;text-align:left;">
+<tr>
+<td>
+$body
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>''';
+  }
+
+  /// Injects a fixed-width <colgroup> (Item 25% / Status 8% / Details 67%)
+  /// into every 3-column table — these are the Progress Details tables, whose
+  /// columns the report spec requires to align identically across projects.
+  /// 4-column tables (Status Dashboard, Plan) are left to auto-size.
+  static String _alignProgressTables(String html) {
+    final tableRe =
+        RegExp(r'<table(\s[^>]*)?>([\s\S]*?)</table>', caseSensitive: false);
+    return html.replaceAllMapped(tableRe, (m) {
+      final full = m.group(0)!;
+      final openTag = full.substring(0, full.indexOf('>') + 1);
+      final inner = m.group(2) ?? '';
+      final firstRow = RegExp(r'<tr(\s[^>]*)?>([\s\S]*?)</tr>',
+              caseSensitive: false)
+          .firstMatch(inner);
+      final cells = firstRow == null
+          ? 0
+          : RegExp(r'<t[hd](\s[^>]*)?>', caseSensitive: false)
+              .allMatches(firstRow.group(2) ?? '')
+              .length;
+      if (cells != 3) return full;
+      return '$openTag<colgroup><col style="width:25%"><col '
+          'style="width:8%"><col style="width:67%"></colgroup>$inner</table>';
+    });
+  }
+
+  /// Injects paste-proof inline styles into the block-level tags produced by
+  /// [md.markdownToHtml] so the report renders correctly in Gmail / Outlook
+  /// (which strip <style> blocks). Mirrors the visual language of the browser
+  /// export. Existing style attributes (e.g. text-align from Markdown table
+  /// alignment) are preserved and merged.
+  static String _inlineEmailStyles(String html) {
+    const styles = <String, String>{
+      'h1': 'font-size:24px;font-weight:bold;margin:0 0 4px 0;color:#1E293B;',
+      'h2': 'font-size:16px;font-weight:bold;margin:28px 0 10px 0;'
+          'border-bottom:1px solid #E2E8F0;padding-bottom:6px;color:#1E293B;',
+      'h3': 'font-size:13px;font-weight:bold;margin:16px 0 8px 0;'
+          'color:#334155;',
+      'p': 'font-size:13px;line-height:1.55;margin:0 0 8px 0;',
+      'table': 'width:100%;border-collapse:collapse;border:1px solid #E2E8F0;'
+          'margin:0 0 12px 0;',
+      'th': 'text-align:left;font-size:11px;text-transform:uppercase;'
+          'letter-spacing:.5px;color:#64748B;padding:10px 14px;'
+          'background-color:#F1F5F9;border:1px solid #E2E8F0;',
+      'td': 'padding:10px 14px;font-size:13px;border:1px solid #E2E8F0;'
+          'vertical-align:top;line-height:1.5;',
+      'ul': 'margin:6px 0;padding-left:20px;',
+      'ol': 'margin:6px 0;padding-left:20px;',
+      'li': 'font-size:13px;line-height:1.55;margin-bottom:4px;',
+      'blockquote': 'border-left:3px solid #E2E8F0;margin:0 0 12px 0;'
+          'padding:8px 14px;color:#475569;',
+      'code': 'background-color:#F1F5F9;padding:1px 5px;font-size:12px;',
+      'pre': 'background-color:#F1F5F9;padding:12px;font-size:12px;'
+          'margin:0 0 12px 0;',
+    };
+    var out = html;
+    styles.forEach((tag, style) {
+      out = _injectTagStyle(out, tag, style);
+    });
+    // Markdown <hr /> — restyle as a thin ruled line.
+    out = out.replaceAllMapped(
+        RegExp(r'<hr\s*/?>', caseSensitive: false),
+        (_) =>
+            '<hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;">');
+    return out;
+  }
+
+  /// Adds (or merges) a `style` attribute on every occurrence of `<tag …>`.
+  static String _injectTagStyle(String html, String tag, String style) {
+    final re = RegExp('<$tag(\\s[^>]*)?>', caseSensitive: false);
+    return html.replaceAllMapped(re, (m) {
+      final full = m.group(0)!;
+      final attrs = m.group(1) ?? '';
+      final existing = RegExp('style="([^"]*)"').firstMatch(attrs);
+      if (existing != null) {
+        return full.replaceFirst('style="${existing.group(1)}"',
+            'style="$style;${existing.group(1)}"');
+      }
+      return '<$tag$attrs style="$style">';
+    });
+  }
+
+  /// Test accessors for the email-HTML post-processing helpers (the risky
+  /// regex manipulation), so they can be asserted without a repository.
+  @visibleForTesting
+  static String alignProgressTablesForTest(String html) =>
+      _alignProgressTables(html);
+
+  @visibleForTesting
+  static String inlineEmailStylesForTest(String html) =>
+      _inlineEmailStyles(html);
 
   // ─────────────────────────── Export ───────────────────────────
 

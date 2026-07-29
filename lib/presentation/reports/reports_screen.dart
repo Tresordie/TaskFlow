@@ -414,15 +414,17 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 aiTerms: s.aiTerms);
         fileName = service.suggestFileName(data, ext);
       } else if (ext == 'email') {
-        // Dedicated email-client HTML (table layout, no <style> block).
-        // Rendered from ReportData — the Gmail-safe template is not derived
-        // from the editable Markdown source.
-        content = service.toHtml(data,
-            lang: s.lang,
-            aiSummaries: s.aiSummaries,
-            aiTitles: s.aiTitles,
-            aiTerms: s.aiTerms,
-            email: true);
+        // Gmail-safe HTML (table layout, pure inline styles, no <style>
+        // block) rendered from the SAME Markdown source as Export.md /
+        // Export.html, so all three exports carry identical content — only
+        // the styling is adapted for mail clients.
+        final source = s.markdown ??
+            service.toMarkdown(data,
+                lang: s.lang,
+                aiSummaries: s.aiSummaries,
+                aiTitles: s.aiTitles,
+                aiTerms: s.aiTerms);
+        content = service.markdownToEmailHtml(source, title: data.titlePrefix);
         fileName = service
             .suggestFileName(data, 'html')
             .replaceFirst('.html', '-email.html');
