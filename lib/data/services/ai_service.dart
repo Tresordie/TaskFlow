@@ -76,6 +76,13 @@ class AiService {
     Duration requestTimeout = const Duration(seconds: 15),
     Duration responseTimeout = const Duration(seconds: 60),
   }) async {
+    // Reasoning models "think" before answering and are markedly slower than
+    // chat models — a full report over many tasks can take several minutes on
+    // kimi-k3. Give them a generous multiple of the caller's response timeout
+    // so a long-but-valid generation is not aborted prematurely (this was the
+    // "Full-report generation timed out" failure on kimi-k3).
+    final effectiveResponseTimeout =
+        _isReasoningModel(model) ? responseTimeout * 3 : responseTimeout;
     Future<String> send({required bool includeTemperature}) async {
       final uri = _buildUri();
       final client = HttpClient()..connectionTimeout = connectTimeout;
@@ -96,7 +103,8 @@ class AiService {
         // add() writes raw UTF-8 bytes; write() would default to latin1 and
         // throw on Chinese content ("Invalid argument (string)").
         request.add(utf8.encode(jsonEncode(body)));
-        final response = await request.close().timeout(responseTimeout);
+        final response =
+            await request.close().timeout(effectiveResponseTimeout);
         final text = await response.transform(utf8.decoder).join();
         if (response.statusCode < 200 || response.statusCode >= 300) {
           throw AiServiceException(
