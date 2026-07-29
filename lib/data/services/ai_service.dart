@@ -93,7 +93,15 @@ class AiService {
         final body = <String, dynamic>{
           'model': model,
           'messages': messages,
-          if (maxTokens != null) 'max_tokens': maxTokens,
+          // Reasoning models spend part of the token budget on internal
+          // "thinking"; a restrictive max_tokens can be exhausted by the
+          // reasoning alone, leaving the final content EMPTY (this caused
+          // "AI returned an empty report" on kimi-k3 full reports, while
+          // short per-task calls still fit). Omit max_tokens for those so
+          // the model uses its own generous default and always leaves room
+          // for the answer.
+          if (maxTokens != null && !_isReasoningModel(model))
+            'max_tokens': maxTokens,
           if (includeTemperature &&
               temperature != null &&
               !_isReasoningModel(model))
