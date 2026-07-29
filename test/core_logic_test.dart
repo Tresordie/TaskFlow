@@ -929,6 +929,7 @@ void main() {
         'kimi-k3',
         'kimi-k3-thinking',
         'deepseek-reasoner',
+        'deepseek-v4-pro',
         'qwq-32b',
         'o1',
         'o3-mini',
@@ -941,7 +942,6 @@ void main() {
 
     test('regular chat models are NOT flagged', () {
       for (final m in [
-        'deepseek-v4-pro',
         'deepseek-chat',
         'gpt-4o',
         'gpt-4o-mini',

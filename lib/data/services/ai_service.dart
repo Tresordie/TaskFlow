@@ -137,15 +137,16 @@ class AiService {
     }
   }
 
-  /// Streaming variant of [_chat], used by [generateFullReport] for reasoning
-  /// models whose "thinking" can take many minutes. A non-streaming request
-  /// must wait for the WHOLE document before the response completes, so it
-  /// trips the response timeout (the "Full-report generation timed out"
-  /// failure on kimi-k3). Streaming receives tokens continuously — we only
-  /// guard the gap BETWEEN chunks ([chunkTimeout]) — so the total generation
-  /// may run as long as the model needs. Returns the accumulated assistant
-  /// content; reasoning/thinking deltas (`reasoning_content`) are ignored.
-  Future<String> _chatStream({
+  /// Streaming variant of [_chat], used by [generateFullReport]. A
+  /// non-streaming request must wait for the WHOLE document before the
+  /// response completes, so it trips the response timeout on long reports.
+  /// Streaming receives tokens continuously — we only guard the gap BETWEEN
+  /// chunks ([chunkTimeout]) — so the total generation may run as long as the
+  /// model needs. Returns the accumulated assistant content plus whether the
+  /// model stopped because it hit its output token limit (`finish_reason:
+  /// length`), i.e. the report is truncated and needs a continuation.
+  /// Reasoning/thinking deltas (`reasoning_content`) are ignored.
+  Future<({String content, bool truncated})> _chatStream({
     required List<Map<String, String>> messages,
     double? temperature,
     int? maxTokens,
@@ -165,10 +166,8 @@ class AiService {
         'model': model,
         'stream': true,
         'messages': messages,
-        // Reasoning models: omit max_tokens (thinking shares the budget) and
-        // temperature (only 1 allowed) — same rationale as [_chat].
-        if (maxTokens != null && !_isReasoningModel(model))
-          'max_tokens': maxTokens,
+        if (maxTokens != null) 'max_tokens': maxTokens,
+        // Reasoning models only accept temperature=1 — omit it for those.
         if (temperature != null && !_isReasoningModel(model))
           'temperature': temperature,
         if (extraBody != null) ...extraBody,
@@ -181,6 +180,7 @@ class AiService {
             'API error ${response.statusCode}: ${_shorten(text)}');
       }
       final content = StringBuffer();
+      String? finishReason;
       // Server-Sent Events: one `data: {json}` line per chunk, terminated by
       // `data: [DONE]`. `.timeout` guards the gap between chunks so a stalled
       // stream still fails instead of hanging forever.
@@ -198,32 +198,43 @@ class AiService {
           final decoded = jsonDecode(data);
           final choices = decoded is Map ? decoded['choices'] : null;
           if (choices is List && choices.isNotEmpty) {
-            final delta =
-                choices.first is Map ? choices.first['delta'] : null;
+            final choice = choices.first;
+            final delta = choice is Map ? choice['delta'] : null;
             final c = delta is Map ? delta['content'] : null;
             if (c is String) content.write(c);
+            final fr = choice is Map ? choice['finish_reason'] : null;
+            if (fr is String && fr.isNotEmpty) finishReason = fr;
           }
         } catch (_) {
           // Ignore malformed/partial keep-alive chunks.
         }
       }
-      return content.toString();
+      return (
+        content: content.toString(),
+        truncated: finishReason == 'length',
+      );
     } finally {
       client.close(force: true);
     }
   }
 
-  /// Heuristic: reasoning / "thinking" models only accept their default
-  /// temperature (usually 1) and reject explicit values with HTTP 400. Match
-  /// the well-known families by name so [_chat] omits the parameter for them.
-  /// Anything this misses is still caught by [_chat]'s reactive retry.
+  /// Heuristic: reasoning / "thinking" models spend part of the token budget
+  /// on internal reasoning (they return `reasoning_content`) and most only
+  /// accept their default temperature. Match the well-known families by name
+  /// so they get a larger output budget and omit temperature. Anything this
+  /// misses is still caught by [_chat]'s reactive temperature retry and by
+  /// the truncation-continuation loop in [generateFullReport].
   static bool _isReasoningModel(String model) {
     final m = model.toLowerCase();
     if (m.contains('reasoner') ||
         m.contains('reasoning') ||
         m.contains('thinking') ||
         m.contains('qwq') ||
-        m.contains('kimi-k3')) {
+        m.contains('kimi-k3') ||
+        // deepseek-v4-* (e.g. deepseek-v4-pro) are thinking models — their
+        // responses carry reasoning_content and share the token budget with
+        // the answer, so they need the larger budget too.
+        m.contains('deepseek-v4')) {
       return true;
     }
     // OpenAI o-series: o1 / o3 / o4 and their -mini / -pro variants, without
@@ -423,32 +434,43 @@ Rules:
     required String taskData,
   }) async {
     try {
-      final messages = [
+      final baseMessages = <Map<String, String>>[
         {'role': 'system', 'content': systemPrompt},
         {'role': 'user', 'content': taskData},
       ];
-      String content;
-      if (_isReasoningModel(model)) {
-        // Reasoning models "think" for many minutes on a full report — a
-        // non-streaming request would trip the response timeout (kimi-k3
-        // "Full-report generation timed out"). Stream instead so the long
-        // generation is bounded only by the gap between chunks.
-        content = await _chatStream(
-          // Low temperature for factual output (omitted for reasoning
-          // models inside _chatStream).
+      // A full report over many tasks routinely exceeds a single 8192-token
+      // completion (it was being cut off mid-section, e.g. stopping at
+      // "4. Plan for Next Period"), so use a generous budget. If the model
+      // STILL hits its own output cap (finish_reason: length) we ask it to
+      // continue where it left off, repeating until the report is complete —
+      // the result always contains all 5 sections. Streaming is used for
+      // every model so long generations are bounded only by the gap between
+      // chunks, not a whole-response timeout.
+      var result = await _chatStream(
+        temperature: 0.3,
+        maxTokens: _isReasoningModel(model) ? 32768 : 16384,
+        messages: baseMessages,
+      );
+      var content = result.content;
+      var continuations = 0;
+      while (result.truncated && continuations < 3) {
+        continuations++;
+        result = await _chatStream(
           temperature: 0.3,
-          maxTokens: 8192,
-          messages: messages,
+          maxTokens: _isReasoningModel(model) ? 32768 : 16384,
+          messages: [
+            ...baseMessages,
+            {'role': 'assistant', 'content': content},
+            {
+              'role': 'user',
+              'content': 'The report above was cut off mid-way. Continue '
+                  'EXACTLY where you stopped and finish the remaining '
+                  'sections. Do NOT repeat anything already written. Output '
+                  'ONLY the continuation, with no preamble.',
+            },
+          ],
         );
-      } else {
-        final text = await _chat(
-          temperature: 0.3,
-          // A full report with 15-20 tasks typically needs 3000-6000 tokens.
-          maxTokens: 8192,
-          responseTimeout: const Duration(seconds: 180),
-          messages: messages,
-        );
-        content = _extractContentMultiLine(text);
+        content += result.content;
       }
       // Strip wrapping code fences some models emit around the document.
       content = _stripFences(content);
