@@ -748,9 +748,9 @@ class _AiConfigCardState extends ConsumerState<_AiConfigCard> {
 
   static const _presets = [
     ('DeepSeek', 'https://api.deepseek.com', 'deepseek-v4-pro'),
-    ('OpenAI', 'https://api.openai.com', 'gpt-4o-mini'),
+    ('Kimi', 'https://api.moonshot.cn', 'kimi-k3'),
     (
-      'DashScope',
+      'Qwen',
       'https://dashscope.aliyuncs.com/compatible-mode',
       'qwen-plus'
     ),
@@ -891,6 +891,11 @@ class _AiConfigCardState extends ConsumerState<_AiConfigCard> {
                   onPressed: () => setState(() {
                     _baseUrlController.text = url;
                     _modelController.text = model;
+                    // Each provider needs its OWN API key — clear the
+                    // previous provider's key so it is not silently sent
+                    // to the new endpoint (which fails with 401 Invalid
+                    // Authentication and is easy to mistake for a bug).
+                    _apiKeyController.clear();
                   }),
                 ),
             ],
