@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -591,6 +592,40 @@ class _LogEntryItem extends StatelessWidget {
                             ),
                       ),
                       const SizedBox(width: 2),
+                      // Copy the raw Markdown source of this entry. The
+                      // rendered Note shows formatted text, so drag-select
+                      // copies the formatted version; this button is the
+                      // one-tap way to get the original Markdown (same as
+                      // copying inside edit mode).
+                      Tooltip(
+                        message: 'Copy as Markdown',
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(6),
+                          onTap: () {
+                            Clipboard.setData(
+                                ClipboardData(text: entry.content));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content:
+                                    Text('Markdown copied to clipboard'),
+                                behavior: SnackBarBehavior.floating,
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.content_copy_outlined,
+                              size: 14,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withOpacity(0.45),
+                            ),
+                          ),
+                        ),
+                      ),
                       // Edit this entry
                       Tooltip(
                         message: 'Edit entry',
