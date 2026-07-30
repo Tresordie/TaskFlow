@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
 
@@ -61,7 +62,21 @@ class SelectableMarkdownBody extends StatelessWidget {
       contextMenuBuilder: (context, editableTextState) =>
           AdaptiveTextSelectionToolbar.buttonItems(
         anchors: editableTextState.contextMenuAnchors,
-        buttonItems: editableTextState.contextMenuButtonItems,
+        buttonItems: [
+          ...editableTextState.contextMenuButtonItems,
+          // The rendered Note shows FORMATTED text, so the stock Copy gives
+          // the formatted version (bullets as •, no ** etc.). Add an explicit
+          // "Copy as Markdown" that copies the ORIGINAL Markdown source —
+          // what the user pastes into a .md file. Right-click after
+          // drag-selecting to reach it.
+          ContextMenuButtonItem(
+            label: 'Copy as Markdown',
+            onPressed: () {
+              ContextMenuController.removeAny();
+              Clipboard.setData(ClipboardData(text: data));
+            },
+          ),
+        ],
       ),
     );
   }
