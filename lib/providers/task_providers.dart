@@ -310,6 +310,12 @@ class TaskListNotifier extends StateNotifier<AsyncValue<List<Task>>> {
     await loadTasks();
   }
 
+  Future<void> setSubStepDueDate(
+      int taskId, String subStepUid, DateTime? dueDate) async {
+    await _repo.setSubStepDueDate(taskId, subStepUid, dueDate);
+    await loadTasks();
+  }
+
   Future<void> deleteSubStep(int taskId, String subStepUid) async {
     await _repo.deleteSubStep(taskId, subStepUid);
     await loadTasks();

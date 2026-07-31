@@ -281,14 +281,23 @@ class TaskRepository {
     }
 
     // Same fixed-length list constraint as executionLog above.
+    final newUid = _uuid.v4();
     task.subSteps = [
       ...task.subSteps,
       SubStep()
-        ..uid = _uuid.v4()
+        ..uid = newUid
         ..title = title
         ..completed = false
         ..parentUid = parent?.uid
         ..depth = parent == null ? 0 : parent.depth + 1,
+    ];
+    // Record the creation date at the Task level (SubStep's schema is
+    // frozen — see SCHEMA FREEZE in task.dart).
+    task.subStepDates = [
+      ...task.subStepDates,
+      SubStepDates()
+        ..uid = newUid
+        ..createdAt = DateTime.now(),
     ];
 
     _touch(task);
@@ -327,6 +336,33 @@ class TaskRepository {
     }
   }
 
+  /// Sets (or clears, when [dueDate] is null) the due date for a sub-step.
+  /// The date lives in [Task.subStepDates] because SubStep's schema is frozen
+  /// (SCHEMA FREEZE in task.dart).
+  Future<void> setSubStepDueDate(
+      int taskId, String subStepUid, DateTime? dueDate) async {
+    final isar = await AppDatabase.instance;
+    final task = await isar.tasks.get(taskId);
+    if (task == null) return;
+
+    final dates =
+        task.subStepDates.where((d) => d.uid == subStepUid).firstOrNull;
+    if (dates != null) {
+      dates.dueDate = dueDate;
+    } else {
+      // No metadata row yet (sub-step predates this feature) — create one.
+      task.subStepDates = [
+        ...task.subStepDates,
+        SubStepDates()
+          ..uid = subStepUid
+          ..dueDate = dueDate,
+      ];
+    }
+
+    _touch(task);
+    await isar.writeTxn(() => isar.tasks.put(task));
+  }
+
   /// Deletes a sub-step together with all of its descendants.
   Future<void> deleteSubStep(int taskId, String subStepUid) async {
     final isar = await AppDatabase.instance;
@@ -340,6 +376,11 @@ class TaskRepository {
     task.subSteps = [
       for (final s in task.subSteps)
         if (!doomed.contains(s.uid)) s,
+    ];
+    // Drop the date metadata for the removed sub-steps as well.
+    task.subStepDates = [
+      for (final d in task.subStepDates)
+        if (!doomed.contains(d.uid)) d,
     ];
 
     _touch(task);

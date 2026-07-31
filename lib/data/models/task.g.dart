@@ -70,29 +70,35 @@ const TaskSchema = CollectionSchema(
       type: IsarType.byte,
       enumMap: _TaskstatusEnumValueMap,
     ),
-    r'subSteps': PropertySchema(
+    r'subStepDates': PropertySchema(
       id: 10,
+      name: r'subStepDates',
+      type: IsarType.objectList,
+      target: r'SubStepDates',
+    ),
+    r'subSteps': PropertySchema(
+      id: 11,
       name: r'subSteps',
       type: IsarType.objectList,
       target: r'SubStep',
     ),
     r'tags': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'tags',
       type: IsarType.stringList,
     ),
     r'title': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'title',
       type: IsarType.string,
     ),
     r'uid': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'uid',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 14,
+      id: 15,
       name: r'updatedAt',
       type: IsarType.long,
     )
@@ -121,7 +127,8 @@ const TaskSchema = CollectionSchema(
   embeddedSchemas: {
     r'ExecutionEntry': ExecutionEntrySchema,
     r'Attachment': AttachmentSchema,
-    r'SubStep': SubStepSchema
+    r'SubStep': SubStepSchema,
+    r'SubStepDates': SubStepDatesSchema
   },
   getId: _taskGetId,
   getLinks: _taskGetLinks,
@@ -151,6 +158,14 @@ int _taskEstimateSize(
     }
   }
   bytesCount += 3 + object.project.length * 3;
+  bytesCount += 3 + object.subStepDates.length * 3;
+  {
+    final offsets = allOffsets[SubStepDates]!;
+    for (var i = 0; i < object.subStepDates.length; i++) {
+      final value = object.subStepDates[i];
+      bytesCount += SubStepDatesSchema.estimateSize(value, offsets, allOffsets);
+    }
+  }
   bytesCount += 3 + object.subSteps.length * 3;
   {
     final offsets = allOffsets[SubStep]!;
@@ -192,16 +207,22 @@ void _taskSerialize(
   writer.writeLong(offsets[7], object.sortOrder);
   writer.writeDateTime(offsets[8], object.startedAt);
   writer.writeByte(offsets[9], object.status.index);
-  writer.writeObjectList<SubStep>(
+  writer.writeObjectList<SubStepDates>(
     offsets[10],
+    allOffsets,
+    SubStepDatesSchema.serialize,
+    object.subStepDates,
+  );
+  writer.writeObjectList<SubStep>(
+    offsets[11],
     allOffsets,
     SubStepSchema.serialize,
     object.subSteps,
   );
-  writer.writeStringList(offsets[11], object.tags);
-  writer.writeString(offsets[12], object.title);
-  writer.writeString(offsets[13], object.uid);
-  writer.writeLong(offsets[14], object.updatedAt);
+  writer.writeStringList(offsets[12], object.tags);
+  writer.writeString(offsets[13], object.title);
+  writer.writeString(offsets[14], object.uid);
+  writer.writeLong(offsets[15], object.updatedAt);
 }
 
 Task _taskDeserialize(
@@ -231,17 +252,24 @@ Task _taskDeserialize(
   object.startedAt = reader.readDateTimeOrNull(offsets[8]);
   object.status = _TaskstatusValueEnumMap[reader.readByteOrNull(offsets[9])] ??
       TaskStatus.planned;
-  object.subSteps = reader.readObjectList<SubStep>(
+  object.subStepDates = reader.readObjectList<SubStepDates>(
         offsets[10],
+        SubStepDatesSchema.deserialize,
+        allOffsets,
+        SubStepDates(),
+      ) ??
+      [];
+  object.subSteps = reader.readObjectList<SubStep>(
+        offsets[11],
         SubStepSchema.deserialize,
         allOffsets,
         SubStep(),
       ) ??
       [];
-  object.tags = reader.readStringList(offsets[11]) ?? [];
-  object.title = reader.readString(offsets[12]);
-  object.uid = reader.readString(offsets[13]);
-  object.updatedAt = reader.readLong(offsets[14]);
+  object.tags = reader.readStringList(offsets[12]) ?? [];
+  object.title = reader.readString(offsets[13]);
+  object.uid = reader.readString(offsets[14]);
+  object.updatedAt = reader.readLong(offsets[15]);
   return object;
 }
 
@@ -281,6 +309,14 @@ P _taskDeserializeProp<P>(
       return (_TaskstatusValueEnumMap[reader.readByteOrNull(offset)] ??
           TaskStatus.planned) as P;
     case 10:
+      return (reader.readObjectList<SubStepDates>(
+            offset,
+            SubStepDatesSchema.deserialize,
+            allOffsets,
+            SubStepDates(),
+          ) ??
+          []) as P;
+    case 11:
       return (reader.readObjectList<SubStep>(
             offset,
             SubStepSchema.deserialize,
@@ -288,13 +324,13 @@ P _taskDeserializeProp<P>(
             SubStep(),
           ) ??
           []) as P;
-    case 11:
-      return (reader.readStringList(offset) ?? []) as P;
     case 12:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 13:
       return (reader.readString(offset)) as P;
     case 14:
+      return (reader.readString(offset)) as P;
+    case 15:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1341,6 +1377,90 @@ extension TaskQueryFilter on QueryBuilder<Task, Task, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Task, Task, QAfterFilterCondition> subStepDatesLengthEqualTo(
+      int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'subStepDates',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> subStepDatesIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'subStepDates',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> subStepDatesIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'subStepDates',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> subStepDatesLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'subStepDates',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> subStepDatesLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'subStepDates',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> subStepDatesLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'subStepDates',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
   QueryBuilder<Task, Task, QAfterFilterCondition> subStepsLengthEqualTo(
       int length) {
     return QueryBuilder.apply(this, (query) {
@@ -1956,6 +2076,13 @@ extension TaskQueryObject on QueryBuilder<Task, Task, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Task, Task, QAfterFilterCondition> subStepDatesElement(
+      FilterQuery<SubStepDates> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'subStepDates');
+    });
+  }
+
   QueryBuilder<Task, Task, QAfterFilterCondition> subStepsElement(
       FilterQuery<SubStep> q) {
     return QueryBuilder.apply(this, (query) {
@@ -2419,6 +2546,13 @@ extension TaskQueryProperty on QueryBuilder<Task, Task, QQueryProperty> {
   QueryBuilder<Task, TaskStatus, QQueryOperations> statusProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'status');
+    });
+  }
+
+  QueryBuilder<Task, List<SubStepDates>, QQueryOperations>
+      subStepDatesProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'subStepDates');
     });
   }
 
@@ -4360,3 +4494,370 @@ extension SubStepQueryFilter
 
 extension SubStepQueryObject
     on QueryBuilder<SubStep, SubStep, QFilterCondition> {}
+
+// coverage:ignore-file
+// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
+
+const SubStepDatesSchema = Schema(
+  name: r'SubStepDates',
+  id: -8179040856611960791,
+  properties: {
+    r'createdAt': PropertySchema(
+      id: 0,
+      name: r'createdAt',
+      type: IsarType.dateTime,
+    ),
+    r'dueDate': PropertySchema(
+      id: 1,
+      name: r'dueDate',
+      type: IsarType.dateTime,
+    ),
+    r'uid': PropertySchema(
+      id: 2,
+      name: r'uid',
+      type: IsarType.string,
+    )
+  },
+  estimateSize: _subStepDatesEstimateSize,
+  serialize: _subStepDatesSerialize,
+  deserialize: _subStepDatesDeserialize,
+  deserializeProp: _subStepDatesDeserializeProp,
+);
+
+int _subStepDatesEstimateSize(
+  SubStepDates object,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  var bytesCount = offsets.last;
+  bytesCount += 3 + object.uid.length * 3;
+  return bytesCount;
+}
+
+void _subStepDatesSerialize(
+  SubStepDates object,
+  IsarWriter writer,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  writer.writeDateTime(offsets[0], object.createdAt);
+  writer.writeDateTime(offsets[1], object.dueDate);
+  writer.writeString(offsets[2], object.uid);
+}
+
+SubStepDates _subStepDatesDeserialize(
+  Id id,
+  IsarReader reader,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  final object = SubStepDates();
+  object.createdAt = reader.readDateTimeOrNull(offsets[0]);
+  object.dueDate = reader.readDateTimeOrNull(offsets[1]);
+  object.uid = reader.readString(offsets[2]);
+  return object;
+}
+
+P _subStepDatesDeserializeProp<P>(
+  IsarReader reader,
+  int propertyId,
+  int offset,
+  Map<Type, List<int>> allOffsets,
+) {
+  switch (propertyId) {
+    case 0:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 1:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 2:
+      return (reader.readString(offset)) as P;
+    default:
+      throw IsarError('Unknown property with id $propertyId');
+  }
+}
+
+extension SubStepDatesQueryFilter
+    on QueryBuilder<SubStepDates, SubStepDates, QFilterCondition> {
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition>
+      createdAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'createdAt',
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition>
+      createdAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'createdAt',
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition>
+      createdAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'createdAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition>
+      createdAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'createdAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition>
+      createdAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'createdAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition>
+      createdAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'createdAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition>
+      dueDateIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'dueDate',
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition>
+      dueDateIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'dueDate',
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition>
+      dueDateEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'dueDate',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition>
+      dueDateGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'dueDate',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition>
+      dueDateLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'dueDate',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition>
+      dueDateBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'dueDate',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition> uidEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'uid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition>
+      uidGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'uid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition> uidLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'uid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition> uidBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'uid',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition> uidStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'uid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition> uidEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'uid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition> uidContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'uid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition> uidMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'uid',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition> uidIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'uid',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepDates, SubStepDates, QAfterFilterCondition>
+      uidIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'uid',
+        value: '',
+      ));
+    });
+  }
+}
+
+extension SubStepDatesQueryObject
+    on QueryBuilder<SubStepDates, SubStepDates, QFilterCondition> {}

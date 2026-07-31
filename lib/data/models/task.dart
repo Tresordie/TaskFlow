@@ -102,6 +102,14 @@ class Task {
 
   // Sub-steps / checklist
   List<SubStep> subSteps = [];
+
+  /// Per-sub-step creation / due dates, parallel to [subSteps]. Stored at the
+  /// Task level (NOT inside [SubStep]) because SubStep's schema is frozen —
+  /// see the SCHEMA FREEZE note: adding fields to an embedded object inside a
+  /// list silently wiped existing sub-step titles in v1.4.9. Each entry is
+  /// keyed by sub-step uid. Additive property — Isar auto-migrates existing
+  /// rows to an empty list.
+  List<SubStepDates> subStepDates = [];
 }
 
 @embedded
@@ -194,6 +202,28 @@ class SubStep {
   /// Cached nesting depth: 0 = top-level, 1 = child, 2 = grandchild.
   int depth = 0;
 }
+
+/// Creation / due-date metadata for a single sub-step. Lives at the Task
+/// level ([Task.subStepDates]) rather than inside [SubStep] because SubStep's
+/// Isar schema is frozen (SCHEMA FREEZE note) — per-item metadata must be a
+/// Task-level additive property to migrate safely.
+@embedded
+class SubStepDates {
+  /// Matches the corresponding [SubStep.uid].
+  late String uid;
+
+  /// When the sub-step was created (null for sub-steps created before this
+  /// field existed — it cannot be recovered retroactively).
+  DateTime? createdAt;
+
+  /// Optional user-set due date for the sub-step.
+  DateTime? dueDate;
+}
+
+/// Returns the [SubStepDates] for the sub-step [uid] within [task], or null
+/// when no date metadata exists for it.
+SubStepDates? subStepDatesFor(Task task, String uid) =>
+    task.subStepDates.where((d) => d.uid == uid).firstOrNull;
 
 /// Returns [steps] in visual (DFS pre-order) order: each sub-step is
 /// followed by its descendants, so the UI can render a flat list as an

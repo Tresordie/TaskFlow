@@ -562,35 +562,41 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
                       ),
                     ],
                   )
-                : InkWell(
-                    borderRadius: BorderRadius.circular(4),
-                    onTap: () => _startEdit(step),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 2, vertical: 4),
-                      child: isEmpty
-                          ? Text(
-                              '(untitled sub-step)',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontStyle: FontStyle.italic,
-                                color: theme.colorScheme.onSurface
-                                    .withOpacity(0.35),
-                              ),
-                            )
-                          : Text(
-                              step.title,
-                              style: TextStyle(
-                                fontSize: 14,
-                                decoration: step.completed
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                                color: step.completed
-                                    ? AppColors.lightTextSecondary
-                                    : null,
-                              ),
-                            ),
-                    ),
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      InkWell(
+                        borderRadius: BorderRadius.circular(4),
+                        onTap: () => _startEdit(step),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 2, vertical: 4),
+                          child: isEmpty
+                              ? Text(
+                                  '(untitled sub-step)',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontStyle: FontStyle.italic,
+                                    color: theme.colorScheme.onSurface
+                                        .withOpacity(0.35),
+                                  ),
+                                )
+                              : Text(
+                                  step.title,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    decoration: step.completed
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                    color: step.completed
+                                        ? AppColors.lightTextSecondary
+                                        : null,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      _buildDateMeta(theme, task, step),
+                    ],
                   ),
           ),
           // Add nested sub-step (max 3 levels)
@@ -625,6 +631,98 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
       depth: step.depth,
       guideColor: treeGuideColor(theme),
     );
+  }
+
+  /// Compact date line under a sub-step title: creation date, due date
+  /// (tappable to set / edit, with a clear affordance) and completion date.
+  /// Creation & due dates live in [Task.subStepDates] (SubStep's schema is
+  /// frozen); completion comes from [SubStep.completedAt].
+  Widget _buildDateMeta(ThemeData theme, Task task, SubStep step) {
+    final dates = subStepDatesFor(task, step.uid);
+    final created = dates?.createdAt;
+    final due = dates?.dueDate;
+    final done = step.completedAt;
+    final fmt = DateFormat('MMM d');
+    final subtle = theme.colorScheme.onSurface.withOpacity(0.4);
+    final tiny = theme.textTheme.labelSmall?.copyWith(fontSize: 10.5);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final isOverdue = due != null && !step.completed && due.isBefore(today);
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 2, top: 1, bottom: 2),
+      child: Row(
+        children: [
+          if (created != null) ...[
+            Icon(Icons.schedule, size: 11, color: subtle),
+            const SizedBox(width: 3),
+            Text(fmt.format(created), style: tiny?.copyWith(color: subtle)),
+            const SizedBox(width: 10),
+          ],
+          // Due date — always present and tappable so one can be set.
+          InkWell(
+            borderRadius: BorderRadius.circular(4),
+            onTap: () => _pickDueDate(step, due),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 1),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.event, size: 11,
+                      color: isOverdue ? AppColors.error : subtle),
+                  const SizedBox(width: 3),
+                  Text(
+                    due != null ? 'Due ${fmt.format(due)}' : 'Set due',
+                    style: tiny?.copyWith(
+                      color: isOverdue ? AppColors.error : subtle,
+                      fontWeight: due != null ? FontWeight.w600 : null,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (due != null)
+            InkWell(
+              borderRadius: BorderRadius.circular(4),
+              onTap: () => _clearDueDate(step),
+              child: Padding(
+                padding: const EdgeInsets.all(2),
+                child: Icon(Icons.close, size: 10, color: subtle),
+              ),
+            ),
+          if (done != null) ...[
+            const SizedBox(width: 8),
+            Icon(Icons.check_circle, size: 11, color: AppColors.success),
+            const SizedBox(width: 3),
+            Text(fmt.format(done),
+                style: tiny?.copyWith(color: AppColors.success)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickDueDate(SubStep step, DateTime? current) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current ?? now,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked == null) return;
+    // Normalise to midnight — a sub-step due date is a calendar day.
+    final due = DateTime(picked.year, picked.month, picked.day);
+    await ref
+        .read(taskListProvider.notifier)
+        .setSubStepDueDate(widget.task.id, step.uid, due);
+  }
+
+  Future<void> _clearDueDate(SubStep step) async {
+    await ref
+        .read(taskListProvider.notifier)
+        .setSubStepDueDate(widget.task.id, step.uid, null);
   }
 
   /// Inline "add child" input, indented one level below [parent] and
