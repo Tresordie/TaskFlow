@@ -642,7 +642,10 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
     final created = dates?.createdAt;
     final due = dates?.dueDate;
     final done = step.completedAt;
-    final fmt = DateFormat('MMM d');
+    // Due date is a calendar day (date only); created / completed carry the
+    // full timestamp, matching the task-header "MMM d, yyyy · HH:mm" style.
+    final dateFmt = DateFormat('MMM d, yyyy');
+    final dateTimeFmt = DateFormat('MMM d, yyyy · HH:mm');
     final subtle = theme.colorScheme.onSurface.withOpacity(0.4);
     final tiny = theme.textTheme.labelSmall?.copyWith(fontSize: 10.5);
     final now = DateTime.now();
@@ -651,53 +654,71 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
 
     return Padding(
       padding: const EdgeInsets.only(left: 2, top: 1, bottom: 2),
-      child: Row(
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 2,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          if (created != null) ...[
-            Icon(Icons.schedule, size: 11, color: subtle),
-            const SizedBox(width: 3),
-            Text(fmt.format(created), style: tiny?.copyWith(color: subtle)),
-            const SizedBox(width: 10),
-          ],
-          // Due date — always present and tappable so one can be set.
-          InkWell(
-            borderRadius: BorderRadius.circular(4),
-            onTap: () => _pickDueDate(step, due),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 1),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.event, size: 11,
-                      color: isOverdue ? AppColors.error : subtle),
-                  const SizedBox(width: 3),
-                  Text(
-                    due != null ? 'Due ${fmt.format(due)}' : 'Set due',
-                    style: tiny?.copyWith(
-                      color: isOverdue ? AppColors.error : subtle,
-                      fontWeight: due != null ? FontWeight.w600 : null,
-                    ),
+          if (created != null)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.schedule, size: 11, color: subtle),
+                const SizedBox(width: 3),
+                Text(dateTimeFmt.format(created),
+                    style: tiny?.copyWith(color: subtle)),
+              ],
+            ),
+          // Due date (tappable to set / edit) with its clear affordance kept
+          // together as one wrapping unit.
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InkWell(
+                borderRadius: BorderRadius.circular(4),
+                onTap: () => _pickDueDate(step, due),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 1),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.event, size: 11,
+                          color: isOverdue ? AppColors.error : subtle),
+                      const SizedBox(width: 3),
+                      Text(
+                        due != null
+                            ? 'Due ${dateFmt.format(due)}'
+                            : 'Set due',
+                        style: tiny?.copyWith(
+                          color: isOverdue ? AppColors.error : subtle,
+                          fontWeight: due != null ? FontWeight.w600 : null,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+              if (due != null)
+                InkWell(
+                  borderRadius: BorderRadius.circular(4),
+                  onTap: () => _clearDueDate(step),
+                  child: Padding(
+                    padding: const EdgeInsets.all(2),
+                    child: Icon(Icons.close, size: 10, color: subtle),
+                  ),
+                ),
+            ],
           ),
-          if (due != null)
-            InkWell(
-              borderRadius: BorderRadius.circular(4),
-              onTap: () => _clearDueDate(step),
-              child: Padding(
-                padding: const EdgeInsets.all(2),
-                child: Icon(Icons.close, size: 10, color: subtle),
-              ),
+          if (done != null)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.check_circle, size: 11, color: AppColors.success),
+                const SizedBox(width: 3),
+                Text(dateTimeFmt.format(done),
+                    style: tiny?.copyWith(color: AppColors.success)),
+              ],
             ),
-          if (done != null) ...[
-            const SizedBox(width: 8),
-            Icon(Icons.check_circle, size: 11, color: AppColors.success),
-            const SizedBox(width: 3),
-            Text(fmt.format(done),
-                style: tiny?.copyWith(color: AppColors.success)),
-          ],
         ],
       ),
     );
