@@ -153,23 +153,6 @@ class AppColors {
     primaryGhost: Color(0xFF2C3066),
   );
 
-  // ─── Forest Dark (暗夜青绿) — dark companion of Fresh Green ───
-  // Deep green-charcoal surfaces with a vibrant emerald accent. Text is a
-  // soft mint-tinted off-white; borders carry a subtle green cast so the
-  // theme reads as one cohesive material rather than grey + green.
-  static const ThemePalette greenDark = ThemePalette(
-    bg: Color(0xFF0D1F16),
-    surface: Color(0xFF132A1E),
-    card: Color(0xFF1A3526),
-    border: Color(0xFF2C4C3A),
-    textPrimary: Color(0xFFE4F2EA),
-    textSecondary: Color(0xFFA5C8B4),
-    primary: Color(0xFF4ADE80),
-    primaryLight: Color(0xFF86EFAC),
-    primaryDark: Color(0xFF22C55E),
-    primaryGhost: Color(0xFF1A3A2B),
-  );
-
   // ─── Ocean Dark (暗夜海蓝) — dark companion of Ocean Blue ───
   static const ThemePalette blueDark = ThemePalette(
     bg: Color(0xFF0A1A2A),
@@ -182,34 +165,6 @@ class AppColors {
     primaryLight: Color(0xFF7DD3FC),
     primaryDark: Color(0xFF0EA5E9),
     primaryGhost: Color(0xFF153350),
-  );
-
-  // ─── Ember Dark (暗夜暖橙) — dark companion of Sunset Orange ───
-  static const ThemePalette orangeDark = ThemePalette(
-    bg: Color(0xFF201207),
-    surface: Color(0xFF2B1A0B),
-    card: Color(0xFF35200F),
-    border: Color(0xFF4F3826),
-    textPrimary: Color(0xFFF7ECE0),
-    textSecondary: Color(0xFFC9AE92),
-    primary: Color(0xFFFB923C),
-    primaryLight: Color(0xFFFDBA74),
-    primaryDark: Color(0xFFF97316),
-    primaryGhost: Color(0xFF3C2A15),
-  );
-
-  // ─── Rose Dark (暗夜樱粉) — dark companion of Sakura Pink ───
-  static const ThemePalette pinkDark = ThemePalette(
-    bg: Color(0xFF210D19),
-    surface: Color(0xFF2C1222),
-    card: Color(0xFF36182B),
-    border: Color(0xFF502D44),
-    textPrimary: Color(0xFFF9E9F2),
-    textSecondary: Color(0xFFCCA8BE),
-    primary: Color(0xFFF472B6),
-    primaryLight: Color(0xFFF9A8D4),
-    primaryDark: Color(0xFFEC4899),
-    primaryGhost: Color(0xFF3D1D33),
   );
 
   // ─── Violet Dark (暗夜薰紫) — dark companion of Lavender Purple ───

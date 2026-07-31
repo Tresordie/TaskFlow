@@ -9,10 +9,7 @@ enum AppThemeMode {
   sakuraPink,
   lavenderPurple,
   dark,
-  greenDark,
   blueDark,
-  orangeDark,
-  pinkDark,
   purpleDark;
 
   String get label {
@@ -31,14 +28,8 @@ enum AppThemeMode {
         return 'Lavender Purple';
       case AppThemeMode.dark:
         return 'Dark';
-      case AppThemeMode.greenDark:
-        return 'Forest Dark';
       case AppThemeMode.blueDark:
         return 'Ocean Dark';
-      case AppThemeMode.orangeDark:
-        return 'Ember Dark';
-      case AppThemeMode.pinkDark:
-        return 'Rose Dark';
       case AppThemeMode.purpleDark:
         return 'Violet Dark';
     }
@@ -60,14 +51,8 @@ enum AppThemeMode {
         return '薰衣草紫';
       case AppThemeMode.dark:
         return '暗夜模式';
-      case AppThemeMode.greenDark:
-        return '暗夜青绿';
       case AppThemeMode.blueDark:
         return '暗夜海蓝';
-      case AppThemeMode.orangeDark:
-        return '暗夜暖橙';
-      case AppThemeMode.pinkDark:
-        return '暗夜樱粉';
       case AppThemeMode.purpleDark:
         return '暗夜薰紫';
     }
@@ -89,14 +74,8 @@ enum AppThemeMode {
         return AppColors.lavenderPurple;
       case AppThemeMode.dark:
         return AppColors.dark;
-      case AppThemeMode.greenDark:
-        return AppColors.greenDark;
       case AppThemeMode.blueDark:
         return AppColors.blueDark;
-      case AppThemeMode.orangeDark:
-        return AppColors.orangeDark;
-      case AppThemeMode.pinkDark:
-        return AppColors.pinkDark;
       case AppThemeMode.purpleDark:
         return AppColors.purpleDark;
     }
@@ -112,10 +91,7 @@ enum AppThemeMode {
       case AppThemeMode.lavenderPurple:
         return Brightness.light;
       case AppThemeMode.dark:
-      case AppThemeMode.greenDark:
       case AppThemeMode.blueDark:
-      case AppThemeMode.orangeDark:
-      case AppThemeMode.pinkDark:
       case AppThemeMode.purpleDark:
         return Brightness.dark;
     }
