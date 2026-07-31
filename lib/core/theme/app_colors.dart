@@ -51,86 +51,86 @@ class AppColors {
   // text on pale grey read as "heavy/dull". Contrast stays comfortably
   // above WCAG AA while the whole canvas feels lighter and airier.
   static const ThemePalette indigoLight = ThemePalette(
-    bg: Color(0xFFF8F9FE),
+    bg: Color(0xFFF7F8FD),
     surface: Color(0xFFFFFFFF),
     card: Color(0xFFFFFFFF),
-    border: Color(0xFFE4E8F0),
-    textPrimary: Color(0xFF273350),
-    textSecondary: Color(0xFF5F6E88),
+    border: Color(0xFFDFE3F0),
+    textPrimary: Color(0xFF24304E),
+    textSecondary: Color(0xFF58678C),
     primary: Color(0xFF6366F1),
     primaryLight: Color(0xFF818CF8),
     primaryDark: Color(0xFF4F46E5),
-    primaryGhost: Color(0xFFF0F1FE),
+    primaryGhost: Color(0xFFEDF0FE),
   );
 
   // ─── Fresh Green (清新淡绿) ───
   static const ThemePalette freshGreen = ThemePalette(
-    bg: Color(0xFFF2FBF6),
+    bg: Color(0xFFF0FAF4),
     surface: Color(0xFFFFFFFF),
-    card: Color(0xFFFBFFFE),
-    border: Color(0xFFD1E7DD),
-    textPrimary: Color(0xFF23503C),
-    textSecondary: Color(0xFF567E6A),
+    card: Color(0xFFFBFFFD),
+    border: Color(0xFFC7E0D3),
+    textPrimary: Color(0xFF1F4D38),
+    textSecondary: Color(0xFF4E7A63),
     primary: Color(0xFF34A853),
     primaryLight: Color(0xFF66BB6A),
     primaryDark: Color(0xFF2E7D42),
-    primaryGhost: Color(0xFFE8F5E9),
+    primaryGhost: Color(0xFFE2F4E7),
   );
 
   // ─── Ocean Blue (海洋蓝) ───
   static const ThemePalette oceanBlue = ThemePalette(
-    bg: Color(0xFFF2F8FF),
+    bg: Color(0xFFF0F7FE),
     surface: Color(0xFFFFFFFF),
     card: Color(0xFFFCFDFF),
-    border: Color(0xFFD6E6F5),
-    textPrimary: Color(0xFF1F4266),
-    textSecondary: Color(0xFF55718C),
+    border: Color(0xFFCDDFF1),
+    textPrimary: Color(0xFF1C3F63),
+    textSecondary: Color(0xFF4D6D8E),
     primary: Color(0xFF0EA5E9),
     primaryLight: Color(0xFF38BDF8),
     primaryDark: Color(0xFF0284C7),
-    primaryGhost: Color(0xFFE0F2FE),
+    primaryGhost: Color(0xFFDBEFFD),
   );
 
   // ─── Sunset Orange (日落橙) ───
   static const ThemePalette sunsetOrange = ThemePalette(
-    bg: Color(0xFFFFF8F0),
+    bg: Color(0xFFFFF6EC),
     surface: Color(0xFFFFFFFF),
     card: Color(0xFFFFFCF7),
-    border: Color(0xFFFED7AA),
-    textPrimary: Color(0xFF57281A),
-    textSecondary: Color(0xFF8C6650),
+    border: Color(0xFFF8CF9F),
+    textPrimary: Color(0xFF542516),
+    textSecondary: Color(0xFF8A6248),
     primary: Color(0xFFF97316),
     primaryLight: Color(0xFFFB923C),
     primaryDark: Color(0xFFEA580C),
-    primaryGhost: Color(0xFFFFEDD5),
+    primaryGhost: Color(0xFFFFEAD0),
   );
 
   // ─── Sakura Pink (樱花粉) ───
   static const ThemePalette sakuraPink = ThemePalette(
-    bg: Color(0xFFFFF6F8),
+    bg: Color(0xFFFFF4F7),
     surface: Color(0xFFFFFFFF),
     card: Color(0xFFFFFCFD),
-    border: Color(0xFFFBCFE8),
-    textPrimary: Color(0xFF63183A),
-    textSecondary: Color(0xFF8F687D),
+    border: Color(0xFFF6C6DF),
+    textPrimary: Color(0xFF5F1536),
+    textSecondary: Color(0xFF8E6279),
     primary: Color(0xFFEC4899),
     primaryLight: Color(0xFFF472B6),
     primaryDark: Color(0xFFDB2777),
-    primaryGhost: Color(0xFFFCE7F3),
+    primaryGhost: Color(0xFFFCE3F0),
   );
 
   // ─── Lavender Purple (薰衣草紫) ───
   static const ThemePalette lavenderPurple = ThemePalette(
-    bg: Color(0xFFFBF6FF),
+    bg: Color(0xFFFAF4FE),
     surface: Color(0xFFFFFFFF),
     card: Color(0xFFFEFBFF),
-    border: Color(0xFFE9D5FF),
-    textPrimary: Color(0xFF4A1B78),
-    textSecondary: Color(0xFF756590),
+    border: Color(0xFFE0C9F8),
+    textPrimary: Color(0xFF46176F),
+    textSecondary: Color(0xFF71608F),
     primary: Color(0xFFA855F7),
     primaryLight: Color(0xFFC084FC),
     primaryDark: Color(0xFF9333EA),
-    primaryGhost: Color(0xFFF3E8FF),
+    primaryGhost: Color(0xFFF1E4FD),
   );
 
   // ─── Dark ───
@@ -153,16 +153,89 @@ class AppColors {
     primaryGhost: Color(0xFF2C3066),
   );
 
+  // ─── Forest Dark (暗夜青绿) — dark companion of Fresh Green ───
+  // Deep green-charcoal surfaces with a vibrant emerald accent. Text is a
+  // soft mint-tinted off-white; borders carry a subtle green cast so the
+  // theme reads as one cohesive material rather than grey + green.
+  static const ThemePalette greenDark = ThemePalette(
+    bg: Color(0xFF0D1F16),
+    surface: Color(0xFF132A1E),
+    card: Color(0xFF1A3526),
+    border: Color(0xFF2C4C3A),
+    textPrimary: Color(0xFFE4F2EA),
+    textSecondary: Color(0xFFA5C8B4),
+    primary: Color(0xFF4ADE80),
+    primaryLight: Color(0xFF86EFAC),
+    primaryDark: Color(0xFF22C55E),
+    primaryGhost: Color(0xFF1A3A2B),
+  );
+
+  // ─── Ocean Dark (暗夜海蓝) — dark companion of Ocean Blue ───
+  static const ThemePalette blueDark = ThemePalette(
+    bg: Color(0xFF0A1A2A),
+    surface: Color(0xFF102438),
+    card: Color(0xFF162E46),
+    border: Color(0xFF284563),
+    textPrimary: Color(0xFFE2EDF8),
+    textSecondary: Color(0xFFA2BDD6),
+    primary: Color(0xFF38BDF8),
+    primaryLight: Color(0xFF7DD3FC),
+    primaryDark: Color(0xFF0EA5E9),
+    primaryGhost: Color(0xFF153350),
+  );
+
+  // ─── Ember Dark (暗夜暖橙) — dark companion of Sunset Orange ───
+  static const ThemePalette orangeDark = ThemePalette(
+    bg: Color(0xFF201207),
+    surface: Color(0xFF2B1A0B),
+    card: Color(0xFF35200F),
+    border: Color(0xFF4F3826),
+    textPrimary: Color(0xFFF7ECE0),
+    textSecondary: Color(0xFFC9AE92),
+    primary: Color(0xFFFB923C),
+    primaryLight: Color(0xFFFDBA74),
+    primaryDark: Color(0xFFF97316),
+    primaryGhost: Color(0xFF3C2A15),
+  );
+
+  // ─── Rose Dark (暗夜樱粉) — dark companion of Sakura Pink ───
+  static const ThemePalette pinkDark = ThemePalette(
+    bg: Color(0xFF210D19),
+    surface: Color(0xFF2C1222),
+    card: Color(0xFF36182B),
+    border: Color(0xFF502D44),
+    textPrimary: Color(0xFFF9E9F2),
+    textSecondary: Color(0xFFCCA8BE),
+    primary: Color(0xFFF472B6),
+    primaryLight: Color(0xFFF9A8D4),
+    primaryDark: Color(0xFFEC4899),
+    primaryGhost: Color(0xFF3D1D33),
+  );
+
+  // ─── Violet Dark (暗夜薰紫) — dark companion of Lavender Purple ───
+  static const ThemePalette purpleDark = ThemePalette(
+    bg: Color(0xFF170C26),
+    surface: Color(0xFF201134),
+    card: Color(0xFF281742),
+    border: Color(0xFF3E2C5E),
+    textPrimary: Color(0xFFEFE9F9),
+    textSecondary: Color(0xFFB7A6D2),
+    primary: Color(0xFFC084FC),
+    primaryLight: Color(0xFFD8B4FE),
+    primaryDark: Color(0xFFA855F7),
+    primaryGhost: Color(0xFF301E4C),
+  );
+
   // ─── Legacy aliases (for existing code compatibility) ───
   // v1.4.39: kept in sync with the indigo-light / dark palettes above so the
   // hard-coded `isDark ? darkX : lightX` usages (dates, tags, icons, meta)
   // brighten together with the rest of the theme instead of staying dim.
-  static const Color lightBg = Color(0xFFF8F9FE);
+  static const Color lightBg = Color(0xFFF7F8FD);
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightCard = Color(0xFFFFFFFF);
-  static const Color lightBorder = Color(0xFFE4E8F0);
-  static const Color lightTextPrimary = Color(0xFF273350);
-  static const Color lightTextSecondary = Color(0xFF5F6E88);
+  static const Color lightBorder = Color(0xFFDFE3F0);
+  static const Color lightTextPrimary = Color(0xFF24304E);
+  static const Color lightTextSecondary = Color(0xFF58678C);
   static const Color darkBg = Color(0xFF142036);
   static const Color darkSurface = Color(0xFF1E2B42);
   static const Color darkCard = Color(0xFF273650);
