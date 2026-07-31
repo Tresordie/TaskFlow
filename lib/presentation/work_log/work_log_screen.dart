@@ -10,9 +10,9 @@ import 'package:intl/intl.dart';
 import '../../core/markdown/html_export.dart';
 import '../../data/models/work_log.dart';
 import '../../providers/work_log_provider.dart';
-import '../shared/app_markdown_body.dart';
 import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
+import '../shared/selectable_markdown_body.dart';
 
 /// Work Log page — ported from the LinguaFlow Chrome extension's
 /// workreport.html. Free-form work records → AI-generated structured
@@ -839,7 +839,11 @@ e.g.
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: AppMarkdownBody(
+            // SelectableMarkdownBody (single selectable document) so the
+            // record can be drag-selected and right-click → "Copy as
+            // Markdown" to grab the original Markdown source — same pattern
+            // as the Execution Log Notes.
+            child: SelectableMarkdownBody(
               data: r.content,
               hardenLineBreaks: true,
               styleSheet: _recordMarkdownStyleSheet(theme),
@@ -944,7 +948,12 @@ e.g.
                     )
                   : SingleChildScrollView(
                       primary: false,
-                      child: AppMarkdownBody(data: state.result),
+                      // Selectable + right-click "Copy as Markdown" for the
+                      // AI summary output.
+                      child: SelectableMarkdownBody(
+                        data: state.result,
+                        hardenLineBreaks: true,
+                      ),
                     ),
             ),
             if (state.result.isNotEmpty) ...[
