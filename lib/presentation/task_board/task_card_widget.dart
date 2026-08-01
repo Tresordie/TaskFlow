@@ -28,7 +28,8 @@ class _TaskCardState extends ConsumerState<TaskCard> {
   Widget build(BuildContext context) {
     final task = widget.task;
     final priorityColor = AppColors.priorityColor(task.priority.index);
-    final isCompleted = task.status == TaskStatus.completed;
+    final isCompleted =
+        task.status == TaskStatus.completed || task.status == TaskStatus.archived;
     final theme = Theme.of(context);
     final palette = theme.colorScheme;
 
@@ -212,6 +213,15 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      task.status.label,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.statusColor(task.status),
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     if (task.project.trim().isNotEmpty ||
                         task.tags.isNotEmpty) ...[
@@ -341,9 +351,9 @@ class _TaskCardState extends ConsumerState<TaskCard> {
 
   void _toggleStatus() {
     final task = widget.task;
-    final newStatus = task.status == TaskStatus.completed
-        ? TaskStatus.planned
-        : TaskStatus.completed;
+    final isDone =
+        task.status == TaskStatus.completed || task.status == TaskStatus.archived;
+    final newStatus = isDone ? TaskStatus.planned : TaskStatus.completed;
     ref.read(taskListProvider.notifier).updateStatus(task.id, newStatus);
   }
 }
