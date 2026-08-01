@@ -174,9 +174,11 @@ class ReportController extends StateNotifier<ReportsState> {
   }
 
   /// Tasks created inside the current range — the checkbox picker's list.
+  /// Archived tasks are excluded from the picker entirely.
   List<Task> tasksInRange(List<Task> allTasks) {
     final (start, end) = currentRange;
     return allTasks
+        .where((t) => t.status != TaskStatus.archived)
         .where((t) => !t.createdAt.isBefore(start) && t.createdAt.isBefore(end))
         .toList();
   }

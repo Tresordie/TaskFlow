@@ -325,9 +325,11 @@ class ReportService {
 
   /// [onlyUids] restricts aggregation to the tasks whose uid is in the set
   /// (the Reports screen's per-task checkbox selection); null = every task.
+  /// Archived tasks are ALWAYS excluded from report aggregation.
   Future<ReportData> _build(ReportPeriod period, DateTime start, DateTime end,
       ReportFilter filter, Set<String>? onlyUids) async {
     final all = (await _repo.getAllTasks())
+        .where((t) => t.status != TaskStatus.archived)
         .where(filter.matches)
         .where((t) => onlyUids == null || onlyUids.contains(t.uid))
         .toList();
@@ -484,8 +486,7 @@ class ReportService {
   /// Formats every task in [d] into the plain-text TASK DATA block that the
   /// full-report system prompt ([fullReportPrompt]) expects: title, project,
   /// status, priority, due date, sub-steps and ALL in-period execution-log
-  /// entries. Archived tasks are included so the model can apply the
-  /// "archived-within-period" rule itself.
+  /// entries. Archived tasks are already excluded by [_build].
   String formatTaskData(ReportData d) {
     final f = DateFormat('MM-dd');
     final fr = DateFormat('yyyy-MM-dd');
@@ -541,7 +542,7 @@ class ReportService {
   /// System prompt for full AI report generation — implements the rules
   /// from weekly_report_ai_summary_prompts.md: deep comprehension of all
   /// execution logs, per-project classification, synthesis with technical
-  /// fidelity, NPI context inference, archived-task handling, and the exact
+  /// fidelity, NPI context inference, archived-task exclusion, and the exact
   /// 5-section output format. Language of the output follows [lang].
   static String fullReportPrompt(ReportLanguage lang) =>
       lang == ReportLanguage.chinese ? _fullReportPromptZh : _fullReportPromptEn;
@@ -580,10 +581,8 @@ class ReportService {
       '(EVT → DVT → PVT → MP), hardware validation, factory coordination, '
       'and cross-team communication to fill logical gaps and produce '
       'coherent narratives.\n'
-      '7. Handle Archived tasks — tasks with status Archived are excluded '
-      'from the report by default. However, if a task was completed '
-      '*within* the reporting period (its completion date falls in the '
-      'date range), treat it as Completed and include it in Achievements.\n'
+      '7. Archived tasks are already excluded from the input data — '
+      'never mention or summarize archived tasks.\n'
       '8. Output language: English only. NEVER output Chinese characters '
       'in the final report (any Chinese character in the output is a '
       'failure). Task data may be in Chinese — translate ALL of it.\n\n'
@@ -713,8 +712,7 @@ class ReportService {
       'QUALITY CHECKLIST (self-verify before outputting):\n'
       '- ALL 5 sections are present: Status Dashboard, Executive Summary, '
       'Progress Details, Plan for Next Period, Asks / Decisions Needed.\n'
-      '- Every task in the input appears in at least one section '
-      '(except pre-period Archived tasks).\n'
+      '- Every task in the input appears in at least one section.\n'
       '- No Chinese characters in the output.\n'
       '- Technical terms, part numbers, abbreviations, measurements '
       'preserved verbatim — none rewritten or generalized.\n'
@@ -757,8 +755,7 @@ class ReportService {
       '6. 推断上下文——利用你对 NPI 流程（EVT → DVT → PVT → MP）、'
       '硬件验证、工厂协调和跨团队沟通的理解，填补逻辑空白，'
       '生成连贯的叙述。\n'
-      '7. 归档任务处理——状态为 Archived 的任务默认排除。但如果任务'
-      '在报告期内完成（完成日期在范围内），视为已完成并纳入成果。\n'
+      '7. 归档任务已从输入数据中排除——禁止提及或总结归档任务。\n'
       '8. 输出语言：仅中文。\n\n'
       '【关键】报告必须包含下面全部 5 个章节，按顺序，无一例外。'
       '禁止省略、截断或跳过任何章节——即使某章节没有相关数据，'
