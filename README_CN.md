@@ -112,6 +112,7 @@ test/
 ### 阶段 6 — 体验优化
 - 任务看板交错入场动画（flutter_animate）
 - Archived 任务展示与 Completed 一致（绿色勾选 + 标题划线），标题下方显示状态标签
+- 粘贴内容的健壮 Markdown 渲染：自动规范化 CRLF 换行和不可见 Unicode 空格（不间断空格 / 全角空格），从浏览器或其他应用复制的列表也能正确渲染
 - 桌面专属 chrome 保护（iOS/Android 跳过自定义标题栏和 window_manager）
 - 单元 + Widget 测试套件（`flutter test`）：报告周期计算、AI 配置、LaTeX 渲染、标题栏
 

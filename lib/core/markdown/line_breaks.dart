@@ -31,9 +31,20 @@ library;
 final _listItemRe = RegExp(r'^\s*(?:[-*+]\s|\d+[.)]\s)');
 
 String hardenMarkdownLineBreaks(String markdown) {
+  // Normalise Windows / old-Mac line endings so the parser sees clean \n.
+  // Also collapse exotic horizontal whitespace — non-breaking space (U+00A0),
+  // ideographic/full-width space (U+3000) and other Unicode spaces commonly
+  // introduced by browser copy/paste — into plain ASCII spaces, so the
+  // CommonMark parser recognises list indentation. This mirrors the lenient
+  // line-based renderer used by translate_tool.
+  final normalised = markdown
+      .replaceAll('\r\n', '\n')
+      .replaceAll('\r', '\n')
+      .replaceAll(
+          RegExp('[\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]'), ' ');
   final out = <String>[];
   var inFence = false;
-  for (final line in markdown.split('\n')) {
+  for (final line in normalised.split('\n')) {
     final trimmed = line.trim();
     if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
       inFence = !inFence;
