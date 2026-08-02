@@ -1,5 +1,7 @@
 # TaskFlow
 
+**English** | [中文](README_CN.md)
+
 Cross-platform task management app for hardware test engineers. Built with Flutter.
 
 ## Quick Start
@@ -89,16 +91,26 @@ test/
 ### Phase 3 — Report generation
 - Daily / weekly / monthly / yearly aggregation of tasks + execution logs
 - Dashboard stats: touched / completed / in-progress / overdue / completion rate / Pass-Fail-Blocked counts / sub-step progress
+- Per-task checkbox picker and project/tag/status/priority filters
+- AI-powered full report generation (OpenAI-compatible LLM) with fallback to deterministic template
+- Archived tasks are automatically excluded from reports
 - Live Markdown preview; export to `.md` or styled standalone `.html`
 - Exports land in `Documents/TaskFlow/reports/`
 
-### Phase 4 — Backup & sync
+### Phase 4 — Work Log
+- Dedicated work-log journal with rich Markdown input (Write/Preview toggle)
+- AI key-point summary across all records
+- Right-click “Copy as Markdown” on any record
+- Filter by date / project / keyword
+
+### Phase 5 — Backup & sync
 - One-click JSON backup (tasks, logs, sub-steps, attachment references) to `Documents/TaskFlow/backups/` or any location
 - Restore with **Full restore** (replace everything) or **Merge** (upsert by task uid)
 - Google Drive sync through the Drive-for-Desktop mirror folder (`TaskFlow/taskflow_sync.json`) — push / pull / auto direction, no API credentials needed
 
-### Phase 5 — Polish
+### Phase 6 — Polish
 - Staggered entrance animations on the task board (flutter_animate)
+- Archived tasks render like Completed (green check + strikethrough) with status label under title
 - Desktop-only chrome guarded for iOS/Android (custom title bar & window_manager skipped on mobile)
 - Unit + widget test suite (`flutter test`): report period math, AI config, LaTeX rendering, title bar
 

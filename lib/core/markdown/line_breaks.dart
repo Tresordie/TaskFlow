@@ -21,7 +21,15 @@ library;
 ///  * blank lines are preserved so an intentional empty line still produces a
 ///    paragraph break rather than a hard break;
 ///  * lines that already end a hard break (two trailing spaces or a trailing
-///    backslash) are not modified again.
+///    backslash) are not modified again;
+///  * list-item lines (starting with `- `, `* `, `+ `, or `1. ` after optional
+///    indentation) are left untouched so the Markdown parser can recognise
+///    ordered / unordered list structures correctly.
+
+/// Matches common Markdown list-item prefixes: unordered (`- `, `* `, `+ `)
+/// and ordered (`1. `, `2) `, etc.) after optional leading whitespace.
+final _listItemRe = RegExp(r'^\s*(?:[-*+]\s|\d+[.)]\s)');
+
 String hardenMarkdownLineBreaks(String markdown) {
   final out = <String>[];
   var inFence = false;
@@ -33,7 +41,8 @@ String hardenMarkdownLineBreaks(String markdown) {
     } else if (inFence ||
         trimmed.isEmpty ||
         line.endsWith('  ') ||
-        trimmed.endsWith(r'\')) {
+        trimmed.endsWith(r'\') ||
+        _listItemRe.hasMatch(line)) {
       out.add(line);
     } else {
       out.add('$line  ');
