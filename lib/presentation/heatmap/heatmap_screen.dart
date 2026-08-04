@@ -30,7 +30,7 @@ class HeatmapScreen extends ConsumerWidget {
               // Header
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -65,30 +65,30 @@ class HeatmapScreen extends ConsumerWidget {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
             data: (tasks) => SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Summary stats
                   _buildStats(context, ref, theme, tasks),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   // Heatmap
                   Text(
                     '${DateTime.now().year} Task Activity',
                     style: theme.textTheme.titleLarge,
                   ),
-                  const SizedBox(height: 12),
-                  _HeatmapGrid(tasks: tasks),
                   const SizedBox(height: 8),
+                  _HeatmapGrid(tasks: tasks),
+                  const SizedBox(height: 6),
                   // Legend
                   _buildLegend(theme),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   // Task list with created / due dates
                   Text(
                     'Tasks',
                     style: theme.textTheme.titleLarge,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   _buildTaskList(context, theme, tasks),
                 ],
               ),
@@ -129,7 +129,7 @@ class HeatmapScreen extends ConsumerWidget {
           onTap: () => jumpWith(
               TaskFilter(date: DateTime(now.year, now.month, now.day))),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         _StatCard(
           label: 'Completed',
           value: '$completedCount',
@@ -137,7 +137,7 @@ class HeatmapScreen extends ConsumerWidget {
           theme: theme,
           onTap: () => jumpWith(TaskFilter(status: TaskStatus.completed)),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         _StatCard(
           label: 'Total',
           value: '$totalCount',
@@ -203,8 +203,8 @@ class _ActivityTaskItem extends StatelessWidget {
     return GestureDetector(
       onTap: () => context.push('/task/${task.id}'),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        margin: const EdgeInsets.only(bottom: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(10),
@@ -248,16 +248,16 @@ class _ActivityTaskItem extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             if (task.project.trim().isNotEmpty || task.tags.isNotEmpty) ...[
               Padding(
-                padding: const EdgeInsets.only(left: 14),
+                padding: const EdgeInsets.only(left: 12),
                 child: TaskTagProjectMeta(task: task, compact: true),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
             ],
             Padding(
-              padding: const EdgeInsets.only(left: 14),
+              padding: const EdgeInsets.only(left: 12),
               child: TaskDateMeta(task: task, compact: true),
             ),
           ],
@@ -292,7 +292,7 @@ class _StatCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(14),
           child: Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
@@ -304,7 +304,7 @@ class _StatCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(icon, size: 20, color: theme.colorScheme.primary),
+                    Icon(icon, size: 18, color: theme.colorScheme.primary),
                     const Spacer(),
                     if (onTap != null)
                       Icon(
@@ -314,15 +314,18 @@ class _StatCard extends StatelessWidget {
                       ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
                   value,
                   style: theme.textTheme.headlineMedium?.copyWith(
+                    fontSize: 22,
                     color: theme.colorScheme.primary,
                   ),
                 ),
-                const SizedBox(height: 1),
-                Text(label, style: theme.textTheme.bodyMedium),
+                const SizedBox(height: 0),
+                Text(label,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(fontSize: 12)),
               ],
             ),
           ),
@@ -372,9 +375,9 @@ class _HeatmapGrid extends StatelessWidget {
           // Month labels
           Column(
             children: [
-              const SizedBox(height: 20), // space for weekday labels
+              const SizedBox(height: 22), // space for weekday labels
               ...['Mon', 'Wed', 'Fri'].map((d) => SizedBox(
-                    height: 42,
+                    height: 28,
                     child: Text(
                       d,
                       style: theme.textTheme.labelSmall?.copyWith(fontSize: 9),
@@ -403,9 +406,9 @@ class _HeatmapGrid extends StatelessWidget {
                           weekIndex * 7 + dayIndex - startOffset + 1;
                       if (dayOfYear < 1 || dayOfYear > totalDays) {
                         return Container(
-                          width: 14,
-                          height: 14,
-                          margin: const EdgeInsets.all(1.5),
+                          width: 12,
+                          height: 12,
+                          margin: const EdgeInsets.all(1),
                         );
                       }
                       final date = jan1.add(Duration(days: dayOfYear - 1));
@@ -419,9 +422,9 @@ class _HeatmapGrid extends StatelessWidget {
                         message:
                             '${DateFormat('MMM d').format(date)}: $count task${count == 1 ? '' : 's'}',
                         child: Container(
-                          width: 14,
-                          height: 14,
-                          margin: const EdgeInsets.all(1.5),
+                          width: 12,
+                          height: 12,
+                          margin: const EdgeInsets.all(1),
                           decoration: BoxDecoration(
                             color: count == 0
                                 ? theme.colorScheme.outline.withOpacity(0.12)
@@ -464,7 +467,7 @@ class _MonthLabels extends StatelessWidget {
 
       if (date.month != lastMonth && date.day <= 7) {
         labels.add(SizedBox(
-          width: 17 * (w == 0 ? 1 : 1),
+          width: 14 * (w == 0 ? 1 : 1),
           child: Text(
             DateFormat('MMM').format(date),
             style: theme.textTheme.labelSmall?.copyWith(fontSize: 9),
@@ -472,7 +475,7 @@ class _MonthLabels extends StatelessWidget {
         ));
         lastMonth = date.month;
       } else {
-        labels.add(const SizedBox(width: 17));
+        labels.add(const SizedBox(width: 14));
       }
     }
 

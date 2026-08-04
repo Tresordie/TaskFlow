@@ -33,6 +33,12 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
   String? _error;
   List<ParsedTask> _results = [];
 
+  // Resizable notes input area height (logical pixels) — drag the grip
+  // handle below the field, mirroring the Work Log input behavior.
+  double _notesHeight = 200;
+  static const double _minNotesHeight = 100;
+  static const double _maxNotesHeight = 500;
+
   @override
   void initState() {
     super.initState();
@@ -221,8 +227,7 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                 // Content area
                 if (_previewMode)
                   Container(
-                    constraints:
-                        const BoxConstraints(minHeight: 120, maxHeight: 260),
+                    height: _notesHeight,
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
                     child: _notesController.text.trim().isEmpty
@@ -247,28 +252,60 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                           ),
                   )
                 else
-                  TextField(
-                    controller: _notesController,
-                    focusNode: _notesFocus,
-                    maxLines: 8,
-                    minLines: 5,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      height: 1.5,
-                      fontFamily: 'Consolas',
-                    ),
-                    decoration: InputDecoration(
-                      hintText:
-                          'e.g. Today\'s PVT line review: 1) Metro battery connector torque spec needs re-check (2.5 N·m), station 3 failed 2 units...\n\nMarkdown / plain text / mixed languages all fine.',
-                      hintStyle: TextStyle(
+                  SizedBox(
+                    height: _notesHeight,
+                    child: TextField(
+                      controller: _notesController,
+                      focusNode: _notesFocus,
+                      maxLines: null,
+                      expands: true,
+                      textAlignVertical: TextAlignVertical.top,
+                      style: const TextStyle(
                         fontSize: 13,
+                        height: 1.5,
                         fontFamily: 'Consolas',
-                        color: theme.colorScheme.onSurface.withOpacity(0.35),
                       ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.all(14),
+                      decoration: InputDecoration(
+                        hintText:
+                            'e.g. Today\'s PVT line review: 1) Metro battery connector torque spec needs re-check (2.5 N·m), station 3 failed 2 units...\n\nMarkdown / plain text / mixed languages all fine.',
+                        hintStyle: TextStyle(
+                          fontSize: 13,
+                          fontFamily: 'Consolas',
+                          color: theme.colorScheme.onSurface.withOpacity(0.35),
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.all(14),
+                      ),
                     ),
                   ),
+                // Resize grip handle — drag up/down to resize the notes
+                // input area (same pattern as the Work Log input).
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onVerticalDragUpdate: (details) {
+                    setState(() {
+                      _notesHeight = (_notesHeight + details.delta.dy)
+                          .clamp(_minNotesHeight, _maxNotesHeight);
+                    });
+                  },
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.resizeRow,
+                    child: SizedBox(
+                      height: 10,
+                      width: double.infinity,
+                      child: Center(
+                        child: Container(
+                          width: 40,
+                          height: 3,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.outline.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

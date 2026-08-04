@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/markdown/html_sanitize.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/open_folder.dart';
 import '../../data/models/task.dart';
@@ -15,7 +16,6 @@ import '../../providers/task_providers.dart';
 import '../shared/app_markdown_body.dart';
 import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
-import '../shared/selectable_markdown_body.dart';
 
 final reportServiceProvider = Provider<ReportService>((ref) {
   return ReportService(ref.watch(taskRepositoryProvider));
@@ -447,11 +447,17 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       }
       final file = await service.export(fileName, content);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      // Replace any queued snackbar so repeated exports never stack up a
+      // permanent-looking banner, and force-hide after the duration as a
+      // safety net (desktop focus-loss can stall the internal timer).
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
         SnackBar(
           content: Text('Saved: ${file.path}'),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 4),
+          showCloseIcon: true,
           action: SnackBarAction(
             label: 'Open folder',
             // launchUrl(Uri.file(...)) blocks the UI thread on Windows
@@ -460,6 +466,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           ),
         ),
       );
+      Future.delayed(const Duration(seconds: 5), () {
+        if (mounted) messenger.hideCurrentSnackBar();
+      });
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1149,10 +1158,15 @@ class _ReportPreviewState extends State<_ReportPreview> {
   final TextEditingController _controller = TextEditingController();
   late final FocusNode _focus;
 
+  /// AI models occasionally emit raw HTML (<table>, <br>, …) that the
+  /// in-app Markdown renderer cannot display. Sanitize once per content
+  /// change so preview AND edit mode both work with clean Markdown.
+  String get _cleanMarkdown => sanitizeHtmlInMarkdown(widget.markdown);
+
   @override
   void initState() {
     super.initState();
-    _controller.text = widget.markdown;
+    _controller.text = _cleanMarkdown;
     _focus = markdownIndentFocusNode(_controller);
   }
 
@@ -1161,11 +1175,11 @@ class _ReportPreviewState extends State<_ReportPreview> {
     super.didUpdateWidget(old);
     if (widget.editing && !old.editing) {
       // Just entered edit mode → load the latest markdown into the editor.
-      _controller.text = widget.markdown;
-    } else if (!widget.editing && widget.markdown != _controller.text) {
+      _controller.text = _cleanMarkdown;
+    } else if (!widget.editing && _cleanMarkdown != _controller.text) {
       // In view mode keep the editor buffer in sync so the next edit
       // session starts from the latest content (e.g. after regeneration).
-      _controller.text = widget.markdown;
+      _controller.text = _cleanMarkdown;
     }
   }
 
@@ -1290,8 +1304,11 @@ class _ReportPreviewState extends State<_ReportPreview> {
                       ),
                     ],
                   )
-                : AppMarkdownBody(
-                    data: widget.markdown,
+                : Scrollbar(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.zero,
+                      child: AppMarkdownBody(
+                        data: _cleanMarkdown,
                     hardenLineBreaks: true,
                     selectable: true,
                     styleSheet:
@@ -1313,6 +1330,8 @@ class _ReportPreviewState extends State<_ReportPreview> {
                       code: const TextStyle(
                         fontFamily: 'monospace',
                         fontSize: 12.5,
+                      ),
+                    ),
                       ),
                     ),
                   ),
