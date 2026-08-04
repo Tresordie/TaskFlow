@@ -9,7 +9,6 @@ import '../../data/services/ai_service.dart';
 import '../../providers/ai_provider.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
-import '../shared/app_markdown_body.dart';
 import '../shared/markdown_input.dart';
 import '../shared/selectable_markdown_body.dart';
 
@@ -241,7 +240,10 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                           )
                         : SingleChildScrollView(
                             primary: false,
-                            child: AppMarkdownBody(
+                            // Whole-document SelectableText.rich: drag-select
+                            // across all lines + right-click Copy /
+                            // "Copy as Markdown".
+                            child: SelectableMarkdownBody(
                               data: _notesController.text,
                               hardenLineBreaks: true,
                               styleSheet:

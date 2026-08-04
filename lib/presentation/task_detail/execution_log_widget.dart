@@ -10,7 +10,7 @@ import '../../core/utils/open_folder.dart';
 import '../../data/models/task.dart';
 import '../../data/services/attachment_service.dart';
 import '../../providers/task_providers.dart';
-import '../shared/app_markdown_body.dart';
+import '../shared/selectable_markdown_body.dart';
 import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
 import 'edit_entry_dialog.dart';
@@ -665,16 +665,17 @@ class _LogEntryItem extends StatelessWidget {
                   ),
                   if (entry.content.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    // AppMarkdownBody renders the saved Note with proper
-                    // block-level markdown (tables, headings, lists) while
-                    // selectable: true enables drag-select + copy across
-                    // blocks via the app-wide SelectionArea.
-                    AppMarkdownBody(
+                    // Whole-Note selectable renderer: the ENTIRE note is one
+                    // SelectableText.rich, so the user can drag-select across
+                    // lines/paragraphs, select all, and right-click for Copy
+                    // / "Copy as Markdown" (original source). Per-block
+                    // SelectableText (MarkdownBody selectable:true) only
+                    // allows single-block selection — not acceptable here.
+                    SelectableMarkdownBody(
                       data: entry.content,
                       hardenLineBreaks: true,
-                      selectable: true,
                       styleSheet: _markdownStyleSheet(context),
-                      onTapLink: (href, title, originalText) {
+                      onTapLink: (href) {
                         final uri = Uri.tryParse(href);
                         if (uri == null) return;
                         if (uri.scheme == 'file') {

@@ -473,10 +473,11 @@ class _HeatmapGrid extends StatelessWidget {
       builder: (context, constraints) {
         final avail = constraints.maxWidth - labelColumnWidth;
         final fitPitch = avail / totalWeeks;
-        // Stretch cells to fill the row (clamped to a comfortable range);
-        // only fall back to horizontal scrolling on very narrow windows.
+        // Stretch cells to fill the row — no upper cap, so even maximized /
+        // ultra-wide windows leave no empty space on the right. Only fall
+        // back to horizontal scrolling on very narrow windows.
         if (fitPitch >= 12) {
-          return buildGrid(fitPitch.clamp(12.0, 24.0));
+          return buildGrid(fitPitch);
         }
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,

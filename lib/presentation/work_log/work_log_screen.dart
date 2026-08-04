@@ -10,7 +10,7 @@ import 'package:intl/intl.dart';
 import '../../core/markdown/html_export.dart';
 import '../../data/models/work_log.dart';
 import '../../providers/work_log_provider.dart';
-import '../shared/app_markdown_body.dart';
+import '../shared/selectable_markdown_body.dart';
 import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
 
@@ -44,6 +44,11 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
   double _textAreaHeight = 200;
   static const double _minTextAreaHeight = 80;
   static const double _maxTextAreaHeight = 500;
+
+  // Resizable AI Key-Point Summary display area height.
+  double _summaryHeight = 180;
+  static const double _minSummaryHeight = 96;
+  static const double _maxSummaryHeight = 600;
 
   @override
   void initState() {
@@ -873,15 +878,12 @@ e.g.
           ),
           const SizedBox(width: 8),
           Expanded(
-            // AppMarkdownBody renders the saved record with the SAME
-            // MarkdownBody block-level renderer as the input Preview, so
-            // the displayed format matches WYSIWYG (tables, headings, lists
-            // all render correctly — SelectableMarkdownBody flattens to a
-            // single TextSpan and breaks complex markdown).
-            child: AppMarkdownBody(
+            // Whole-record selectable renderer: one SelectableText.rich for
+            // the ENTIRE record so the user can drag-select across lines /
+            // select-all, and right-click Copy / "Copy as Markdown".
+            child: SelectableMarkdownBody(
               data: r.content,
               hardenLineBreaks: true,
-              selectable: true,
               styleSheet: _recordMarkdownStyleSheet(theme),
             ),
           ),
@@ -966,7 +968,7 @@ e.g.
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
-              constraints: const BoxConstraints(minHeight: 96, maxHeight: 280),
+              height: _summaryHeight,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
@@ -984,15 +986,41 @@ e.g.
                     )
                   : SingleChildScrollView(
                       primary: false,
-                      // AppMarkdownBody renders the AI summary with proper
-                      // block-level markdown rendering (tables, headings,
-                      // lists) matching the input Preview style.
-                      child: AppMarkdownBody(
+                      // Whole-summary SelectableText.rich: drag-select across
+                      // all lines + right-click Copy / "Copy as Markdown".
+                      child: SelectableMarkdownBody(
                         data: state.result,
                         hardenLineBreaks: true,
-                        selectable: true,
+                        styleSheet: _recordMarkdownStyleSheet(theme),
                       ),
                     ),
+            ),
+            // Resize grip for the summary display area.
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onVerticalDragUpdate: (details) {
+                setState(() {
+                  _summaryHeight = (_summaryHeight + details.delta.dy)
+                      .clamp(_minSummaryHeight, _maxSummaryHeight);
+                });
+              },
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeRow,
+                child: SizedBox(
+                  height: 10,
+                  width: double.infinity,
+                  child: Center(
+                    child: Container(
+                      width: 40,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.outline.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
             if (state.result.isNotEmpty) ...[
               const SizedBox(height: 10),

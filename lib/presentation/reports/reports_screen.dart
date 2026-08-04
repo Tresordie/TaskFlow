@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -802,6 +803,28 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         icon: const Icon(Icons.edit_outlined, size: 15),
                         label: const Text('Edit'),
                       ),
+                const SizedBox(width: 8),
+                // One-click copy of the generated report as clean Markdown
+                // (sanitized — same text the user sees / edits).
+                OutlinedButton.icon(
+                  onPressed: s.markdown == null || s.markdown!.isEmpty
+                      ? null
+                      : () {
+                          final text = sanitizeHtmlInMarkdown(s.markdown!);
+                          Clipboard.setData(ClipboardData(text: text));
+                          final messenger = ScaffoldMessenger.of(context);
+                          messenger.hideCurrentSnackBar();
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Report copied as Markdown'),
+                              behavior: SnackBarBehavior.floating,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                  icon: const Icon(Icons.copy_outlined, size: 15),
+                  label: const Text('Copy MD'),
+                ),
                 const SizedBox(width: 8),
                 OutlinedButton.icon(
                   onPressed: _exporting ? null : () => _export('md'),

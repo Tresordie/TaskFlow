@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
-import 'app_markdown_body.dart';
 import 'markdown_input.dart';
+import 'selectable_markdown_body.dart';
 
 /// A Markdown editor with instant Write / Preview switching.
 ///
@@ -203,7 +203,9 @@ class _MarkdownEditorFieldState extends State<MarkdownEditorField> {
             primary: false,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: AppMarkdownBody(
+              // Whole-document SelectableText.rich: drag-select across all
+              // lines, select-all, right-click Copy / "Copy as Markdown".
+              child: SelectableMarkdownBody(
                 data: text,
                 hardenLineBreaks: widget.hardenLineBreaks,
                 styleSheet: widget.styleSheet,
