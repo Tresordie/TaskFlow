@@ -14,7 +14,6 @@ import '../../providers/ai_provider.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
 import '../shared/app_markdown_body.dart';
-import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
 
 final reportServiceProvider = Provider<ReportService>((ref) {
@@ -1242,102 +1241,179 @@ class _ReportPreviewState extends State<_ReportPreview> {
                       : theme.colorScheme.outline.withOpacity(0.25)),
             ),
             child: widget.editing
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Markdown + rich-text formatting bar (Write mode).
-                      MarkdownToolbar(
-                        controller: _controller,
-                        refocus: _focus,
-                      ),
-                      const SizedBox(height: 8),
-                      // Full-screen Write / Preview editor: the user edits
-                      // Markdown source with live preview, and the result
-                      // stays in sync via [widget.onMarkdownChanged].
-                      Expanded(
-                        child: MarkdownEditorField(
-                          controller: _controller,
-                          focusNode: _focus,
-                          expands: true,
-                          onChanged: widget.onMarkdownChanged,
-                          style: TextStyle(
-                            fontFamily:
-                                'Consolas, Menlo, Courier New, monospace',
-                            fontSize: 12.5,
-                            height: 1.5,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            contentPadding: EdgeInsets.zero,
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                          ),
-                          styleSheet:
-                              MarkdownStyleSheet.fromTheme(theme).copyWith(
-                            p: theme.textTheme.bodyMedium
-                                ?.copyWith(height: 1.55),
-                            tableHead: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w700, fontSize: 12.5),
-                            tableBody:
-                                theme.textTheme.bodySmall?.copyWith(
-                                    fontSize: 12),
-                            h1: theme.textTheme.titleLarge?.copyWith(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700),
-                            h2: theme.textTheme.titleMedium?.copyWith(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w700),
-                            h3: theme.textTheme.titleSmall
-                                ?.copyWith(fontSize: 13),
-                            blockquote: theme.textTheme.bodySmall?.copyWith(
-                              color: theme
-                                  .colorScheme.onSurface.withOpacity(0.55),
-                            ),
-                            code: const TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 12.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
+                ? _buildSplitEditor(theme)
                 : Scrollbar(
                     child: SingleChildScrollView(
                       padding: EdgeInsets.zero,
                       child: AppMarkdownBody(
                         data: _cleanMarkdown,
-                    hardenLineBreaks: true,
-                    selectable: true,
-                    styleSheet:
-                        MarkdownStyleSheet.fromTheme(theme).copyWith(
-                      p: theme.textTheme.bodyMedium?.copyWith(height: 1.55),
-                      tableHead: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w700, fontSize: 12.5),
-                      tableBody:
-                          theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-                      h1: theme.textTheme.titleLarge?.copyWith(
-                          fontSize: 17, fontWeight: FontWeight.w700),
-                      h2: theme.textTheme.titleMedium?.copyWith(
-                          fontSize: 14.5, fontWeight: FontWeight.w700),
-                      h3: theme.textTheme.titleSmall?.copyWith(fontSize: 13),
-                      blockquote: theme.textTheme.bodySmall?.copyWith(
-                        color:
-                            theme.colorScheme.onSurface.withOpacity(0.55),
-                      ),
-                      code: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 12.5,
-                      ),
-                    ),
+                        hardenLineBreaks: true,
+                        selectable: true,
+                        styleSheet: _reportStyleSheet(theme),
                       ),
                     ),
                   ),
           ),
         ),
       ],
+    );
+  }
+
+  /// Shared style sheet for the rendered report (view mode + live preview).
+  MarkdownStyleSheet _reportStyleSheet(ThemeData theme) =>
+      MarkdownStyleSheet.fromTheme(theme).copyWith(
+        p: theme.textTheme.bodyMedium?.copyWith(height: 1.55),
+        tableHead: theme.textTheme.bodyMedium
+            ?.copyWith(fontWeight: FontWeight.w700, fontSize: 12.5),
+        tableBody: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
+        h1: theme.textTheme.titleLarge
+            ?.copyWith(fontSize: 17, fontWeight: FontWeight.w700),
+        h2: theme.textTheme.titleMedium
+            ?.copyWith(fontSize: 14.5, fontWeight: FontWeight.w700),
+        h3: theme.textTheme.titleSmall?.copyWith(fontSize: 13),
+        blockquote: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withOpacity(0.55)),
+        code: const TextStyle(fontFamily: 'monospace', fontSize: 12.5),
+      );
+
+  /// Edit mode — split view: Markdown source on the left, live rendered
+  /// preview on the right. Editing raw source alone reads like garbled
+  /// text (`#`, `**`, `|` symbols everywhere); the synced preview gives
+  /// instant WYSIWYG feedback so the content always looks structured.
+  Widget _buildSplitEditor(ThemeData theme) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final liveText = _controller.text;
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Left pane: Markdown source editor ──────────────────
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.edit_outlined,
+                          size: 13, color: theme.colorScheme.primary),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Markdown source',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  MarkdownToolbar(
+                    controller: _controller,
+                    refocus: _focus,
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color:
+                            theme.colorScheme.onSurface.withOpacity(0.035),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextField(
+                        controller: _controller,
+                        focusNode: _focus,
+                        maxLines: null,
+                        expands: true,
+                        textAlignVertical: TextAlignVertical.top,
+                        onChanged: widget.onMarkdownChanged,
+                        style: TextStyle(
+                          fontFamily:
+                              'Consolas, Menlo, Courier New, monospace',
+                          fontSize: 12.5,
+                          height: 1.5,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            // ── Right pane: live rendered preview ──────────────────
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.visibility_outlined,
+                          size: 13,
+                          color:
+                              theme.colorScheme.onSurface.withOpacity(0.5)),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Live preview',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface
+                              .withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color:
+                                theme.colorScheme.outline.withOpacity(0.2)),
+                      ),
+                      child: liveText.trim().isEmpty
+                          ? Center(
+                              child: Text(
+                                'Nothing to preview',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.35),
+                                ),
+                              ),
+                            )
+                          : Scrollbar(
+                              child: SingleChildScrollView(
+                                padding: EdgeInsets.zero,
+                                child: AppMarkdownBody(
+                                  data: liveText,
+                                  hardenLineBreaks: true,
+                                  styleSheet: _reportStyleSheet(theme),
+                                ),
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
