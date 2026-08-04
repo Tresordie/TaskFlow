@@ -30,7 +30,7 @@ class HeatmapScreen extends ConsumerWidget {
               // Header
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(28, 28, 28, 20),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -65,30 +65,30 @@ class HeatmapScreen extends ConsumerWidget {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
             data: (tasks) => SingleChildScrollView(
-              padding: const EdgeInsets.all(28),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Summary stats
                   _buildStats(context, ref, theme, tasks),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 16),
                   // Heatmap
                   Text(
                     '${DateTime.now().year} Task Activity',
                     style: theme.textTheme.titleLarge,
                   ),
-                  const SizedBox(height: 16),
-                  _HeatmapGrid(tasks: tasks),
                   const SizedBox(height: 12),
+                  _HeatmapGrid(tasks: tasks),
+                  const SizedBox(height: 8),
                   // Legend
                   _buildLegend(theme),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 16),
                   // Task list with created / due dates
                   Text(
                     'Tasks',
                     style: theme.textTheme.titleLarge,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   _buildTaskList(context, theme, tasks),
                 ],
               ),
@@ -129,7 +129,7 @@ class HeatmapScreen extends ConsumerWidget {
           onTap: () => jumpWith(
               TaskFilter(date: DateTime(now.year, now.month, now.day))),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         _StatCard(
           label: 'Completed',
           value: '$completedCount',
@@ -137,7 +137,7 @@ class HeatmapScreen extends ConsumerWidget {
           theme: theme,
           onTap: () => jumpWith(TaskFilter(status: TaskStatus.completed)),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         _StatCard(
           label: 'Total',
           value: '$totalCount',
@@ -203,8 +203,8 @@ class _ActivityTaskItem extends StatelessWidget {
     return GestureDetector(
       onTap: () => context.push('/task/${task.id}'),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(10),
@@ -248,16 +248,16 @@ class _ActivityTaskItem extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             if (task.project.trim().isNotEmpty || task.tags.isNotEmpty) ...[
               Padding(
-                padding: const EdgeInsets.only(left: 18),
+                padding: const EdgeInsets.only(left: 14),
                 child: TaskTagProjectMeta(task: task, compact: true),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
             ],
             Padding(
-              padding: const EdgeInsets.only(left: 18),
+              padding: const EdgeInsets.only(left: 14),
               child: TaskDateMeta(task: task, compact: true),
             ),
           ],
@@ -292,7 +292,7 @@ class _StatCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(14),
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
@@ -314,14 +314,14 @@ class _StatCard extends StatelessWidget {
                       ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
                 Text(
                   value,
                   style: theme.textTheme.headlineMedium?.copyWith(
                     color: theme.colorScheme.primary,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Text(label, style: theme.textTheme.bodyMedium),
               ],
             ),

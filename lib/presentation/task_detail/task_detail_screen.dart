@@ -7,9 +7,9 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
 import '../../providers/color_settings_provider.dart';
+import '../shared/app_markdown_body.dart';
 import '../shared/color_picker_dialog.dart';
 import '../shared/edit_task_dialog.dart';
-import '../shared/selectable_markdown_body.dart';
 import '../shared/tree_indent.dart';
 import 'execution_log_widget.dart';
 
@@ -119,12 +119,13 @@ class _TaskDetailContent extends ConsumerWidget {
                 if (task.description != null &&
                     task.description!.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  // Whole-document selectable renderer: drag-select the
-                  // description and right-click → "Copy as Markdown" to
-                  // grab the original Markdown source.
-                  SelectableMarkdownBody(
+                  // AppMarkdownBody renders the description with proper
+                  // block-level markdown (tables, headings, lists) while
+                  // selectable: true enables drag-select + copy.
+                  AppMarkdownBody(
                     data: task.description!,
                     hardenLineBreaks: true,
+                    selectable: true,
                     styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
                         .copyWith(
                       p: Theme.of(context)

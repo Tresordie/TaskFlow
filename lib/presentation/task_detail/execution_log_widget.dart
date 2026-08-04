@@ -10,9 +10,9 @@ import '../../core/utils/open_folder.dart';
 import '../../data/models/task.dart';
 import '../../data/services/attachment_service.dart';
 import '../../providers/task_providers.dart';
+import '../shared/app_markdown_body.dart';
 import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
-import '../shared/selectable_markdown_body.dart';
 import 'edit_entry_dialog.dart';
 
 class ExecutionLogWidget extends ConsumerStatefulWidget {
@@ -665,19 +665,16 @@ class _LogEntryItem extends StatelessWidget {
                   ),
                   if (entry.content.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    // Render the saved Note as ONE selectable document so the
-                    // user can drag-select across lines/paragraphs and use
-                    // select-all — including in Release/AOT builds, where the
-                    // app-wide SelectionArea's highlight is unreliable inside
-                    // this ListView (v1.4.28). Using the SAME style sheet as
-                    // the input Preview keeps the recorded entry's typography
-                    // (headings / code / quote / link) matching what the user
-                    // saw before sending (WYSIWYG).
-                    SelectableMarkdownBody(
+                    // AppMarkdownBody renders the saved Note with proper
+                    // block-level markdown (tables, headings, lists) while
+                    // selectable: true enables drag-select + copy across
+                    // blocks via the app-wide SelectionArea.
+                    AppMarkdownBody(
                       data: entry.content,
                       hardenLineBreaks: true,
+                      selectable: true,
                       styleSheet: _markdownStyleSheet(context),
-                      onTapLink: (href) {
+                      onTapLink: (href, title, originalText) {
                         final uri = Uri.tryParse(href);
                         if (uri == null) return;
                         if (uri.scheme == 'file') {

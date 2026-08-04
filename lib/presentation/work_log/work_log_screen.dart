@@ -10,9 +10,9 @@ import 'package:intl/intl.dart';
 import '../../core/markdown/html_export.dart';
 import '../../data/models/work_log.dart';
 import '../../providers/work_log_provider.dart';
+import '../shared/app_markdown_body.dart';
 import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
-import '../shared/selectable_markdown_body.dart';
 
 /// Work Log page — ported from the LinguaFlow Chrome extension's
 /// workreport.html. Free-form work records → AI-generated structured
@@ -39,6 +39,11 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
   final Set<String> _selectedIds = {};
   String? _editingId;
   bool _exporting = false;
+
+  // Resizable text input area height (logical pixels).
+  double _textAreaHeight = 200;
+  static const double _minTextAreaHeight = 80;
+  static const double _maxTextAreaHeight = 500;
 
   @override
   void initState() {
@@ -491,12 +496,11 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
               controller: _inputController,
               refocus: _inputFocus,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             MarkdownEditorField(
               controller: _inputController,
               focusNode: _inputFocus,
-              minLines: 4,
-              maxLines: 8,
+              height: _textAreaHeight,
               style: const TextStyle(fontSize: 13.5, height: 1.5),
               hintText:
                   '''Enter today's work...
@@ -510,6 +514,34 @@ e.g.
               // records below, so the preview is a true WYSIWYG of what gets
               // stored.
               styleSheet: _recordMarkdownStyleSheet(theme),
+            ),
+            // Resize grip handle at the bottom edge of the textarea —
+            // drag up/down to resize, matching workreport.html behavior.
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onVerticalDragUpdate: (details) {
+                setState(() {
+                  _textAreaHeight = (_textAreaHeight + details.delta.dy)
+                      .clamp(_minTextAreaHeight, _maxTextAreaHeight);
+                });
+              },
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeRow,
+                child: SizedBox(
+                  height: 10,
+                  width: double.infinity,
+                  child: Center(
+                    child: Container(
+                      width: 40,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.outline.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 10),
             Row(
@@ -841,13 +873,15 @@ e.g.
           ),
           const SizedBox(width: 8),
           Expanded(
-            // SelectableMarkdownBody (single selectable document) so the
-            // record can be drag-selected and right-click → "Copy as
-            // Markdown" to grab the original Markdown source — same pattern
-            // as the Execution Log Notes.
-            child: SelectableMarkdownBody(
+            // AppMarkdownBody renders the saved record with the SAME
+            // MarkdownBody block-level renderer as the input Preview, so
+            // the displayed format matches WYSIWYG (tables, headings, lists
+            // all render correctly — SelectableMarkdownBody flattens to a
+            // single TextSpan and breaks complex markdown).
+            child: AppMarkdownBody(
               data: r.content,
               hardenLineBreaks: true,
+              selectable: true,
               styleSheet: _recordMarkdownStyleSheet(theme),
             ),
           ),
@@ -950,11 +984,13 @@ e.g.
                     )
                   : SingleChildScrollView(
                       primary: false,
-                      // Selectable + right-click "Copy as Markdown" for the
-                      // AI summary output.
-                      child: SelectableMarkdownBody(
+                      // AppMarkdownBody renders the AI summary with proper
+                      // block-level markdown rendering (tables, headings,
+                      // lists) matching the input Preview style.
+                      child: AppMarkdownBody(
                         data: state.result,
                         hardenLineBreaks: true,
+                        selectable: true,
                       ),
                     ),
             ),

@@ -12,6 +12,7 @@ import '../../data/services/report_service.dart';
 import '../../providers/ai_provider.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
+import '../shared/app_markdown_body.dart';
 import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
 import '../shared/selectable_markdown_body.dart';
@@ -1289,11 +1290,10 @@ class _ReportPreviewState extends State<_ReportPreview> {
                       ),
                     ],
                   )
-                : SelectableMarkdownBody(
+                : AppMarkdownBody(
                     data: widget.markdown,
-                    // Whole-document selectable renderer: drag-select across
-                    // the report and right-click → "Copy as Markdown" to
-                    // grab the original Markdown source.
+                    hardenLineBreaks: true,
+                    selectable: true,
                     styleSheet:
                         MarkdownStyleSheet.fromTheme(theme).copyWith(
                       p: theme.textTheme.bodyMedium?.copyWith(height: 1.55),

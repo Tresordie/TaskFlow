@@ -178,12 +178,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final firstWeekday = firstDay.weekday; // 1=Mon, 7=Sun
     final daysInMonth = lastDay.day;
 
-    // Count tasks per day
-    final taskCounts = <int, int>{};
+    // Count tasks per day (created) and due-date tasks per day.
+    final createdCounts = <int, int>{};
+    final dueCounts = <int, int>{};
     for (final task in tasks) {
       if (task.createdAt.year == year && task.createdAt.month == month) {
         final day = task.createdAt.day;
-        taskCounts[day] = (taskCounts[day] ?? 0) + 1;
+        createdCounts[day] = (createdCounts[day] ?? 0) + 1;
+      }
+      final due = task.dueDate;
+      if (due != null && due.year == year && due.month == month) {
+        final day = due.day;
+        dueCounts[day] = (dueCounts[day] ?? 0) + 1;
       }
     }
 
@@ -249,7 +255,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               final isSelected =
                   !nav.rangeMode && _isSameDay(date, nav.selectedDate);
               final inRange = nav.rangeMode && _isInRange(date, nav);
-              final count = taskCounts[day] ?? 0;
+              final createdCount = createdCounts[day] ?? 0;
+              final dueCount = dueCounts[day] ?? 0;
+              final hasDue = dueCount > 0;
 
               return GestureDetector(
                 onTap: () =>
@@ -286,24 +294,43 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                               : theme.colorScheme.onSurface,
                         ),
                       ),
-                      if (count > 0) ...[
+                      if (createdCount > 0 || hasDue) ...[
                         const SizedBox(height: 2),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(
-                            count > 3 ? 3 : count,
-                            (_) => Container(
-                              width: 4,
-                              height: 4,
-                              margin: const EdgeInsets.symmetric(horizontal: 1),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? Colors.white.withOpacity(0.8)
-                                    : theme.colorScheme.primary,
-                                shape: BoxShape.circle,
+                          children: [
+                            // Created-date dots (primary color)
+                            if (createdCount > 0)
+                              ...List.generate(
+                                createdCount > 2 ? 2 : createdCount,
+                                (_) => Container(
+                                  width: 4,
+                                  height: 4,
+                                  margin:
+                                      const EdgeInsets.symmetric(horizontal: 1),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Colors.white.withOpacity(0.8)
+                                        : theme.colorScheme.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
+                            // Due-date indicator (warning color)
+                            if (hasDue)
+                              Container(
+                                width: 4,
+                                height: 4,
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 1),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : AppColors.warning,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                          ],
                         ),
                       ],
                     ],
@@ -330,9 +357,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       emptyLabel = 'No tasks in this range';
     } else {
       title = DateFormat('EEE, MMM d').format(nav.selectedDate);
-      dayTasks = tasks
-          .where((t) => _isSameDay(t.createdAt, nav.selectedDate))
-          .toList()
+      // Show tasks created on this day AND tasks due on this day.
+      final selected = nav.selectedDate;
+      final createdOnDay = tasks
+          .where((t) => _isSameDay(t.createdAt, selected))
+          .toSet();
+      final dueOnDay = tasks
+          .where((t) => t.dueDate != null && _isSameDay(t.dueDate!, selected))
+          .toSet();
+      dayTasks = [...createdOnDay, ...dueOnDay.where((t) => !createdOnDay.contains(t))]
         ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
       emptyLabel = 'No tasks on this day';
     }
@@ -371,7 +404,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             Expanded(
               child: ListView(
                 children:
-                    dayTasks.map((task) => _DayTaskItem(task: task)).toList(),
+                    dayTasks.map((task) => _DayTaskItem(task: task, selectedDate: nav.rangeMode ? null : nav.selectedDate)).toList(),
               ),
             ),
         ],
@@ -380,6 +413,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
 
   bool _isSameDay(DateTime a, DateTime b) {
+    return _isSameDayStatic(a, b);
+  }
+
+  static bool _isSameDayStatic(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
@@ -396,8 +433,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
 class _DayTaskItem extends StatelessWidget {
   final Task task;
+  final DateTime? selectedDate;
 
-  const _DayTaskItem({required this.task});
+  const _DayTaskItem({required this.task, this.selectedDate});
 
   @override
   Widget build(BuildContext context) {
@@ -446,6 +484,24 @@ class _DayTaskItem extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                // Due-date badge when the task is due on the selected day.
+                if (selectedDate != null &&
+                    task.dueDate != null &&
+                    _CalendarScreenState._isSameDayStatic(task.dueDate!, selectedDate!))
+                  Container(
+                    margin: const EdgeInsets.only(right: 6),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text('Due',
+                        style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.warning)),
+                  ),
                 Icon(
                   isCompleted ? Icons.check_circle : Icons.circle_outlined,
                   size: 16,
