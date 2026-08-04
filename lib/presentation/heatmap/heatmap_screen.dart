@@ -72,16 +72,32 @@ class HeatmapScreen extends ConsumerWidget {
                   // Summary stats
                   _buildStats(context, ref, theme, tasks),
                   const SizedBox(height: 12),
-                  // Heatmap
-                  Text(
-                    '${DateTime.now().year} Task Activity',
-                    style: theme.textTheme.titleLarge,
+                  // Heatmap card — title + adaptive grid + legend in one
+                  // bordered surface, matching the stat-card aesthetics.
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: theme.colorScheme.outline.withOpacity(0.25)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${DateTime.now().year} Task Activity',
+                          style: theme.textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 10),
+                        _HeatmapGrid(tasks: tasks),
+                        const SizedBox(height: 8),
+                        // Legend
+                        _buildLegend(theme),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  _HeatmapGrid(tasks: tasks),
-                  const SizedBox(height: 6),
-                  // Legend
-                  _buildLegend(theme),
                   const SizedBox(height: 12),
                   // Task list with created / due dates
                   Text(
@@ -367,22 +383,30 @@ class _HeatmapGrid extends StatelessWidget {
     final totalDays = dec31.difference(jan1).inDays + 1;
     final totalWeeks = ((startOffset + totalDays) / 7).ceil();
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
+    Widget dayLabel(String d) => Center(
+          child: Text(d,
+              style: theme.textTheme.labelSmall?.copyWith(fontSize: 9)),
+        );
+
+    /// Builds the whole grid for a given week-column pitch (cell + gap).
+    /// The pitch is derived from the available width so the heatmap always
+    /// stretches across the page instead of leaving a big empty area on the
+    /// right of wide windows.
+    Widget buildGrid(double pitch) {
+      final cell = pitch - 2;
+      final radius = (cell * 0.25).clamp(2.0, 5.0);
+      return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Month labels
+          // Weekday labels
           Column(
             children: [
-              const SizedBox(height: 22), // space for weekday labels
-              ...['Mon', 'Wed', 'Fri'].map((d) => SizedBox(
-                    height: 28,
-                    child: Text(
-                      d,
-                      style: theme.textTheme.labelSmall?.copyWith(fontSize: 9),
-                    ),
-                  )),
+              const SizedBox(height: 22), // space for month labels row
+              SizedBox(height: pitch, child: dayLabel('Mon')),
+              SizedBox(height: pitch),
+              SizedBox(height: pitch, child: dayLabel('Wed')),
+              SizedBox(height: pitch),
+              SizedBox(height: pitch, child: dayLabel('Fri')),
             ],
           ),
           const SizedBox(width: 6),
@@ -393,7 +417,8 @@ class _HeatmapGrid extends StatelessWidget {
               // Month labels row
               SizedBox(
                 height: 18,
-                child: _MonthLabels(year: year, totalWeeks: totalWeeks),
+                child: _MonthLabels(
+                    year: year, totalWeeks: totalWeeks, pitch: pitch),
               ),
               const SizedBox(height: 4),
               // Weeks
@@ -406,8 +431,8 @@ class _HeatmapGrid extends StatelessWidget {
                           weekIndex * 7 + dayIndex - startOffset + 1;
                       if (dayOfYear < 1 || dayOfYear > totalDays) {
                         return Container(
-                          width: 12,
-                          height: 12,
+                          width: cell,
+                          height: cell,
                           margin: const EdgeInsets.all(1),
                         );
                       }
@@ -422,14 +447,14 @@ class _HeatmapGrid extends StatelessWidget {
                         message:
                             '${DateFormat('MMM d').format(date)}: $count task${count == 1 ? '' : 's'}',
                         child: Container(
-                          width: 12,
-                          height: 12,
+                          width: cell,
+                          height: cell,
                           margin: const EdgeInsets.all(1),
                           decoration: BoxDecoration(
                             color: count == 0
                                 ? theme.colorScheme.outline.withOpacity(0.12)
                                 : primary.withOpacity(intensity),
-                            borderRadius: BorderRadius.circular(3),
+                            borderRadius: BorderRadius.circular(radius),
                           ),
                         ),
                       );
@@ -440,7 +465,24 @@ class _HeatmapGrid extends StatelessWidget {
             ],
           ),
         ],
-      ),
+      );
+    }
+
+    const labelColumnWidth = 36.0; // weekday labels + gap
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final avail = constraints.maxWidth - labelColumnWidth;
+        final fitPitch = avail / totalWeeks;
+        // Stretch cells to fill the row (clamped to a comfortable range);
+        // only fall back to horizontal scrolling on very narrow windows.
+        if (fitPitch >= 12) {
+          return buildGrid(fitPitch.clamp(12.0, 24.0));
+        }
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: buildGrid(12),
+        );
+      },
     );
   }
 }
@@ -448,8 +490,13 @@ class _HeatmapGrid extends StatelessWidget {
 class _MonthLabels extends StatelessWidget {
   final int year;
   final int totalWeeks;
+  final double pitch;
 
-  const _MonthLabels({required this.year, required this.totalWeeks});
+  const _MonthLabels({
+    required this.year,
+    required this.totalWeeks,
+    required this.pitch,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -467,7 +514,7 @@ class _MonthLabels extends StatelessWidget {
 
       if (date.month != lastMonth && date.day <= 7) {
         labels.add(SizedBox(
-          width: 14 * (w == 0 ? 1 : 1),
+          width: pitch,
           child: Text(
             DateFormat('MMM').format(date),
             style: theme.textTheme.labelSmall?.copyWith(fontSize: 9),
@@ -475,7 +522,7 @@ class _MonthLabels extends StatelessWidget {
         ));
         lastMonth = date.month;
       } else {
-        labels.add(const SizedBox(width: 14));
+        labels.add(SizedBox(width: pitch));
       }
     }
 
