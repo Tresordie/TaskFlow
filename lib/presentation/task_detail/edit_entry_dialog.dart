@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../data/services/attachment_service.dart';
 import '../../providers/task_providers.dart';
+import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
 
 /// Dialog for editing an already-sent execution-log entry.
@@ -146,26 +148,22 @@ class _EditExecutionEntryDialogState
                 ),
               const SizedBox(height: 14),
 
-              // Markdown formatting toolbar (Tab / Shift+Tab also indent).
+              // Content — Markdown + rich-text with live Write/Preview,
+              // styled exactly like the saved Note in the log list.
               MarkdownToolbar(
                 controller: _contentController,
                 refocus: _contentFocus,
               ),
               const SizedBox(height: 6),
-
-              // Content (Markdown source)
-              TextField(
+              MarkdownEditorField(
                 controller: _contentController,
                 focusNode: _contentFocus,
                 minLines: 4,
                 maxLines: 12,
                 autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'Entry content (Markdown supported, Tab to indent)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
+                hintText:
+                    'Entry content (Markdown supported, Tab to indent)',
+                styleSheet: _entryMarkdownStyleSheet(context),
               ),
             ],
           ),
@@ -256,6 +254,59 @@ class _EditExecutionEntryDialogState
         return AppColors.warning;
     }
   }
+}
+
+/// Markdown styling shared with the execution-log list so the dialog's
+/// Write/Preview renders exactly like the saved Note (WYSIWYG).
+MarkdownStyleSheet _entryMarkdownStyleSheet(BuildContext context) {
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
+  final base = MarkdownStyleSheet.fromTheme(theme);
+
+  return base.copyWith(
+    p: theme.textTheme.bodyLarge?.copyWith(fontSize: 14, height: 1.55),
+    pPadding: const EdgeInsets.only(bottom: 6),
+    h1: theme.textTheme.titleLarge?.copyWith(fontSize: 18),
+    h2: theme.textTheme.titleMedium?.copyWith(fontSize: 16),
+    h3: theme.textTheme.titleMedium?.copyWith(fontSize: 15),
+    h4: theme.textTheme.titleSmall?.copyWith(fontSize: 14),
+    h5: theme.textTheme.titleSmall?.copyWith(fontSize: 14),
+    h6: theme.textTheme.titleSmall?.copyWith(fontSize: 14),
+    a: TextStyle(
+      color: theme.colorScheme.primary,
+      decoration: TextDecoration.underline,
+    ),
+    code: TextStyle(
+      fontFamily: 'monospace',
+      fontSize: 13,
+      color: isDark ? Colors.teal.shade200 : Colors.teal.shade800,
+      backgroundColor: isDark
+          ? Colors.white.withOpacity(0.08)
+          : Colors.black.withOpacity(0.05),
+    ),
+    codeblockDecoration: BoxDecoration(
+      color: isDark
+          ? Colors.white.withOpacity(0.07)
+          : Colors.black.withOpacity(0.04),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(
+        color: isDark
+            ? Colors.white.withOpacity(0.1)
+            : Colors.black.withOpacity(0.08),
+      ),
+    ),
+    codeblockPadding: const EdgeInsets.all(10),
+    blockquoteDecoration: BoxDecoration(
+      color: isDark
+          ? Colors.white.withOpacity(0.05)
+          : Colors.black.withOpacity(0.03),
+      borderRadius: BorderRadius.circular(6),
+    ),
+    blockquotePadding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+    // Nested lists need a visible indentation step (matches
+    // workreport.html's ~1.6em list padding).
+    listIndent: 26,
+  );
 }
 
 /// Small outlined button used to add an image or a file attachment.

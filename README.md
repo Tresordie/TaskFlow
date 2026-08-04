@@ -40,7 +40,11 @@ lib/
 │   │   ├── app_colors.dart            # 7 theme palettes + priority colors
 │   │   └── app_theme.dart             # ThemeData per palette
 │   └── markdown/
-│       └── latex_support.dart         # $..$ / $$..$$ LaTeX in Markdown
+│       ├── latex_support.dart         # $..$ / $$..$$ LaTeX in Markdown
+│       ├── rich_markdown.dart         # ++underline++ / ==highlight== / <font …>
+│       ├── line_breaks.dart           # hard-breaks, indent preservation,
+│       │                              #   list-nesting normalization
+│       └── html_export.dart           # Markdown → standalone/email HTML
 ├── data/
 │   ├── models/task.dart               # Task, ExecutionEntry, SubStep (Isar)
 │   ├── database/app_database.dart     # Isar instance manager
@@ -58,7 +62,9 @@ lib/
 │   ├── ai_provider.dart               # Persisted AI endpoint config
 │   └── sync_providers.dart            # Backup + sync notifiers
 └── presentation/
-    ├── shared/                        # App shell, custom title bar
+    ├── shared/                        # App shell, custom title bar,
+    │                                  #   MarkdownEditorField (Write/Preview),
+    │                                  #   MarkdownToolbar, SelectableMarkdownBody
     ├── task_board/                    # Today board + quick add
     ├── task_detail/                   # Detail, execution log, edit dialog
     ├── timeline/  calendar/  heatmap/ # Chronological views
@@ -114,6 +120,13 @@ test/
 - Robust Markdown rendering for pasted content: normalizes CRLF line endings and invisible Unicode spaces (non-breaking / full-width) so lists copied from browsers or other apps render correctly
 - Desktop-only chrome guarded for iOS/Android (custom title bar & window_manager skipped on mobile)
 - Unit + widget test suite (`flutter test`): report period math, AI config, LaTeX rendering, title bar
+
+### Phase 7 — Unified rich-text input & record display
+- **Every input area** (Work Log, execution log + edit dialog, task description create/edit dialogs, AI Parse notes, Report editor) supports Markdown + rich text with instant **Write/Preview toggle** — the preview uses the SAME style sheet as the saved content (true WYSIWYG "input-as-preview")
+- Formatting toolbar: H1–H3, bold / italic / strikethrough, `++underline++`, `==highlight==`, `<font color>` & `<font size>`, quote, hyperlink, task list, bullet/numbered lists, inline code, fenced code block, indent / outdent
+- **Tab / Shift+Tab**: Tab indents the current line at its start (always visible); with a multi-line selection the whole block is (de)indented and stays selected for repeated presses; list items nest one level per Tab
+- Preview fidelity with `workreport.html`: paragraph leading indentation is preserved in rendering (NBSP hardening), and under-indented sub-items are normalized to nest under their parent list item (indent-based nesting semantics)
+- **All saved records** (work-log entries, AI summaries, execution-log notes, task descriptions, parsed-task descriptions, report preview, summary history) render as Markdown preview, are **mouse drag-selectable as a whole document**, and offer right-click **“Copy as Markdown”** to grab the original Markdown source
 
 ## Data locations
 

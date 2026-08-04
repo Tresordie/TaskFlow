@@ -766,7 +766,9 @@ MarkdownStyleSheet _markdownStyleSheet(BuildContext context) {
       borderRadius: BorderRadius.circular(6),
     ),
     blockquotePadding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
-    listIndent: 20,
+    // Nested lists need a visible indentation step (matches
+    // workreport.html's ~1.6em list padding).
+    listIndent: 26,
   );
 }
 

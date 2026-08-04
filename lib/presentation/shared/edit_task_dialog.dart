@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
+import 'markdown_editor_field.dart';
 import 'markdown_input.dart';
 import 'suggestion_field.dart';
 import 'tree_indent.dart';
@@ -214,7 +216,8 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
                 ),
                 const SizedBox(height: 16),
 
-                // Description field
+                // Description field — Markdown + rich-text with live
+                // Write/Preview, styled exactly like the task-detail render.
                 Text('Description', style: theme.textTheme.labelLarge),
                 const SizedBox(height: 6),
                 MarkdownToolbar(
@@ -222,13 +225,15 @@ class _EditTaskDialogState extends ConsumerState<EditTaskDialog> {
                   refocus: _descriptionFocus,
                 ),
                 const SizedBox(height: 8),
-                TextField(
+                MarkdownEditorField(
                   controller: _descriptionController,
                   focusNode: _descriptionFocus,
                   maxLines: 4,
                   minLines: 2,
-                  decoration: const InputDecoration(
-                    hintText: 'Add more details (optional, Markdown supported)',
+                  hintText:
+                      'Add more details (optional, Markdown supported)',
+                  styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+                    p: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
                   ),
                 ),
                 const SizedBox(height: 16),

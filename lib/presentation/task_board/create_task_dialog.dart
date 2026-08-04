@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
+import '../shared/markdown_editor_field.dart';
+import '../shared/markdown_input.dart';
 import '../shared/suggestion_field.dart';
 
 class CreateTaskDialog extends ConsumerStatefulWidget {
@@ -14,6 +16,7 @@ class CreateTaskDialog extends ConsumerStatefulWidget {
 class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
+  late final FocusNode _descFocus;
   final _tagController = TextEditingController();
   final _subStepController = TextEditingController();
   Priority _priority = Priority.p2Medium;
@@ -21,9 +24,16 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
   final List<String> _subSteps = [];
 
   @override
+  void initState() {
+    super.initState();
+    _descFocus = markdownIndentFocusNode(_descController);
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     _descController.dispose();
+    _descFocus.dispose();
     _tagController.dispose();
     _subStepController.dispose();
     super.dispose();
@@ -50,14 +60,18 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
             ),
             const SizedBox(height: 16),
 
-            // Description
-            TextField(
+            // Description — Markdown + rich-text with live Write/Preview
+            MarkdownToolbar(
               controller: _descController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                hintText: 'Optional details...',
-              ),
+              refocus: _descFocus,
+            ),
+            const SizedBox(height: 8),
+            MarkdownEditorField(
+              controller: _descController,
+              focusNode: _descFocus,
+              minLines: 3,
+              maxLines: 6,
+              hintText: 'Optional details... Markdown supported',
             ),
             const SizedBox(height: 16),
 

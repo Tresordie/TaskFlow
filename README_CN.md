@@ -40,7 +40,10 @@ lib/
 │   │   ├── app_colors.dart            # 7 套主题色板 + 优先级颜色
 │   │   └── app_theme.dart             # 每套色板的 ThemeData
 │   └── markdown/
-│       └── latex_support.dart         # Markdown 中的 $..$ / $$..$$ LaTeX
+│       ├── latex_support.dart         # Markdown 中的 $..$ / $$..$$ LaTeX
+│       ├── rich_markdown.dart         # ++下划线++ / ==高亮== / <font …>
+│       ├── line_breaks.dart           # 硬换行、缩进保留、列表嵌套归一化
+│       └── html_export.dart           # Markdown → 独立/邮件 HTML
 ├── data/
 │   ├── models/task.dart               # Task, ExecutionEntry, SubStep (Isar)
 │   ├── database/app_database.dart     # Isar 实例管理
@@ -58,7 +61,9 @@ lib/
 │   ├── ai_provider.dart               # 持久化 AI 端点配置
 │   └── sync_providers.dart            # 备份 + 同步 Notifier
 └── presentation/
-    ├── shared/                        # App Shell, 自定义标题栏
+    ├── shared/                        # App Shell, 自定义标题栏,
+    │                                  #   MarkdownEditorField（Write/Preview）,
+    │                                  #   MarkdownToolbar, SelectableMarkdownBody
     ├── task_board/                    # 今日看板 + 快速添加
     ├── task_detail/                   # 详情、执行日志、编辑对话框
     ├── timeline/  calendar/  heatmap/ # 时间线视图
@@ -115,6 +120,13 @@ test/
 - 粘贴内容的健壮 Markdown 渲染：自动规范化 CRLF 换行和不可见 Unicode 空格（不间断空格 / 全角空格），从浏览器或其他应用复制的列表也能正确渲染
 - 桌面专属 chrome 保护（iOS/Android 跳过自定义标题栏和 window_manager）
 - 单元 + Widget 测试套件（`flutter test`）：报告周期计算、AI 配置、LaTeX 渲染、标题栏
+
+### 阶段 7 — 统一富文本输入与记录展示
+- **所有输入区**（工作日志、执行日志及编辑对话框、任务描述创建/编辑对话框、AI 解析笔记、报告编辑器）均支持 Markdown + 富文本输入，带即时 **Write/Preview 切换**——预览使用与保存内容**相同的样式表**（真正的 WYSIWYG“输入即预览”）
+- 格式工具栏：H1–H3、加粗 / 斜体 / 删除线、`++下划线++`、`==高亮==`、`<font color>` 与 `<font size>`、引用、超链接、任务清单、无序/有序列表、行内代码、围栏代码块、缩进 / 取消缩进
+- **Tab / Shift+Tab**：Tab 在当前行行首缩进（始终可见）；多行选中时整块缩进/取消缩进并保持选中（可连续按）；列表项每按一次 Tab 嵌套一级
+- 与 `workreport.html` 一致的预览效果：段落行首缩进在渲染中保留（NBSP 硬化），缩进不足的子项自动归一化嵌套到父级列表项下（基于缩进的嵌套语义）
+- **所有已保存记录**（工作日志条目、AI 总结、执行日志笔记、任务描述、AI 解析任务描述、报告预览、总结历史）均以 Markdown 预览方式展现，支持**鼠标拖动整篇选中**，右键菜单提供 **“Copy as Markdown”** 复制原始 Markdown 源码
 
 ## 数据位置
 

@@ -1104,6 +1104,61 @@ void main() {
         'a  \nb\\\nc  ',
       );
     });
+
+    test('leading indentation on paragraph lines is preserved as NBSP', () {
+      // CommonMark strips leading paragraph spaces (1-3) and treats 4+ as a
+      // code block, so Tab-indented lines would lose their visible indent in
+      // the preview. Converting them to U+00A0 keeps the indent rendered
+      // (workreport.html parity).
+      expect(
+        hardenMarkdownLineBreaks('parent\n  \u2022 child line'),
+        'parent  \n\u00a0\u00a0\u2022 child line  ',
+      );
+      // Deep indents (4+ spaces) must NOT become code blocks.
+      expect(
+        hardenMarkdownLineBreaks('    deep indent'),
+        '\u00a0\u00a0\u00a0\u00a0deep indent  ',
+      );
+    });
+
+    test('indented LIST lines keep plain spaces so nesting still parses',
+        () {
+      expect(
+        hardenMarkdownLineBreaks('- a\n  - b'),
+        '- a\n  - b',
+      );
+    });
+
+    test('under-indented sub-item is padded to nest under a numbered item',
+        () {
+      // workreport.html parity: a Tab-indented (2 spaces) `- sub` under
+      // `4. item` (marker width 3) must nest beneath item 4 instead of
+      // becoming a top-level sibling list (the reported visual bug).
+      expect(
+        normalizeListNesting('4. item\n  - sub'),
+        '4. item\n   - sub',
+      );
+      // Multiple sub-items align with the same parent context.
+      expect(
+        normalizeListNesting('4. item\n  - sub1\n  - sub2'),
+        '4. item\n   - sub1\n   - sub2',
+      );
+      // Already-valid nesting is untouched.
+      expect(
+        normalizeListNesting('- a\n  - b'),
+        '- a\n  - b',
+      );
+      // Top-level items (no indent) are untouched.
+      expect(
+        normalizeListNesting('1. a\n2. b\n- c'),
+        '1. a\n2. b\n- c',
+      );
+      // Blank line resets the list context.
+      expect(
+        normalizeListNesting('1. a\n\n  - b'),
+        '1. a\n\n  - b',
+      );
+    });
   });
 
   group('TaskRepository.buildNewTask snapshot (quick-add sub-task race)', () {
@@ -1208,6 +1263,38 @@ void main() {
       final c = ctl(' x', base: 1);
       MarkdownInput.outdent(c);
       expect(c.text, 'x');
+    });
+
+    // ── md-editor parity (workreport.html): Tab always indents the current
+    // line at its START so the effect is visible no matter where the caret
+    // is; with an active selection it (de)indents every touched line and
+    // keeps the whole block selected for repeated presses.
+
+    test('indent with no selection indents the whole line at its start', () {
+      final c = ctl('abcd', base: 2);
+      MarkdownInput.indent(c);
+      expect(c.text, '  abcd');
+      expect(c.selection.baseOffset, 4);
+      expect(c.selection.isCollapsed, isTrue);
+    });
+
+    test('indent with selection prefixes lines and keeps block selected', () {
+      final c = ctl('a\nb\nc', base: 0, extent: 5);
+      MarkdownInput.indent(c);
+      expect(c.text, '  a\n  b\n  c');
+      expect(c.selection.baseOffset, 0);
+      expect(c.selection.extentOffset, c.text.length);
+      // Repeated indent keeps working on the same block.
+      MarkdownInput.indent(c);
+      expect(c.text, '    a\n    b\n    c');
+    });
+
+    test('outdent keeps the block selected after removing indents', () {
+      final c = ctl('  a\n  b', base: 0, extent: 7);
+      MarkdownInput.outdent(c);
+      expect(c.text, 'a\nb');
+      expect(c.selection.baseOffset, 0);
+      expect(c.selection.extentOffset, c.text.length);
     });
   });
 

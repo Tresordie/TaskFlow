@@ -7,12 +7,14 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/open_folder.dart';
 import '../../data/models/task.dart';
-import '../../data/repositories/task_repository.dart';
 import '../../data/services/ai_service.dart';
 import '../../data/services/report_service.dart';
 import '../../providers/ai_provider.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
+import '../shared/markdown_editor_field.dart';
+import '../shared/markdown_input.dart';
+import '../shared/selectable_markdown_body.dart';
 
 final reportServiceProvider = Provider<ReportService>((ref) {
   return ReportService(ref.watch(taskRepositoryProvider));
@@ -1144,11 +1146,13 @@ class _ReportPreview extends StatefulWidget {
 
 class _ReportPreviewState extends State<_ReportPreview> {
   final TextEditingController _controller = TextEditingController();
+  late final FocusNode _focus;
 
   @override
   void initState() {
     super.initState();
     _controller.text = widget.markdown;
+    _focus = markdownIndentFocusNode(_controller);
   }
 
   @override
@@ -1167,6 +1171,7 @@ class _ReportPreviewState extends State<_ReportPreview> {
   @override
   void dispose() {
     _controller.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
@@ -1222,40 +1227,92 @@ class _ReportPreviewState extends State<_ReportPreview> {
                       : theme.colorScheme.outline.withOpacity(0.25)),
             ),
             child: widget.editing
-                ? TextField(
-                    controller: _controller,
-                    onChanged: widget.onMarkdownChanged,
-                    maxLines: null,
-                    expands: true,
-                    textAlignVertical: TextAlignVertical.top,
-                    style: TextStyle(
-                      fontFamily: 'Consolas, Menlo, Courier New, monospace',
-                      fontSize: 12.5,
-                      height: 1.5,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                      border: InputBorder.none,
-                    ),
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Markdown + rich-text formatting bar (Write mode).
+                      MarkdownToolbar(
+                        controller: _controller,
+                        refocus: _focus,
+                      ),
+                      const SizedBox(height: 8),
+                      // Full-screen Write / Preview editor: the user edits
+                      // Markdown source with live preview, and the result
+                      // stays in sync via [widget.onMarkdownChanged].
+                      Expanded(
+                        child: MarkdownEditorField(
+                          controller: _controller,
+                          focusNode: _focus,
+                          expands: true,
+                          onChanged: widget.onMarkdownChanged,
+                          style: TextStyle(
+                            fontFamily:
+                                'Consolas, Menlo, Courier New, monospace',
+                            fontSize: 12.5,
+                            height: 1.5,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                          ),
+                          styleSheet:
+                              MarkdownStyleSheet.fromTheme(theme).copyWith(
+                            p: theme.textTheme.bodyMedium
+                                ?.copyWith(height: 1.55),
+                            tableHead: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w700, fontSize: 12.5),
+                            tableBody:
+                                theme.textTheme.bodySmall?.copyWith(
+                                    fontSize: 12),
+                            h1: theme.textTheme.titleLarge?.copyWith(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700),
+                            h2: theme.textTheme.titleMedium?.copyWith(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w700),
+                            h3: theme.textTheme.titleSmall
+                                ?.copyWith(fontSize: 13),
+                            blockquote: theme.textTheme.bodySmall?.copyWith(
+                              color: theme
+                                  .colorScheme.onSurface.withOpacity(0.55),
+                            ),
+                            code: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   )
-                : Markdown(
+                : SelectableMarkdownBody(
                     data: widget.markdown,
-                    selectable: true,
-                    styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+                    // Whole-document selectable renderer: drag-select across
+                    // the report and right-click → "Copy as Markdown" to
+                    // grab the original Markdown source.
+                    styleSheet:
+                        MarkdownStyleSheet.fromTheme(theme).copyWith(
                       p: theme.textTheme.bodyMedium?.copyWith(height: 1.55),
                       tableHead: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w700, fontSize: 12.5),
                       tableBody:
                           theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-                      h1: theme.textTheme.titleLarge
-                          ?.copyWith(fontSize: 17, fontWeight: FontWeight.w700),
+                      h1: theme.textTheme.titleLarge?.copyWith(
+                          fontSize: 17, fontWeight: FontWeight.w700),
                       h2: theme.textTheme.titleMedium?.copyWith(
                           fontSize: 14.5, fontWeight: FontWeight.w700),
                       h3: theme.textTheme.titleSmall?.copyWith(fontSize: 13),
                       blockquote: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.55),
+                        color:
+                            theme.colorScheme.onSurface.withOpacity(0.55),
+                      ),
+                      code: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12.5,
                       ),
                     ),
                   ),

@@ -97,11 +97,40 @@ class MarkdownInput {
     );
   }
 
-  /// Indents the selected line(s) by two spaces (one nesting level).
-  static void indent(TextEditingController c) => prefixLines(c, '  ');
+  /// Indents like workreport.html's md-editor (Tab):
+  /// - no selection → indent the WHOLE current line at its START (two
+  ///   spaces). Inserting at the line start instead of at the caret makes
+  ///   the indent ALWAYS visible — with the caret at the middle / end of a
+  ///   line a caret insert would land inside or after the text where no
+  ///   indentation can be seen (the "Tab has no indent effect" report);
+  /// - active selection → prefix every line the selection touches and keep
+  ///   the whole block selected, so repeated Tabs keep indenting the same
+  ///   lines one level at a time.
+  static void indent(TextEditingController c) {
+    final text = c.text;
+    final s = _sel(c);
+    if (s.start == s.end) {
+      final lineStart =
+          s.start == 0 ? 0 : text.lastIndexOf('\n', s.start - 1) + 1;
+      c.value = TextEditingValue(
+        text: text.replaceRange(lineStart, lineStart, '  '),
+        selection: TextSelection.collapsed(offset: s.start + 2),
+      );
+      return;
+    }
+    _indentBlock(c, '  ');
+  }
 
-  /// Removes up to two leading spaces from the selected line(s).
-  static void outdent(TextEditingController c) {
+  /// Removes up to two leading spaces from every line the selection touches
+  /// (or the caret's line when collapsed). The whole block stays selected,
+  /// mirroring workreport.html's md-editor Shift+Tab.
+  static void outdent(TextEditingController c) => _indentBlock(c, null);
+
+  /// Shared multi-line (de)indent: with [prefix] != null adds two spaces to
+  /// every line; with null removes up to two leading spaces per line. The
+  /// resulting block is re-selected ([TextSelection.baseOffset] → extent)
+  /// so repeated presses keep operating on the same lines.
+  static void _indentBlock(TextEditingController c, String? prefix) {
     final text = c.text;
     final s = _sel(c);
     final lineStart =
@@ -109,14 +138,18 @@ class MarkdownInput {
     var lineEnd = text.indexOf('\n', s.end);
     if (lineEnd < 0) lineEnd = text.length;
     final block = text.substring(lineStart, lineEnd);
-    final outdented = block.split('\n').map((l) {
+    final changed = block.split('\n').map((l) {
+      if (prefix != null) return '$prefix$l';
       if (l.startsWith('  ')) return l.substring(2);
       if (l.startsWith(' ')) return l.substring(1);
       return l;
     }).join('\n');
     c.value = TextEditingValue(
-      text: text.replaceRange(lineStart, lineEnd, outdented),
-      selection: TextSelection.collapsed(offset: lineStart + outdented.length),
+      text: text.replaceRange(lineStart, lineEnd, changed),
+      selection: TextSelection(
+        baseOffset: lineStart,
+        extentOffset: lineStart + changed.length,
+      ),
     );
   }
 }

@@ -11,6 +11,7 @@ import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
 import '../shared/app_markdown_body.dart';
 import '../shared/markdown_input.dart';
+import '../shared/selectable_markdown_body.dart';
 
 /// Phase 2 — AI note parsing.
 /// Paste raw notes → LLM extracts structured tasks → one-click create.
@@ -233,11 +234,15 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                                   theme.colorScheme.onSurface.withOpacity(0.35),
                             ),
                           )
-                        : AppMarkdownBody(
-                            data: _notesController.text,
-                            styleSheet:
-                                MarkdownStyleSheet.fromTheme(theme).copyWith(
-                              p: const TextStyle(fontSize: 13, height: 1.5),
+                        : SingleChildScrollView(
+                            primary: false,
+                            child: AppMarkdownBody(
+                              data: _notesController.text,
+                              hardenLineBreaks: true,
+                              styleSheet:
+                                  MarkdownStyleSheet.fromTheme(theme).copyWith(
+                                p: const TextStyle(fontSize: 13, height: 1.5),
+                              ),
                             ),
                           ),
                   )
@@ -475,8 +480,10 @@ class _ParsedTaskCard extends ConsumerWidget {
                             const SizedBox(height: 4),
                             // Render the AI-extracted description as Markdown
                             // so rich output (bold, lists, code) displays
-                            // formatted instead of as raw source.
-                            AppMarkdownBody(
+                            // formatted instead of as raw source. Whole-doc
+                            // selectable: drag-select + right-click "Copy as
+                            // Markdown".
+                            SelectableMarkdownBody(
                               data: task.description,
                               styleSheet:
                                   MarkdownStyleSheet.fromTheme(theme).copyWith(

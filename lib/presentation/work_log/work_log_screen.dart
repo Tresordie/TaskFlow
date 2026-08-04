@@ -777,7 +777,9 @@ e.g.
           fontSize: 13,
           height: 1.45,
           color: theme.colorScheme.onSurface.withOpacity(0.85)),
-      listIndent: 16,
+      // Nested lists need a visible indentation step (matches
+      // workreport.html's ~1.6em list padding).
+      listIndent: 26,
     );
   }
 
@@ -1150,17 +1152,43 @@ e.g.
                                                   .withOpacity(0.7)),
                                         ),
                                         const SizedBox(height: 2),
-                                        Text(
+                                        // Drag-selectable excerpt of the
+                                        // saved summary; right-click offers
+                                        // "Copy as Markdown" with the FULL
+                                        // original Markdown source.
+                                        SelectableText(
                                           s.content.length > 100
                                               ? '${s.content.substring(0, 100)}...'
                                               : s.content,
                                           maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                               fontSize: 11.5,
                                               height: 1.4,
-                                              color: theme.colorScheme.onSurface
+                                              color: theme.colorScheme
+                                                  .onSurface
                                                   .withOpacity(0.55)),
+                                          contextMenuBuilder:
+                                              (context, editableTextState) =>
+                                                  AdaptiveTextSelectionToolbar
+                                                      .buttonItems(
+                                            anchors: editableTextState
+                                                .contextMenuAnchors,
+                                            buttonItems: [
+                                              ...editableTextState
+                                                  .contextMenuButtonItems,
+                                              ContextMenuButtonItem(
+                                                label:
+                                                    'Copy as Markdown',
+                                                onPressed: () {
+                                                  ContextMenuController
+                                                      .removeAny();
+                                                  Clipboard.setData(
+                                                      ClipboardData(
+                                                          text: s.content));
+                                                },
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ],
                                     ),

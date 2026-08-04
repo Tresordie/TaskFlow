@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 import 'app_markdown_body.dart';
+import 'markdown_input.dart';
 
 /// A Markdown editor with instant Write / Preview switching.
 ///
@@ -20,10 +21,22 @@ class MarkdownEditorField extends StatefulWidget {
   /// Fixed height (used by the Execution Log's resizable input area).
   /// When null the field sizes itself via [minLines]/[maxLines].
   final double? height;
+
+  /// Fill ALL available space (used by the Reports full-screen editor).
+  /// When true the Write field expands inside its parent and the Preview
+  /// grows to match, so the toggle works in either mode.
+  final bool expands;
   final int minLines;
   final int maxLines;
   final String? hintText;
   final TextStyle? style;
+
+  /// Whether the Write field requests focus automatically.
+  final bool autofocus;
+
+  /// Custom [InputDecoration] for the Write field (defaults to an outlined
+  /// border).
+  final InputDecoration? decoration;
 
   /// Style sheet used to render the Preview. Callers should pass the SAME
   /// style sheet used to render the saved/recorded content so the preview is
@@ -36,18 +49,25 @@ class MarkdownEditorField extends StatefulWidget {
   /// Called when the user submits (Enter with onSubmitted semantics).
   final ValueChanged<String>? onSubmitted;
 
+  /// Called whenever the Write field's content changes.
+  final ValueChanged<String>? onChanged;
+
   const MarkdownEditorField({
     super.key,
     required this.controller,
     this.focusNode,
     this.height,
+    this.expands = false,
     this.minLines = 4,
     this.maxLines = 8,
     this.hintText,
     this.style,
+    this.decoration,
+    this.autofocus = false,
     this.styleSheet,
     this.hardenLineBreaks = true,
     this.onSubmitted,
+    this.onChanged,
   });
 
   @override
@@ -56,6 +76,21 @@ class MarkdownEditorField extends StatefulWidget {
 
 class _MarkdownEditorFieldState extends State<MarkdownEditorField> {
   bool _preview = false;
+
+  /// Tab / Shift+Tab indent interception. When the caller supplies a
+  /// [widget.focusNode] it is used as-is (callers add extra behavior, e.g.
+  /// Ctrl+Enter submit); otherwise the field creates its own indent-only
+  /// node so Tab always indents — never silently moves focus out of the
+  /// editor.
+  FocusNode? _internalFocus;
+  late final FocusNode _focus = widget.focusNode ??
+      (_internalFocus ??= markdownIndentFocusNode(widget.controller));
+
+  @override
+  void dispose() {
+    _internalFocus?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -115,25 +150,33 @@ class _MarkdownEditorFieldState extends State<MarkdownEditorField> {
   }
 
   Widget _buildTextField(ThemeData theme) {
+    final fixed = widget.height != null;
+    final grow = fixed || widget.expands;
     final field = TextField(
       controller: widget.controller,
-      focusNode: widget.focusNode,
-      maxLines: widget.height != null ? null : widget.maxLines,
-      minLines: widget.height != null ? null : widget.minLines,
-      expands: widget.height != null,
-      textAlignVertical:
-          widget.height != null ? TextAlignVertical.top : null,
+      focusNode: _focus,
+      maxLines: grow ? null : widget.maxLines,
+      minLines: grow ? null : widget.minLines,
+      expands: grow,
+      textAlignVertical: grow ? TextAlignVertical.top : null,
       style: widget.style ?? const TextStyle(fontSize: 13.5, height: 1.5),
-      decoration: InputDecoration(
-        hintText: widget.hintText,
-        hintStyle: const TextStyle(fontSize: 12.5),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+      autofocus: widget.autofocus,
+      decoration: widget.decoration ??
+          InputDecoration(
+            hintText: widget.hintText,
+            hintStyle: const TextStyle(fontSize: 12.5),
+            border:
+                OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
       onSubmitted: widget.onSubmitted,
+      onChanged: widget.onChanged,
     );
 
-    if (widget.height != null) {
+    if (fixed) {
       return SizedBox(height: widget.height, child: field);
+    }
+    if (widget.expands) {
+      return SizedBox.expand(child: field);
     }
     return field;
   }
@@ -168,11 +211,16 @@ class _MarkdownEditorFieldState extends State<MarkdownEditorField> {
             ),
           );
 
-    return Container(
-      constraints: BoxConstraints(
-        minHeight: widget.height ?? 96,
-        maxHeight: widget.height ?? 260,
-      ),
+    // In expands mode the preview fills its parent so Write / Preview toggle
+    // keeps the same footprint.
+    final constraints = widget.expands
+        ? null
+        : BoxConstraints(
+            minHeight: widget.height ?? 96,
+            maxHeight: widget.height ?? 260,
+          );
+    final container = Container(
+      constraints: constraints,
       width: double.infinity,
       decoration: BoxDecoration(
         color: isDark
@@ -185,6 +233,8 @@ class _MarkdownEditorFieldState extends State<MarkdownEditorField> {
       ),
       child: content,
     );
+
+    return widget.expands ? SizedBox.expand(child: container) : container;
   }
 }
 
