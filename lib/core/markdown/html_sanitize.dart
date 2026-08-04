@@ -28,8 +28,15 @@ final RegExp _linkRe = RegExp(
 /// Converts HTML constructs inside [input] into pure Markdown.
 /// Idempotent: sanitizing an already-sanitized string is a no-op.
 String sanitizeHtmlInMarkdown(String input) {
-  if (!input.contains('<')) return input;
   var s = input;
+
+  // 0. Collapse MULTI-LINE pipe-table rows first — this defect exists
+  // independently of any HTML in the text.
+  if (s.contains('|')) {
+    s = _collapseMultilinePipeRows(s);
+  }
+
+  if (!s.contains('<')) return s;
 
   // 1. <colgroup> — HTML-export-only column-width hints.
   s = s.replaceAll(_colgroupRe, '');
@@ -53,7 +60,20 @@ String sanitizeHtmlInMarkdown(String input) {
   s = _wrapInline(s, ['u'], '++');
   s = _wrapInline(s, ['s', 'del', 'strike'], '~~');
 
-  // 5. Any remaining <br> → real newline.
+  // 5a. <br> INSIDE pipe-table cells must become a bullet separator —
+  // a real newline would split the row and break the table.
+  if (_brRe.hasMatch(s)) {
+    final lines = s.split('\n');
+    for (var li = 0; li < lines.length; li++) {
+      final t = lines[li].trim();
+      if (t.startsWith('|') && t.endsWith('|') && _brRe.hasMatch(t)) {
+        lines[li] = lines[li].replaceAll(_brRe, ' • ');
+      }
+    }
+    s = lines.join('\n');
+  }
+
+  // 5b. Any remaining <br> → real newline.
   s = s.replaceAll(_brRe, '\n');
 
   // 6. Strip remaining block-level tags, KEEPING their text content and
@@ -114,6 +134,43 @@ String _cellText(String html) {
 
 String _stripTags(String html) =>
     html.replaceAll(RegExp(r'<[^>]+>'), '');
+
+/// Merges continuation lines of unterminated pipe-table rows into the
+/// previous cell so every logical row fits on one line.
+String _collapseMultilinePipeRows(String input) {
+  final lines = input.split('\n');
+  final out = <String>[];
+  var i = 0;
+  while (i < lines.length) {
+    final t = lines[i].trimRight();
+    if (t.startsWith('|') && !t.endsWith('|')) {
+      final buf = StringBuffer(t);
+      i++;
+      while (i < lines.length) {
+        final next = lines[i].trimRight();
+        final nextTrimmed = next.trimLeft();
+        // Blank line or a fresh row ends the merge.
+        if (nextTrimmed.isEmpty || nextTrimmed.startsWith('|')) break;
+        // Continuation lines that already start with a bullet marker join
+        // with a plain space to avoid doubled bullets ("• •").
+        final isBullet = nextTrimmed.startsWith('•') ||
+            nextTrimmed.startsWith('·') ||
+            nextTrimmed.startsWith('▪') ||
+            nextTrimmed.startsWith('-') ||
+            nextTrimmed.startsWith('*');
+        buf.write(isBullet ? ' ' : ' • ');
+        buf.write(nextTrimmed);
+        i++;
+        if (nextTrimmed.endsWith('|')) break;
+      }
+      out.add(buf.toString());
+      continue;
+    }
+    out.add(lines[i]);
+    i++;
+  }
+  return out.join('\n');
+}
 
 String _unescapeEntities(String s) => s
     .replaceAll('&nbsp;', ' ')

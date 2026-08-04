@@ -56,5 +56,25 @@ void main() {
       final twice = sanitizeHtmlInMarkdown(once);
       expect(twice, once);
     });
+
+    test('br inside pipe-table cells becomes bullet, not newline', () {
+      const md = '| Item | Details |\n|---|---|\n| A | one<br>two |';
+      final out = sanitizeHtmlInMarkdown(md);
+      expect(out, contains('| A | one • two |'));
+      // The row must stay a single line.
+      expect(out.split('\n').last, endsWith('|'));
+    });
+
+    test('collapses multi-line pipe-table rows into one line', () {
+      const md = '| Item | Details |\n|---|---|\n'
+          '| Task A | • first bullet\n• second bullet\n• third bullet |\n'
+          '| Task B | single |';
+      final out = sanitizeHtmlInMarkdown(md);
+      expect(out,
+          contains('| Task A | • first bullet • second bullet • third bullet |'));
+      expect(out, contains('| Task B | single |'));
+      // Every logical row fits on one line: 4 lines total.
+      expect(out.split('\n').length, 4);
+    });
   });
 }

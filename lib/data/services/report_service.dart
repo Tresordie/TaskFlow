@@ -1574,7 +1574,7 @@ $bodyOpen$innerHead''');
   /// extension set.
   String markdownToStyledHtml(String markdown, {String? title}) {
     var body = md.markdownToHtml(
-      markdown,
+      _normalizeMultilineTableRows(markdown),
       extensionSet: md.ExtensionSet.gitHubWeb,
     );
     // Align the Progress Details tables (fixed 25%/8%/67% column widths) so
@@ -1631,7 +1631,7 @@ $body
   /// adapted for mail clients.
   String markdownToEmailHtml(String markdown, {String? title}) {
     var body = md.markdownToHtml(
-      markdown,
+      _normalizeMultilineTableRows(markdown),
       extensionSet: md.ExtensionSet.gitHubWeb,
     );
     body = _alignProgressTables(body);
@@ -1661,6 +1661,40 @@ $body
 </table>
 </body>
 </html>''';
+  }
+
+  /// AI models sometimes place real newlines inside a pipe-table cell
+  /// (e.g. multi-bullet Details columns). A markdown table row must be a
+  /// single line, otherwise every continuation line becomes a broken row
+  /// with empty cells in the exported HTML. Merge those continuation lines
+  /// into the previous cell separated by `<br>` — restoring the classic
+  /// single-row-per-task export layout.
+  static String _normalizeMultilineTableRows(String markdown) {
+    final lines = markdown.split('\n');
+    final out = <String>[];
+    var i = 0;
+    while (i < lines.length) {
+      final t = lines[i].trimRight();
+      if (t.startsWith('|') && !t.endsWith('|')) {
+        final buf = StringBuffer(t);
+        i++;
+        while (i < lines.length) {
+          final next = lines[i].trimRight();
+          final nextTrimmed = next.trimLeft();
+          // Blank line or a fresh row ends the merge.
+          if (nextTrimmed.isEmpty || nextTrimmed.startsWith('|')) break;
+          buf.write('<br>');
+          buf.write(nextTrimmed);
+          i++;
+          if (nextTrimmed.endsWith('|')) break;
+        }
+        out.add(buf.toString());
+        continue;
+      }
+      out.add(lines[i]);
+      i++;
+    }
+    return out.join('\n');
   }
 
   /// Injects a fixed-width <colgroup> (Item 25% / Status 8% / Details 67%)

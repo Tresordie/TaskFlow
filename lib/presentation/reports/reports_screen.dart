@@ -399,6 +399,22 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   // transient export-in-progress flag stays widget-local.
   bool _exporting = false;
 
+  /// Source markdown for exports. When the user has NOT manually edited the
+  /// report, always regenerate from the pristine AI output ([toMarkdown]) —
+  /// this keeps the historical export format intact (HTML tables with
+  /// colgroup widths, `<br>`-separated bullets stay inside their cells).
+  /// The in-app sanitizer is display-only and must never leak into exports.
+  String _exportSource(ReportsState s, ReportService service) {
+    if (s.markdown == null) {
+      return service.toMarkdown(s.data!,
+          lang: s.lang,
+          aiSummaries: s.aiSummaries,
+          aiTitles: s.aiTitles,
+          aiTerms: s.aiTerms);
+    }
+    return s.markdown!;
+  }
+
   Future<void> _export(String ext) async {
     final s = ref.read(reportControllerProvider);
     final data = s.data;
@@ -410,24 +426,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       final String fileName;
       if (ext == 'md') {
         // Export the current (possibly user-edited) Markdown verbatim.
-        content = s.markdown ??
-            service.toMarkdown(data,
-                lang: s.lang,
-                aiSummaries: s.aiSummaries,
-                aiTitles: s.aiTitles,
-                aiTerms: s.aiTerms);
+        content = _exportSource(s, service);
         fileName = service.suggestFileName(data, ext);
       } else if (ext == 'email') {
         // Gmail-safe HTML (table layout, pure inline styles, no <style>
         // block) rendered from the SAME Markdown source as Export.md /
         // Export.html, so all three exports carry identical content — only
         // the styling is adapted for mail clients.
-        final source = s.markdown ??
-            service.toMarkdown(data,
-                lang: s.lang,
-                aiSummaries: s.aiSummaries,
-                aiTitles: s.aiTitles,
-                aiTerms: s.aiTerms);
+        final source = _exportSource(s, service);
         content = service.markdownToEmailHtml(source, title: data.titlePrefix);
         fileName = service
             .suggestFileName(data, 'html')
@@ -435,12 +441,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       } else {
         // Convert the current (possibly user-edited) Markdown to styled
         // HTML so the exported file reflects the user's edits.
-        final source = s.markdown ??
-            service.toMarkdown(data,
-                lang: s.lang,
-                aiSummaries: s.aiSummaries,
-                aiTitles: s.aiTitles,
-                aiTerms: s.aiTerms);
+        final source = _exportSource(s, service);
         content = service.markdownToStyledHtml(source, title: data.titlePrefix);
         fileName = service.suggestFileName(data, ext);
       }
@@ -1160,6 +1161,10 @@ class _ReportPreviewState extends State<_ReportPreview> {
   /// AI models occasionally emit raw HTML (<table>, <br>, …) that the
   /// in-app Markdown renderer cannot display. Sanitize once per content
   /// change so preview AND edit mode both work with clean Markdown.
+  /// NOTE: sanitizing is DISPLAY-ONLY. The controller buffer holds the
+  /// cleaned text, but state.markdown (the export source) is only
+  /// overwritten when the user really types something, so exports keep
+  /// the original AI markdown (HTML tables, colgroup widths, <br> bullets).
   String get _cleanMarkdown => sanitizeHtmlInMarkdown(widget.markdown);
 
   @override
@@ -1232,6 +1237,10 @@ class _ReportPreviewState extends State<_ReportPreview> {
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.all(18),
+            // Safety net: no matter how wide/long the content gets (huge
+            // tables, unbreakable strings), it is clipped to this card and
+            // can never paint over neighbouring UI areas.
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
@@ -1329,7 +1338,14 @@ class _ReportPreviewState extends State<_ReportPreview> {
                         maxLines: null,
                         expands: true,
                         textAlignVertical: TextAlignVertical.top,
-                        onChanged: widget.onMarkdownChanged,
+                        onChanged: (v) {
+                          // Only propagate REAL user edits back to the
+                          // report state; identical content must not
+                          // replace the original AI markdown.
+                          if (v != widget.markdown) {
+                            widget.onMarkdownChanged(v);
+                          }
+                        },
                         style: TextStyle(
                           fontFamily:
                               'Consolas, Menlo, Courier New, monospace',
