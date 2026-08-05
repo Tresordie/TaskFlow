@@ -3,14 +3,15 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/markdown/html_sanitize.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../data/services/ai_service.dart';
 import '../../providers/ai_provider.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
+import '../shared/app_markdown_body.dart';
 import '../shared/markdown_input.dart';
-import '../shared/selectable_markdown_body.dart';
 
 /// Phase 2 — AI note parsing.
 /// Paste raw notes → LLM extracts structured tasks → one-click create.
@@ -240,12 +241,13 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                           )
                         : SingleChildScrollView(
                             primary: false,
-                            // Whole-document SelectableText.rich: drag-select
-                            // across all lines + right-click Copy /
-                            // "Copy as Markdown".
-                            child: SelectableMarkdownBody(
-                              data: _notesController.text,
+                            // v1.4.74: block-level Markdown rendering for the
+                            // input preview (tables / headings / lists).
+                            child: AppMarkdownBody(
+                              data: sanitizeHtmlInMarkdown(
+                                  _notesController.text),
                               hardenLineBreaks: true,
+                              selectable: true,
                               styleSheet:
                                   MarkdownStyleSheet.fromTheme(theme).copyWith(
                                 p: const TextStyle(fontSize: 13, height: 1.5),
@@ -517,13 +519,12 @@ class _ParsedTaskCard extends ConsumerWidget {
                           ),
                           if (task.description.isNotEmpty) ...[
                             const SizedBox(height: 4),
-                            // Render the AI-extracted description as Markdown
-                            // so rich output (bold, lists, code) displays
-                            // formatted instead of as raw source. Whole-doc
-                            // selectable: drag-select + right-click "Copy as
-                            // Markdown".
-                            SelectableMarkdownBody(
-                              data: task.description,
+                            // Render the AI-extracted description as
+                            // block-level Markdown (bold, lists, code,
+                            // tables) with per-block drag-select + copy.
+                            AppMarkdownBody(
+                              data: sanitizeHtmlInMarkdown(task.description),
+                              selectable: true,
                               styleSheet:
                                   MarkdownStyleSheet.fromTheme(theme).copyWith(
                                 p: theme.textTheme.bodySmall?.copyWith(

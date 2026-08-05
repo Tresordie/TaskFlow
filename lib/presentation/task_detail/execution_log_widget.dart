@@ -5,12 +5,13 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/markdown/html_sanitize.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/open_folder.dart';
 import '../../data/models/task.dart';
 import '../../data/services/attachment_service.dart';
 import '../../providers/task_providers.dart';
-import '../shared/selectable_markdown_body.dart';
+import '../shared/app_markdown_body.dart';
 import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
 import 'edit_entry_dialog.dart';
@@ -665,17 +666,18 @@ class _LogEntryItem extends StatelessWidget {
                   ),
                   if (entry.content.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    // Whole-Note selectable renderer: the ENTIRE note is one
-                    // SelectableText.rich, so the user can drag-select across
-                    // lines/paragraphs, select all, and right-click for Copy
-                    // / "Copy as Markdown" (original source). Per-block
-                    // SelectableText (MarkdownBody selectable:true) only
-                    // allows single-block selection — not acceptable here.
-                    SelectableMarkdownBody(
-                      data: entry.content,
+                    // v1.4.74: true block-level Markdown rendering (tables,
+                    // headings, lists, code) identical to the input Preview.
+                    // HTML mixed into the note is sanitized first; per-block
+                    // SelectableText keeps drag-select + right-click Copy,
+                    // and the entry's Copy-as-Markdown button copies the
+                    // full original source.
+                    AppMarkdownBody(
+                      data: sanitizeHtmlInMarkdown(entry.content),
                       hardenLineBreaks: true,
+                      selectable: true,
                       styleSheet: _markdownStyleSheet(context),
-                      onTapLink: (href) {
+                      onTapLink: (href, title, originalText) {
                         final uri = Uri.tryParse(href);
                         if (uri == null) return;
                         if (uri.scheme == 'file') {

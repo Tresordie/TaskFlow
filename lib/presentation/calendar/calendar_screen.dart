@@ -155,11 +155,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 Expanded(
                   flex: 3,
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(16),
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(
-                            maxWidth: 1100, maxHeight: 760),
+                            maxWidth: 1040, maxHeight: 620),
                         child: _buildCalendar(theme, tasks, nav),
                       ),
                     ),
@@ -225,7 +225,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
 
         // Weekday headers
         Row(
@@ -242,7 +242,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   ))
               .toList(),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
 
         // Day grid
         Expanded(
@@ -250,7 +250,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
-              childAspectRatio: 1.0,
+              childAspectRatio: 1.3,
             ),
             itemCount: (firstWeekday - 1) + daysInMonth,
             itemBuilder: (context, index) {
@@ -271,8 +271,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     _setNav(nav.copyWith(selectedDate: date, clearRange: true)),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
-                  margin: const EdgeInsets.all(3),
-                  padding: const EdgeInsets.fromLTRB(6, 5, 6, 5),
+                  margin: const EdgeInsets.all(2),
+                  padding: const EdgeInsets.fromLTRB(4, 3, 4, 3),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? theme.colorScheme.primary
@@ -331,11 +331,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                           ],
                         ],
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       // Apple-style due-task pills (condensed titles)
                       ...dueTasks.take(3).map(
                             (t) => Padding(
-                              padding: const EdgeInsets.only(bottom: 2),
+                              padding: const EdgeInsets.only(bottom: 1.5),
                               child: _DuePill(task: t, onSelected: isSelected),
                             ),
                           ),
@@ -562,7 +562,7 @@ class _DuePill extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
       decoration: BoxDecoration(
         color: onSelected
             ? Colors.white.withOpacity(0.2)
@@ -578,22 +578,22 @@ class _DuePill extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 4,
-            height: 4,
+            width: 3.5,
+            height: 3.5,
             decoration: BoxDecoration(
               color: onSelected ? Colors.white : accent,
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           Expanded(
             child: Text(
               task.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 9,
-                height: 1.25,
+                fontSize: 8.5,
+                height: 1.2,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.1,
                 decoration: isCompleted && !onSelected

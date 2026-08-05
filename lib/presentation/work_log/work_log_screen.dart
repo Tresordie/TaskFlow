@@ -8,9 +8,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/markdown/html_export.dart';
+import '../../core/markdown/html_sanitize.dart';
 import '../../data/models/work_log.dart';
 import '../../providers/work_log_provider.dart';
-import '../shared/selectable_markdown_body.dart';
+import '../shared/app_markdown_body.dart';
 import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
 
@@ -872,14 +873,25 @@ e.g.
           ),
           const SizedBox(width: 8),
           Expanded(
-            // Whole-record selectable renderer: one SelectableText.rich for
-            // the ENTIRE record so the user can drag-select across lines /
-            // select-all, and right-click Copy / "Copy as Markdown".
-            child: SelectableMarkdownBody(
-              data: r.content,
+            // v1.4.74: true block-level Markdown rendering (identical to the
+            // input Preview). Per-block SelectableText keeps drag-select +
+            // right-click Copy; the new copy icon copies the full original
+            // Markdown source.
+            child: AppMarkdownBody(
+              data: sanitizeHtmlInMarkdown(r.content),
               hardenLineBreaks: true,
+              selectable: true,
               styleSheet: _recordMarkdownStyleSheet(theme),
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy_outlined, size: 15),
+            tooltip: 'Copy as Markdown',
+            visualDensity: VisualDensity.compact,
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: r.content));
+              _toast('Record copied as Markdown');
+            },
           ),
           IconButton(
             icon: const Icon(Icons.edit, size: 15),
@@ -980,11 +992,12 @@ e.g.
                     )
                   : SingleChildScrollView(
                       primary: false,
-                      // Whole-summary SelectableText.rich: drag-select across
-                      // all lines + right-click Copy / "Copy as Markdown".
-                      child: SelectableMarkdownBody(
-                        data: state.result,
+                      // v1.4.74: block-level Markdown rendering for the AI
+                      // summary (tables / headings / lists render properly).
+                      child: AppMarkdownBody(
+                        data: sanitizeHtmlInMarkdown(state.result),
                         hardenLineBreaks: true,
+                        selectable: true,
                         styleSheet: _recordMarkdownStyleSheet(theme),
                       ),
                     ),

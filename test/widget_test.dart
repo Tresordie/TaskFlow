@@ -71,17 +71,13 @@ void main() {
   });
 
   testWidgets(
-      'execution log Note is a single selectable unit (multi-block = one SelectableText)',
+      'execution log Note renders block-level markdown with per-block selection and Copy-as-Markdown',
       (tester) async {
-    // Selection history: v1.2.9 added a screen-local SelectionArea; v1.4.24
-    // added an app-wide one in MaterialApp.builder; v1.4.26 rendered markdown
-    // as Text.rich registered with the SelectionArea (worked in debug but
-    // unreliable in Release/AOT); v1.4.31 regressed to per-block SelectableText
-    // (MarkdownBody selectable: true) — no cross-block drag, no select-all,
-    // and the cursor flickered I-Beam/arrow across blocks. v1.4.32 renders
-    // each Note through SelectableMarkdownBody as ONE SelectableText, so the
-    // whole Note is a single selectable unit: drag-select spans blocks and
-    // select-all grabs the entire Note. This test guards that contract.
+    // v1.4.74 contract: Notes render through AppMarkdownBody (true
+    // block-level Markdown — headings/tables/lists) with selectable: true,
+    // so each block is its own SelectableText (multi-line drag-select +
+    // right-click Copy inside a block), and every entry exposes a
+    // "Copy as Markdown" button for the full original source.
     await tester.binding.setSurfaceSize(const Size(1280, 1024));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -113,41 +109,37 @@ void main() {
         // devices so mouse drags select text instead of scrolling).
         child: MaterialApp(
           scrollBehavior: AppScrollBehavior(),
-          home: SelectionArea(child: TaskDetailScreen(taskId: 1)),
+          home: TaskDetailScreen(taskId: 1),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    // The multi-block Note must render as EXACTLY ONE SelectableText whose
-    // plain text spans every block — not one SelectableText per block (the
-    // v1.4.31 regression that broke cross-block drag-select and select-all).
-    final noteFinder = find.byWidgetPredicate((w) =>
-        w is SelectableText &&
-        (w.textSpan?.toPlainText() ?? w.data ?? '')
-            .contains('First paragraph block'));
-    expect(noteFinder, findsOneWidget,
-        reason: 'the Note must be a single SelectableText');
-    final note = tester.widget<SelectableText>(noteFinder);
-    final plain = note.textSpan?.toPlainText() ?? note.data ?? '';
-    expect(plain, contains('Heading block'));
-    expect(plain, contains('First paragraph block'));
-    expect(plain, contains('bullet block one'));
-    expect(plain, contains('bullet block two'),
-        reason: 'every block must live inside the ONE selectable unit');
+    // Block-level rendering: the Note (and the task description) render
+    // through the block-level renderer.
+    expect(find.byType(MarkdownBody), findsWidgets,
+        reason: 'the Note must render through the block-level renderer');
+
+    // Per-block SelectableTexts: heading + paragraph + list blocks each
+    // become their own selectable unit (multi-line drag inside a block).
+    expect(find.byType(SelectableText), findsWidgets,
+        reason: 'markdown blocks must be individually selectable');
+
+    // The entry exposes a Copy-as-Markdown button for the full source.
+    expect(find.byTooltip('Copy as Markdown'), findsOneWidget);
   });
 
   testWidgets(
-      'production shell: rich-markdown log entry supports cross-block drag selection',
+      'production shell: rich-markdown log entry renders block-level with in-block drag selection',
       (tester) async {
-    // v1.4.27 repro harness: after v1.4.26 the simplified selection test
-    // passed while the real app still failed for the user. This test
-    // closes the fidelity gap — it mounts the page through the REAL
-    // production tree (GoRouter ShellRoute -> AppShell with sidebar,
-    // rounded panel, custom title bar and the app-wide SelectionArea,
-    // AppTheme, AppScrollBehavior) and feeds the log a rich markdown
-    // entry shaped like real user content (emoji section headers, bold,
-    // bullet + numbered lists with nesting) instead of a plain one-liner.
+    // v1.4.74 harness: mounts the page through the REAL production tree
+    // (GoRouter ShellRoute -> AppShell with sidebar, rounded panel, custom
+    // title bar, AppTheme, AppScrollBehavior) and feeds the log a rich
+    // markdown entry shaped like real user content (emoji section headers,
+    // bold, bullet + numbered lists with nesting). Selection contract:
+    // AppShell has NO app-wide SelectionArea (removed in v1.4.71 — it
+    // collapsed selections on right-click); Notes render block-level
+    // markdown with per-block SelectableTexts + Copy-as-Markdown button.
     await tester.binding.setSurfaceSize(const Size(1280, 1024));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -213,29 +205,29 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // The app-wide SelectionArea comes from AppShell — exactly one.
-    expect(find.byType(SelectionArea), findsOneWidget);
+    // v1.4.71+: AppShell installs NO app-wide SelectionArea anymore.
+    expect(find.byType(SelectionArea), findsNothing);
 
-    // The Note renders through SelectableMarkdownBody as ONE SelectableText
-    // — the whole document is a single selectable unit, which is what makes
-    // cross-block drag selection (and select-all) work inside a Note. This
-    // is the v1.4.32 fix for the per-block SelectableText regression.
-    final noteFinder = find.byWidgetPredicate((w) =>
+    // Block-level markdown rendering of the Note.
+    expect(find.byType(MarkdownBody), findsOneWidget);
+    expect(find.byTooltip('Copy as Markdown'), findsOneWidget);
+
+    // The first section (header + its bullets, hard-break joined) is one
+    // selectable block — drag inside it must produce an active multi-line
+    // selection.
+    final blockFinder = find.byWidgetPredicate((w) =>
         w is SelectableText &&
         (w.textSpan?.toPlainText() ?? w.data ?? '').contains('Work Summary'));
-    expect(noteFinder, findsOneWidget,
-        reason: 'the rich Note must render as a single SelectableText');
+    expect(blockFinder, findsOneWidget);
 
-    final noteRect = tester.getRect(noteFinder);
-    final start = noteRect.topLeft + const Offset(4, 4);
-    final end = noteRect.bottomRight - const Offset(4, 4);
+    final blockRect = tester.getRect(blockFinder);
+    final start = blockRect.topLeft + const Offset(4, 4);
+    final end = blockRect.bottomRight - const Offset(4, 4);
     final gesture =
         await tester.startGesture(start, kind: PointerDeviceKind.mouse);
     addTearDown(gesture.removePointer);
     await tester.pump();
 
-    // Incremental descent across the markdown blocks (Flutter's own
-    // scrollable_selection_test pattern).
     const steps = 6;
     for (var i = 1; i <= steps; i++) {
       await gesture.moveTo(Offset.lerp(start, end, i / steps)!);
@@ -244,20 +236,16 @@ void main() {
     await gesture.up();
     await tester.pump();
 
-    // The drag must leave a non-collapsed selection spanning the blocks:
-    // from the header block down into the tail block.
     final editableFinder = find.descendant(
-        of: noteFinder, matching: find.byType(EditableText));
+        of: blockFinder, matching: find.byType(EditableText));
     final editableState = tester.state<EditableTextState>(editableFinder);
     final value = editableState.textEditingValue;
     expect(value.selection.isCollapsed, isFalse,
-        reason: 'drag across the Note must produce an active selection');
+        reason: 'drag inside the block must produce an active selection');
     final selected =
         value.text.substring(value.selection.start, value.selection.end);
     expect(selected, contains('Work Summary'),
-        reason: 'section header block must be inside the selection');
-    expect(selected, contains('Detailed Breakdown'),
-        reason: 'selection must extend down to the tail block');
+        reason: 'section header must be inside the selection');
   });
 
   testWidgets(
