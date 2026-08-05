@@ -280,6 +280,14 @@ class TaskListNotifier extends StateNotifier<AsyncValue<List<Task>>> {
     return merged;
   }
 
+  /// Reverse drag operation: extracts sub-step [subStepUid] (with its
+  /// subtree) from task [taskId] into a standalone task.
+  Future<String?> extractSubStepToTask(int taskId, String subStepUid) async {
+    final title = await _repo.extractSubStepToTask(taskId, subStepUid);
+    await loadTasks();
+    return title;
+  }
+
   Future<void> updateStatus(int id, TaskStatus status) async {
     await _repo.updateTaskStatus(id, status);
     await loadTasks();

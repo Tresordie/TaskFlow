@@ -304,6 +304,88 @@ class TaskRepository {
     return (notes: mergedNotes.length, subSteps: migratedSteps.length);
   }
 
+  /// v1.4.79: the REVERSE of drag-to-sub-step — extracts the sub-step
+  /// [subStepUid] (together with its whole subtree) from task [taskId] and
+  /// promotes it into a standalone task. The new task inherits the source
+  /// task's priority / project / tags, takes over the sub-step's due date,
+  /// and its children become the new task's checklist. Returns the created
+  /// task's title (null when nothing happened).
+  Future<String?> extractSubStepToTask(int taskId, String subStepUid) async {
+    final isar = await AppDatabase.instance;
+    final task = await isar.tasks.get(taskId);
+    if (task == null) return null;
+    final step =
+        task.subSteps.where((s) => s.uid == subStepUid).firstOrNull;
+    if (step == null) return null;
+
+    // Subtree = the step itself + all descendants.
+    final doomed = subStepDescendantUids(task.subSteps, step);
+
+    // The subtree MINUS the root becomes the new task's checklist,
+    // re-rooted (direct children lose their parent) and re-normalized.
+    final migrated = <SubStep>[
+      for (final s in task.subSteps)
+        if (doomed.contains(s.uid) && s.uid != step.uid)
+          SubStep()
+            ..uid = s.uid
+            ..title = s.title
+            ..completed = s.completed
+            ..completedAt = s.completedAt
+            ..parentUid = s.parentUid == step.uid ? null : s.parentUid
+            ..depth = s.depth,
+    ];
+    normalizeSubStepDepths(migrated);
+
+    // Date metadata follows the migrated uids; the root step's own dates
+    // become the new task's createdAt / dueDate.
+    final rootDates =
+        task.subStepDates.where((d) => d.uid == subStepUid).firstOrNull;
+    final migratedDates = <SubStepDates>[
+      for (final d in task.subStepDates)
+        if (doomed.contains(d.uid) && d.uid != subStepUid)
+          SubStepDates()
+            ..uid = d.uid
+            ..createdAt = d.createdAt
+            ..dueDate = d.dueDate,
+    ];
+
+    // Build the standalone task (mirrors createTask + buildNewTask).
+    final newTask = buildNewTask(
+      title: step.title.trim().isEmpty ? '(untitled task)' : step.title,
+      priority: task.priority,
+      tags: task.tags,
+      dueDate: rootDates?.dueDate,
+      project: task.project,
+      sortOrder: 0, // patched below
+    );
+    if (step.completed) {
+      newTask.status = TaskStatus.completed;
+      newTask.completedAt = step.completedAt ?? DateTime.now();
+    }
+    newTask.subSteps = migrated;
+    newTask.subStepDates = migratedDates;
+
+    // Remove the subtree from the source task (fixed-length lists: rebuild).
+    task.subSteps = [
+      for (final s in task.subSteps)
+        if (!doomed.contains(s.uid)) s,
+    ];
+    task.subStepDates = [
+      for (final d in task.subStepDates)
+        if (!doomed.contains(d.uid)) d,
+    ];
+    _touch(task);
+
+    final top = await isar.tasks.where().sortBySortOrderDesc().findFirst();
+    newTask.sortOrder = (top?.sortOrder ?? 0) + 1;
+
+    await isar.writeTxn(() async {
+      await isar.tasks.put(task);
+      await isar.tasks.put(newTask);
+    });
+    return newTask.title;
+  }
+
   Future<void> updateTaskStatus(int id, TaskStatus status) async {
     final isar = await AppDatabase.instance;
     final task = await isar.tasks.get(id);

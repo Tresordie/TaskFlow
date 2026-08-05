@@ -246,6 +246,10 @@ class _TaskDetailContent extends ConsumerWidget {
               },
             ),
           ),
+
+          // v1.4.79: drop zone — drag any sub-step here to promote it
+          // (with its subtree) into a standalone task.
+          if (task.subSteps.isNotEmpty) _ExtractDropBar(task: task),
         ],
       ),
     );
@@ -681,10 +685,51 @@ class _SubStepsSectionState extends ConsumerState<_SubStepsSection> {
       ),
     );
 
-    return wrapWithTreeGuides(
+    final row = wrapWithTreeGuides(
       content,
       depth: step.depth,
       guideColor: treeGuideColor(theme),
+    );
+    // v1.4.79: rows are draggable — dropping one on the extract bar at the
+    // bottom of the page promotes the sub-step into a standalone task.
+    return Draggable<_SubStepDrag>(
+      data: _SubStepDrag(task: task, step: step),
+      dragAnchorStrategy: pointerDragAnchorStrategy,
+      feedback: Material(
+        elevation: 6,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(8),
+            border:
+                Border.all(color: theme.colorScheme.primary.withOpacity(0.4)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.open_in_new,
+                  size: 13, color: theme.colorScheme.primary),
+              const SizedBox(width: 6),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 240),
+                child: Text(
+                  step.title.trim().isEmpty ? '(untitled sub-step)' : step.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      childWhenDragging: Opacity(opacity: 0.35, child: row),
+      child: row,
     );
   }
 
@@ -1002,6 +1047,89 @@ class _TagsEditorState extends ConsumerState<_TagsEditor> {
         visualDensity: VisualDensity.compact,
         deleteIcon: const Icon(Icons.close, size: 13),
         onDeleted: onDeleted,
+      ),
+    );
+  }
+}
+
+/// Drag payload for promoting a sub-step into a standalone task.
+class _SubStepDrag {
+  final Task task;
+  final SubStep step;
+
+  const _SubStepDrag({required this.task, required this.step});
+}
+
+/// Bottom drop zone of the task detail page. Dragging a sub-step row here
+/// extracts it (with its whole subtree, due dates included) into a brand-new
+/// standalone task. Highlights while a sub-step is hovering over it.
+class _ExtractDropBar extends ConsumerWidget {
+  final Task task;
+
+  const _ExtractDropBar({required this.task});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+      child: DragTarget<_SubStepDrag>(
+        onWillAcceptWithDetails: (d) => d.data.task.id == task.id,
+        onAcceptWithDetails: (d) async {
+          final notifier = ref.read(taskListProvider.notifier);
+          final title =
+              await notifier.extractSubStepToTask(task.id, d.data.step.uid);
+          if (title == null || !context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Sub-step extracted as task "$title"'),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        },
+        builder: (context, candidate, rejected) {
+          final hot = candidate.isNotEmpty;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            decoration: BoxDecoration(
+              color: hot
+                  ? theme.colorScheme.primary.withOpacity(0.1)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: hot
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.outline.withOpacity(0.25),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.open_in_new,
+                  size: 13,
+                  color: hot
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withOpacity(0.4),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Drag a sub-step here to extract it as a standalone task',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: hot ? FontWeight.w600 : FontWeight.w400,
+                    color: hot
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurface.withOpacity(0.45),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
