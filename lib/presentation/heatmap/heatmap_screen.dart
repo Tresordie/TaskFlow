@@ -433,11 +433,12 @@ class _HeatmapGrid extends StatelessWidget {
               style: theme.textTheme.labelSmall?.copyWith(fontSize: 9)),
         );
 
-    /// Builds the whole grid for a given week-column pitch (cell + gap).
-    /// The pitch is derived from the available width so the heatmap always
-    /// stretches across the page instead of leaving a big empty area on the
-    /// right of wide windows.
-    Widget buildGrid(double pitch) {
+    /// Builds the whole grid. [pitch] is the cell size (capped so maximized
+    /// windows don't inflate cells into giants); [slot] is the week-column
+    /// width — when the window is wider than 53×pitch the spare space is
+    /// distributed between the columns, so the heatmap still spans the full
+    /// card width with comfortably-sized squares.
+    Widget buildGrid(double pitch, double slot) {
       final cell = pitch - 2;
       final radius = (cell * 0.25).clamp(2.0, 5.0);
       return Row(
@@ -463,15 +464,18 @@ class _HeatmapGrid extends StatelessWidget {
               SizedBox(
                 height: 18,
                 child: _MonthLabels(
-                    year: year, totalWeeks: totalWeeks, pitch: pitch),
+                    year: year, totalWeeks: totalWeeks, pitch: slot),
               ),
               const SizedBox(height: 4),
               // Weeks
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: List.generate(totalWeeks, (weekIndex) {
-                  return Column(
-                    children: List.generate(7, (dayIndex) {
+                  return SizedBox(
+                    width: slot,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: List.generate(7, (dayIndex) {
                       final dayOfYear =
                           weekIndex * 7 + dayIndex - startOffset + 1;
                       if (dayOfYear < 1 || dayOfYear > totalDays) {
@@ -504,6 +508,7 @@ class _HeatmapGrid extends StatelessWidget {
                         ),
                       );
                     }),
+                    ),
                   );
                 }),
               ),
@@ -518,15 +523,16 @@ class _HeatmapGrid extends StatelessWidget {
       builder: (context, constraints) {
         final avail = constraints.maxWidth - labelColumnWidth;
         final fitPitch = avail / totalWeeks;
-        // v1.4.74: the heatmap ALWAYS stretches to fill the card width
-        // (no right-side empty space) — cell pitch grows with the window.
-        // Only very narrow windows fall back to horizontal scrolling.
+        // v1.4.75: cells stay comfortable (max 26px) while the spare width
+        // is spread across the week columns — the heatmap spans the full
+        // card width without right-side whitespace OR giant squares.
         if (fitPitch >= 12) {
-          return buildGrid(fitPitch);
+          final pitch = fitPitch.clamp(12.0, 26.0);
+          return buildGrid(pitch, fitPitch);
         }
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          child: buildGrid(12),
+          child: buildGrid(12, 12),
         );
       },
     );

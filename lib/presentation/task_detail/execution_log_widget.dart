@@ -11,7 +11,7 @@ import '../../core/utils/open_folder.dart';
 import '../../data/models/task.dart';
 import '../../data/services/attachment_service.dart';
 import '../../providers/task_providers.dart';
-import '../shared/app_markdown_body.dart';
+import '../shared/selectable_markdown_body.dart';
 import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
 import 'edit_entry_dialog.dart';
@@ -666,18 +666,17 @@ class _LogEntryItem extends StatelessWidget {
                   ),
                   if (entry.content.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    // v1.4.74: true block-level Markdown rendering (tables,
-                    // headings, lists, code) identical to the input Preview.
-                    // HTML mixed into the note is sanitized first; per-block
-                    // SelectableText keeps drag-select + right-click Copy,
-                    // and the entry's Copy-as-Markdown button copies the
-                    // full original source.
-                    AppMarkdownBody(
+                    // v1.4.75: whole-Note selectable renderer — the ENTIRE
+                    // note is ONE SelectableText.rich: drag-select across
+                    // lines/blocks, Select all, right-click Copy / Copy as
+                    // Markdown (stable I-beam cursor, no per-block limits).
+                    // HTML mixed into the note is sanitized first so nothing
+                    // renders as raw tags.
+                    SelectableMarkdownBody(
                       data: sanitizeHtmlInMarkdown(entry.content),
                       hardenLineBreaks: true,
-                      selectable: true,
                       styleSheet: _markdownStyleSheet(context),
-                      onTapLink: (href, title, originalText) {
+                      onTapLink: (href) {
                         final uri = Uri.tryParse(href);
                         if (uri == null) return;
                         if (uri.scheme == 'file') {

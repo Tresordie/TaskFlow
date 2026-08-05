@@ -12,6 +12,7 @@ import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
 import '../shared/app_markdown_body.dart';
 import '../shared/markdown_input.dart';
+import '../shared/selectable_markdown_body.dart';
 
 /// Phase 2 — AI note parsing.
 /// Paste raw notes → LLM extracts structured tasks → one-click create.
@@ -519,12 +520,11 @@ class _ParsedTaskCard extends ConsumerWidget {
                           ),
                           if (task.description.isNotEmpty) ...[
                             const SizedBox(height: 4),
-                            // Render the AI-extracted description as
-                            // block-level Markdown (bold, lists, code,
-                            // tables) with per-block drag-select + copy.
-                            AppMarkdownBody(
+                            // v1.4.75: whole-description SelectableText —
+                            // multi-line drag-select, Select all, right-click
+                            // Copy / Copy as Markdown. HTML sanitized first.
+                            SelectableMarkdownBody(
                               data: sanitizeHtmlInMarkdown(task.description),
-                              selectable: true,
                               styleSheet:
                                   MarkdownStyleSheet.fromTheme(theme).copyWith(
                                 p: theme.textTheme.bodySmall?.copyWith(

@@ -71,13 +71,13 @@ void main() {
   });
 
   testWidgets(
-      'execution log Note renders block-level markdown with per-block selection and Copy-as-Markdown',
+      'execution log Note is one selectable unit with Copy-as-Markdown menu',
       (tester) async {
-    // v1.4.74 contract: Notes render through AppMarkdownBody (true
-    // block-level Markdown — headings/tables/lists) with selectable: true,
-    // so each block is its own SelectableText (multi-line drag-select +
-    // right-click Copy inside a block), and every entry exposes a
-    // "Copy as Markdown" button for the full original source.
+    // v1.4.75 contract: Notes render through SelectableMarkdownBody — the
+    // ENTIRE note is ONE SelectableText.rich, so drag-select spans lines and
+    // blocks, Select all grabs everything, and the right-click menu offers
+    // Copy / Select all / Copy as Markdown. The entry also exposes a
+    // "Copy as Markdown" icon button for the full original source.
     await tester.binding.setSurfaceSize(const Size(1280, 1024));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -115,31 +115,37 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Block-level rendering: the Note (and the task description) render
-    // through the block-level renderer.
-    expect(find.byType(MarkdownBody), findsWidgets,
-        reason: 'the Note must render through the block-level renderer');
-
-    // Per-block SelectableTexts: heading + paragraph + list blocks each
-    // become their own selectable unit (multi-line drag inside a block).
-    expect(find.byType(SelectableText), findsWidgets,
-        reason: 'markdown blocks must be individually selectable');
+    // The multi-block Note must render as EXACTLY ONE SelectableText whose
+    // plain text spans every block (whole-note selectable unit).
+    final noteFinder = find.byWidgetPredicate((w) =>
+        w is SelectableText &&
+        (w.textSpan?.toPlainText() ?? w.data ?? '')
+            .contains('First paragraph block'));
+    expect(noteFinder, findsOneWidget,
+        reason: 'the Note must be a single SelectableText');
+    final note = tester.widget<SelectableText>(noteFinder);
+    final plain = note.textSpan?.toPlainText() ?? note.data ?? '';
+    expect(plain, contains('Heading block'));
+    expect(plain, contains('First paragraph block'));
+    expect(plain, contains('bullet block one'));
+    expect(plain, contains('bullet block two'),
+        reason: 'every block must live inside the ONE selectable unit');
 
     // The entry exposes a Copy-as-Markdown button for the full source.
     expect(find.byTooltip('Copy as Markdown'), findsOneWidget);
   });
 
   testWidgets(
-      'production shell: rich-markdown log entry renders block-level with in-block drag selection',
+      'production shell: rich-markdown log entry supports whole-note drag selection',
       (tester) async {
-    // v1.4.74 harness: mounts the page through the REAL production tree
+    // v1.4.75 harness: mounts the page through the REAL production tree
     // (GoRouter ShellRoute -> AppShell with sidebar, rounded panel, custom
     // title bar, AppTheme, AppScrollBehavior) and feeds the log a rich
     // markdown entry shaped like real user content (emoji section headers,
     // bold, bullet + numbered lists with nesting). Selection contract:
-    // AppShell has NO app-wide SelectionArea (removed in v1.4.71 — it
-    // collapsed selections on right-click); Notes render block-level
-    // markdown with per-block SelectableTexts + Copy-as-Markdown button.
+    // AppShell has NO app-wide SelectionArea (removed in v1.4.71); each
+    // Note is ONE SelectableText.rich — drag spans all blocks, right-click
+    // menu offers Copy / Select all / Copy as Markdown.
     await tester.binding.setSurfaceSize(const Size(1280, 1024));
     addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -208,21 +214,19 @@ void main() {
     // v1.4.71+: AppShell installs NO app-wide SelectionArea anymore.
     expect(find.byType(SelectionArea), findsNothing);
 
-    // Block-level markdown rendering of the Note.
-    expect(find.byType(MarkdownBody), findsOneWidget);
+    // Whole-note selectable rendering + Copy-as-Markdown entry button.
     expect(find.byTooltip('Copy as Markdown'), findsOneWidget);
 
-    // The first section (header + its bullets, hard-break joined) is one
-    // selectable block — drag inside it must produce an active multi-line
-    // selection.
-    final blockFinder = find.byWidgetPredicate((w) =>
+    // The Note renders as ONE SelectableText covering every block.
+    final noteFinder = find.byWidgetPredicate((w) =>
         w is SelectableText &&
         (w.textSpan?.toPlainText() ?? w.data ?? '').contains('Work Summary'));
-    expect(blockFinder, findsOneWidget);
+    expect(noteFinder, findsOneWidget,
+        reason: 'the rich Note must be a single SelectableText');
 
-    final blockRect = tester.getRect(blockFinder);
-    final start = blockRect.topLeft + const Offset(4, 4);
-    final end = blockRect.bottomRight - const Offset(4, 4);
+    final noteRect = tester.getRect(noteFinder);
+    final start = noteRect.topLeft + const Offset(4, 4);
+    final end = noteRect.bottomRight - const Offset(4, 4);
     final gesture =
         await tester.startGesture(start, kind: PointerDeviceKind.mouse);
     addTearDown(gesture.removePointer);
@@ -237,15 +241,17 @@ void main() {
     await tester.pump();
 
     final editableFinder = find.descendant(
-        of: blockFinder, matching: find.byType(EditableText));
+        of: noteFinder, matching: find.byType(EditableText));
     final editableState = tester.state<EditableTextState>(editableFinder);
     final value = editableState.textEditingValue;
     expect(value.selection.isCollapsed, isFalse,
-        reason: 'drag inside the block must produce an active selection');
+        reason: 'drag across the Note must produce an active selection');
     final selected =
         value.text.substring(value.selection.start, value.selection.end);
     expect(selected, contains('Work Summary'),
-        reason: 'section header must be inside the selection');
+        reason: 'section header block must be inside the selection');
+    expect(selected, contains('Detailed Breakdown'),
+        reason: 'selection must extend down to the tail block');
   });
 
   testWidgets(

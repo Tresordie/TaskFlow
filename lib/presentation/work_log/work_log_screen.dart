@@ -11,7 +11,7 @@ import '../../core/markdown/html_export.dart';
 import '../../core/markdown/html_sanitize.dart';
 import '../../data/models/work_log.dart';
 import '../../providers/work_log_provider.dart';
-import '../shared/app_markdown_body.dart';
+import '../shared/selectable_markdown_body.dart';
 import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
 
@@ -873,14 +873,12 @@ e.g.
           ),
           const SizedBox(width: 8),
           Expanded(
-            // v1.4.74: true block-level Markdown rendering (identical to the
-            // input Preview). Per-block SelectableText keeps drag-select +
-            // right-click Copy; the new copy icon copies the full original
-            // Markdown source.
-            child: AppMarkdownBody(
+            // v1.4.75: whole-record selectable renderer — ONE SelectableText
+            // per record: drag-select across all lines, Select all,
+            // right-click Copy / Copy as Markdown. HTML sanitized first.
+            child: SelectableMarkdownBody(
               data: sanitizeHtmlInMarkdown(r.content),
               hardenLineBreaks: true,
-              selectable: true,
               styleSheet: _recordMarkdownStyleSheet(theme),
             ),
           ),
@@ -992,12 +990,12 @@ e.g.
                     )
                   : SingleChildScrollView(
                       primary: false,
-                      // v1.4.74: block-level Markdown rendering for the AI
-                      // summary (tables / headings / lists render properly).
-                      child: AppMarkdownBody(
+                      // v1.4.75: whole-summary SelectableText — multi-line
+                      // drag, Select all, right-click Copy / Copy as
+                      // Markdown. HTML sanitized first.
+                      child: SelectableMarkdownBody(
                         data: sanitizeHtmlInMarkdown(state.result),
                         hardenLineBreaks: true,
-                        selectable: true,
                         styleSheet: _recordMarkdownStyleSheet(theme),
                       ),
                     ),

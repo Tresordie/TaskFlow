@@ -155,11 +155,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 Expanded(
                   flex: 3,
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(
-                            maxWidth: 1040, maxHeight: 620),
+                            maxWidth: 1560, maxHeight: 1000),
                         child: _buildCalendar(theme, tasks, nav),
                       ),
                     ),
