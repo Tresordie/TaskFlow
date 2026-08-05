@@ -149,12 +149,20 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             data: (tasks) => Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Calendar grid
+                // Calendar grid — size-capped and centered so maximized
+                // windows don't inflate the cells into giants (proportion
+                // with the day panel and other UI stays balanced).
                 Expanded(
                   flex: 3,
                   child: Padding(
                     padding: const EdgeInsets.all(24),
-                    child: _buildCalendar(theme, tasks, nav),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                            maxWidth: 1100, maxHeight: 760),
+                        child: _buildCalendar(theme, tasks, nav),
+                      ),
+                    ),
                   ),
                 ),
                 // Selected day tasks
@@ -539,7 +547,7 @@ class _DayTaskItem extends StatelessWidget {
 }
 
 /// Apple-Calendar-style condensed due-task pill shown inside a date cell:
-/// a tiny status dot + the truncated task title on one slim row.
+/// a subtle tinted capsule with a status dot + truncated task title.
 class _DuePill extends StatelessWidget {
   final Task task;
   final bool onSelected;
@@ -550,42 +558,50 @@ class _DuePill extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isCompleted = task.status == TaskStatus.completed;
-    final dotColor = isCompleted ? AppColors.success : AppColors.warning;
+    final accent = isCompleted ? AppColors.success : AppColors.warning;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
         color: onSelected
-            ? Colors.white.withOpacity(0.22)
-            : dotColor.withOpacity(0.13),
-        borderRadius: BorderRadius.circular(3),
+            ? Colors.white.withOpacity(0.2)
+            : accent.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: onSelected
+              ? Colors.white.withOpacity(0.35)
+              : accent.withOpacity(0.28),
+          width: 0.7,
+        ),
       ),
       child: Row(
         children: [
           Container(
-            width: 3.5,
-            height: 3.5,
+            width: 4,
+            height: 4,
             decoration: BoxDecoration(
-              color: onSelected ? Colors.white : dotColor,
+              color: onSelected ? Colors.white : accent,
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 3),
+          const SizedBox(width: 4),
           Expanded(
             child: Text(
               task.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 8.5,
-                height: 1.2,
-                fontWeight: FontWeight.w500,
-                decoration:
-                    isCompleted && !onSelected ? TextDecoration.lineThrough : null,
+                fontSize: 9,
+                height: 1.25,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.1,
+                decoration: isCompleted && !onSelected
+                    ? TextDecoration.lineThrough
+                    : null,
                 color: onSelected
                     ? Colors.white
-                    : theme.colorScheme.onSurface.withOpacity(0.75),
+                    : theme.colorScheme.onSurface.withOpacity(0.8),
               ),
             ),
           ),

@@ -518,11 +518,14 @@ class _HeatmapGrid extends StatelessWidget {
       builder: (context, constraints) {
         final avail = constraints.maxWidth - labelColumnWidth;
         final fitPitch = avail / totalWeeks;
-        // Stretch cells to fill the row — no upper cap, so even maximized /
-        // ultra-wide windows leave no empty space on the right. Only fall
-        // back to horizontal scrolling on very narrow windows.
+        // Cell pitch grows with the window but is CAPPED at 20px — a year
+        // heatmap of 45px giant squares looked badly out of proportion on
+        // maximized windows. When the cap leaves spare width, the grid is
+        // centered inside its card instead of hugging the left edge.
         if (fitPitch >= 12) {
-          return buildGrid(fitPitch);
+          final pitch = fitPitch.clamp(12.0, 20.0);
+          final grid = buildGrid(pitch);
+          return fitPitch > 20 ? Center(child: grid) : grid;
         }
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,

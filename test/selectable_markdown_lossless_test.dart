@@ -111,10 +111,13 @@ Vout < 5V and temp -> stable, A & B pass.
     expect(plain, contains('[ ] open task'));
     expect(plain, contains('[x] done task'));
 
-    // ── Table renders as pipe-separated rows. ──
-    expect(plain, contains('Col A | Col B'));
-    expect(plain, contains('a1 | b1'));
-    expect(plain, contains('a2 | b2'));
+    // ── Table renders as an aligned, boxed monospace grid. ──
+    expect(plain, contains('| Col A'));
+    expect(plain, contains('a1'));
+    expect(plain, contains('b1'));
+    expect(plain, contains('a2'));
+    expect(plain, contains('b2'));
+    expect(plain, contains('+-')); // header rule
 
     // ── Blockquote gets a gutter. ──
     expect(plain, contains('│ a quoted line'));

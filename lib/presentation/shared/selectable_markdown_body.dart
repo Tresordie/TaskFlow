@@ -217,9 +217,10 @@ class SelectableMarkdownBody extends StatelessWidget {
     return out;
   }
 
-  /// Renders a table as monospace rows of `cell | cell` with a rule under the
-  /// header row. Not a full grid like the Preview's MarkdownBody, but keeps
-  /// every cell's text intact and each row on its own line.
+  /// Renders a table as an aligned monospace grid: every column is padded
+  /// to the widest cell so the rows line up visually (CJK characters count
+  /// double-width), with a boxed header row. Keeps every cell's text intact
+  /// and each row on its own line while still fitting a single TextSpan tree.
   List<InlineSpan> _tableSpans(
     md.Element el,
     TextStyle? style,
@@ -227,6 +228,7 @@ class SelectableMarkdownBody extends StatelessWidget {
   ) {
     final s = styleSheet?.code ??
         (style ?? const TextStyle()).copyWith(fontFamily: 'monospace');
+    final headStyle = s.copyWith(fontWeight: FontWeight.w700);
     final rows = <md.Element>[];
     void collect(md.Element e) {
       for (final c in e.children ?? <md.Node>[]) {
@@ -253,15 +255,53 @@ class SelectableMarkdownBody extends StatelessWidget {
       return texts;
     }
 
+    final rowTexts = rows.map(cellTexts).toList();
+    if (rowTexts.isEmpty) return const [];
+
+    // Column widths in display units (CJK ≈ 2 columns).
+    int displayWidth(String t) {
+      var w = 0;
+      for (final r in t.runes) {
+        w += (r >= 0x1100 &&
+                (r <= 0x115F ||
+                    (r >= 0x2E80 && r <= 0xA4CF) ||
+                    (r >= 0xAC00 && r <= 0xD7A3) ||
+                    (r >= 0xF900 && r <= 0xFAFF) ||
+                    (r >= 0xFE30 && r <= 0xFE4F) ||
+                    (r >= 0xFF00 && r <= 0xFF60) ||
+                    (r >= 0xFFE0 && r <= 0xFFE6)))
+            ? 2
+            : 1;
+      }
+      return w;
+    }
+
+    String pad(String t, int width) =>
+        t + ' ' * (width - displayWidth(t)).clamp(0, 60);
+
+    final colCount =
+        rowTexts.map((r) => r.length).reduce((a, b) => a > b ? a : b);
+    final widths = List<int>.generate(
+      colCount,
+      (c) => rowTexts
+          .map((r) => c < r.length ? displayWidth(r[c]) : 0)
+          .reduce((a, b) => a > b ? a : b),
+    );
+
+    String fmtRow(List<String> cells) =>
+        '| ${List.generate(colCount, (c) => pad(c < cells.length ? cells[c] : '', widths[c])).join(' | ')} |';
+    final rule =
+        '+-${widths.map((w) => '-' * w).join('-+-')}-+';
+
     final out = <InlineSpan>[];
-    for (var r = 0; r < rows.length; r++) {
-      final texts = cellTexts(rows[r]);
+    for (var r = 0; r < rowTexts.length; r++) {
       if (r > 0) out.add(TextSpan(text: '\n', style: s));
-      out.add(TextSpan(text: texts.join(' | '), style: s));
-      if (r == 0 && rows.length > 1) {
-        final rule = texts
-            .map((t) => '─' * (t.length < 3 ? 3 : t.length))
-            .join('─┼─');
+      final isHeader = r == 0 && rowTexts.length > 1;
+      out.add(TextSpan(
+        text: fmtRow(rowTexts[r]),
+        style: isHeader ? headStyle : s,
+      ));
+      if (isHeader) {
         out.add(TextSpan(text: '\n$rule', style: s));
       }
     }
