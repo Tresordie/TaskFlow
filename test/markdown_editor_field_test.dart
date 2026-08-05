@@ -6,8 +6,10 @@ import 'package:taskflow/presentation/shared/markdown_editor_field.dart';
 
 /// Verifies the Write / Preview Markdown editor introduced for the
 /// "input-as-preview" requirement: the user types raw Markdown in Write mode
-/// and switches to Preview mode to see it rendered (via [MarkdownBody]),
-/// with the source text preserved across toggles.
+/// and switches to Preview mode to see it rendered. Since v1.4.77 the
+/// preview renders through SelectableMarkdownBody — ONE whole-document
+/// SelectableText (multi-line drag-select, Select all, right-click
+/// Copy / Copy as Markdown) — with the source text preserved across toggles.
 void main() {
   Future<void> pumpEditor(WidgetTester tester, String text) async {
     final controller = TextEditingController(text: text);
@@ -37,12 +39,21 @@ void main() {
     await tester.tap(find.text('Preview'));
     await tester.pumpAndSettle();
 
-    // TextField is replaced by a rendered Markdown body.
+    // TextField is replaced by ONE whole-document SelectableText
+    // (SelectableMarkdownBody contract).
     expect(find.byType(TextField), findsNothing);
-    expect(find.byType(MarkdownBody), findsOneWidget);
-    // The raw Markdown source is NOT shown literally.
-    expect(find.text('# Title'), findsNothing);
-    expect(find.text('**bold** text'), findsNothing);
+    expect(find.byType(MarkdownBody), findsNothing);
+    final stFinder = find.byType(SelectableText);
+    expect(stFinder, findsOneWidget);
+
+    // The parsed content is present, but the raw Markdown source is NOT
+    // shown literally (no '# ' prefix, no '**' markers).
+    final st = tester.widget<SelectableText>(stFinder);
+    final plain = st.textSpan?.toPlainText() ?? st.data ?? '';
+    expect(plain, contains('Title'));
+    expect(plain, contains('bold'));
+    expect(plain, isNot(contains('**')));
+    expect(plain, isNot(contains('# ')));
   });
 
   testWidgets('empty preview shows a placeholder, not a blank box',

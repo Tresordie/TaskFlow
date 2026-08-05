@@ -187,6 +187,58 @@ class TaskRepository {
     await isar.writeTxn(() => isar.tasks.delete(id));
   }
 
+  /// Converts [draggedId] into a sub-step of [targetId] (drag-and-drop on
+  /// the board), merging the dragged task's Execution Log NOTE entries —
+  /// with their attachments and original timestamps — into the target's
+  /// log BEFORE deleting it, so no note is ever lost by the conversion.
+  /// Returns the number of merged note entries (0 if nothing happened).
+  Future<int> convertTaskToSubStep(int draggedId, int targetId) async {
+    if (draggedId == targetId) return 0;
+    final isar = await AppDatabase.instance;
+    final dragged = await isar.tasks.get(draggedId);
+    final target = await isar.tasks.get(targetId);
+    if (dragged == null || target == null) return 0;
+
+    // Sub-step append mirrors addSubStep(): normalize depths first, then
+    // add with a fresh uid and record createdAt at the Task level
+    // (SubStep's schema is frozen — SCHEMA FREEZE in task.dart).
+    normalizeSubStepDepths(target.subSteps);
+    final newUid = _uuid.v4();
+    target.subSteps = [
+      ...target.subSteps,
+      SubStep()
+        ..uid = newUid
+        ..title = dragged.title
+        ..completed = false
+        ..depth = 0,
+    ];
+    target.subStepDates = [
+      ...target.subStepDates,
+      SubStepDates()
+        ..uid = newUid
+        ..createdAt = DateTime.now(),
+    ];
+
+    // Merge NOTE entries only (user-requested scope): keep original uid /
+    // timestamp / attachments, rebuild as a growable list (Isar hands back
+    // fixed-length lists), then sort chronologically.
+    final mergedNotes = [
+      for (final e in dragged.executionLog)
+        if (e.type == EntryType.note) e,
+    ];
+    target.executionLog = [
+      ...target.executionLog,
+      ...mergedNotes,
+    ]..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    _touch(target);
+    await isar.writeTxn(() async {
+      await isar.tasks.put(target);
+      await isar.tasks.delete(draggedId);
+    });
+    return mergedNotes.length;
+  }
+
   Future<void> updateTaskStatus(int id, TaskStatus status) async {
     final isar = await AppDatabase.instance;
     final task = await isar.tasks.get(id);

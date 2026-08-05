@@ -301,14 +301,21 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     );
   }
 
-  void _convertToSubStep(Task dragged) {
+  void _convertToSubStep(Task dragged) async {
     final target = widget.task;
     final notifier = ref.read(taskListProvider.notifier);
-    notifier.addSubStep(target.id, dragged.title);
-    notifier.deleteTask(dragged.id);
+    // v1.4.78: atomic conversion — the dragged task's Execution Log notes
+    // are merged into the target before the task is deleted.
+    final mergedNotes =
+        await notifier.convertTaskToSubStep(dragged.id, target.id);
+    if (!mounted) return;
+    final suffix = mergedNotes > 0
+        ? ' ($mergedNotes note${mergedNotes == 1 ? '' : 's'} merged)'
+        : '';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('"${dragged.title}" → sub-step of "${target.title}"'),
+        content:
+            Text('"${dragged.title}" → sub-step of "${target.title}"$suffix'),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
       ),
