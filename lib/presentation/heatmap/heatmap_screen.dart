@@ -52,7 +52,20 @@ class HeatmapScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Text('Activity', style: theme.textTheme.headlineLarge),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Activity',
+                            style: theme.textTheme.headlineLarge),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Contribution heatmap · task overview',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurface
+                                  .withOpacity(0.55)),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),

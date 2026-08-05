@@ -147,7 +147,13 @@ class SelectableMarkdownBody extends StatelessWidget {
       case 'table':
         return _tableSpans(el, style, context);
       case 'hr':
-        return [TextSpan(text: '──────────', style: style)];
+        return [
+          TextSpan(
+            text: '─' * 48,
+            style: (style ?? const TextStyle())
+                .copyWith(color: Colors.grey.withOpacity(0.5)),
+          )
+        ];
       default:
         return _inlineSpans(el, style, context);
     }

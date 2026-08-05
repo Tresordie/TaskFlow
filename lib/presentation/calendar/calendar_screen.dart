@@ -178,9 +178,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final firstWeekday = firstDay.weekday; // 1=Mon, 7=Sun
     final daysInMonth = lastDay.day;
 
-    // Count tasks per day (created) and due-date tasks per day.
+    // Count created tasks per day and collect DUE tasks per day (Apple-style
+    // inline pills show the actual task titles inside the date cells).
     final createdCounts = <int, int>{};
-    final dueCounts = <int, int>{};
+    final dueByDay = <int, List<Task>>{};
     for (final task in tasks) {
       if (task.createdAt.year == year && task.createdAt.month == month) {
         final day = task.createdAt.day;
@@ -188,8 +189,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       }
       final due = task.dueDate;
       if (due != null && due.year == year && due.month == month) {
-        final day = due.day;
-        dueCounts[day] = (dueCounts[day] ?? 0) + 1;
+        dueByDay.putIfAbsent(due.day, () => []).add(task);
       }
     }
 
@@ -242,7 +242,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
-              childAspectRatio: 1.2,
+              childAspectRatio: 1.0,
             ),
             itemCount: (firstWeekday - 1) + daysInMonth,
             itemBuilder: (context, index) {
@@ -256,8 +256,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   !nav.rangeMode && _isSameDay(date, nav.selectedDate);
               final inRange = nav.rangeMode && _isInRange(date, nav);
               final createdCount = createdCounts[day] ?? 0;
-              final dueCount = dueCounts[day] ?? 0;
-              final hasDue = dueCount > 0;
+              final dueTasks = dueByDay[day] ?? const <Task>[];
 
               return GestureDetector(
                 onTap: () =>
@@ -265,6 +264,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   margin: const EdgeInsets.all(3),
+                  padding: const EdgeInsets.fromLTRB(6, 5, 6, 5),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? theme.colorScheme.primary
@@ -272,67 +272,77 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             ? theme.colorScheme.primary.withOpacity(0.15)
                             : isToday
                                 ? theme.colorScheme.primary.withOpacity(0.1)
-                                : Colors.transparent,
+                                : theme.colorScheme.surface,
                     borderRadius: BorderRadius.circular(10),
                     border: isToday && !isSelected
                         ? Border.all(
                             color: theme.colorScheme.primary.withOpacity(0.4))
-                        : null,
+                        : Border.all(
+                            color:
+                                theme.colorScheme.outline.withOpacity(0.12)),
                   ),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '$day',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: isToday || isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w400,
-                          color: isSelected
-                              ? Colors.white
-                              : theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      if (createdCount > 0 || hasDue) ...[
-                        const SizedBox(height: 2),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Created-date dots (primary color)
-                            if (createdCount > 0)
-                              ...List.generate(
-                                createdCount > 2 ? 2 : createdCount,
-                                (_) => Container(
-                                  width: 4,
-                                  height: 4,
-                                  margin:
-                                      const EdgeInsets.symmetric(horizontal: 1),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? Colors.white.withOpacity(0.8)
-                                        : theme.colorScheme.primary,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                            // Due-date indicator (warning color)
-                            if (hasDue)
-                              Container(
+                      // Day number + created-task dots
+                      Row(
+                        children: [
+                          Text(
+                            '$day',
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: isToday || isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: isSelected
+                                  ? Colors.white
+                                  : isToday
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurface
+                                          .withOpacity(0.8),
+                            ),
+                          ),
+                          if (createdCount > 0) ...[
+                            const SizedBox(width: 4),
+                            ...List.generate(
+                              createdCount > 2 ? 2 : createdCount,
+                              (_) => Container(
                                 width: 4,
                                 height: 4,
                                 margin:
                                     const EdgeInsets.symmetric(horizontal: 1),
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? Colors.white
-                                      : AppColors.warning,
+                                      ? Colors.white.withOpacity(0.8)
+                                      : theme.colorScheme.primary
+                                          .withOpacity(0.7),
                                   shape: BoxShape.circle,
                                 ),
                               ),
+                            ),
                           ],
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      // Apple-style due-task pills (condensed titles)
+                      ...dueTasks.take(3).map(
+                            (t) => Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: _DuePill(task: t, onSelected: isSelected),
+                            ),
+                          ),
+                      if (dueTasks.length > 3)
+                        Text(
+                          '+${dueTasks.length - 3} more',
+                          style: TextStyle(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white.withOpacity(0.85)
+                                : theme.colorScheme.onSurface
+                                    .withOpacity(0.45),
+                          ),
                         ),
-                      ],
                     ],
                   ),
                 ),
@@ -523,6 +533,63 @@ class _DayTaskItem extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Apple-Calendar-style condensed due-task pill shown inside a date cell:
+/// a tiny status dot + the truncated task title on one slim row.
+class _DuePill extends StatelessWidget {
+  final Task task;
+  final bool onSelected;
+
+  const _DuePill({required this.task, required this.onSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isCompleted = task.status == TaskStatus.completed;
+    final dotColor = isCompleted ? AppColors.success : AppColors.warning;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+      decoration: BoxDecoration(
+        color: onSelected
+            ? Colors.white.withOpacity(0.22)
+            : dotColor.withOpacity(0.13),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 3.5,
+            height: 3.5,
+            decoration: BoxDecoration(
+              color: onSelected ? Colors.white : dotColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 3),
+          Expanded(
+            child: Text(
+              task.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 8.5,
+                height: 1.2,
+                fontWeight: FontWeight.w500,
+                decoration:
+                    isCompleted && !onSelected ? TextDecoration.lineThrough : null,
+                color: onSelected
+                    ? Colors.white
+                    : theme.colorScheme.onSurface.withOpacity(0.75),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
