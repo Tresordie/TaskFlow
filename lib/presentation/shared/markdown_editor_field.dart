@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
-import 'app_markdown_body.dart';
 import 'markdown_input.dart';
+import 'selectable_markdown_body.dart';
 
 /// A Markdown editor with instant Write / Preview switching.
 ///
 /// In **Write** mode a plain multiline [TextField] is shown (raw Markdown
 /// source); in **Preview** mode the same content is rendered through
-/// [AppMarkdownBody] so the user sees the formatted result immediately —
-/// "input-as-preview" without leaving the field.
+/// [SelectableMarkdownBody] (whole-document selectable: multi-line drag,
+/// Select all, right-click Copy / Copy as Markdown).
 ///
 /// The toggle lives in a compact segmented control at the top-right of the
 /// field border, keeping the whole widget drop-in replaceable with a bare
@@ -203,14 +203,13 @@ class _MarkdownEditorFieldState extends State<MarkdownEditorField> {
             primary: false,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              // v1.4.74: block-level Markdown rendering (tables, headings,
-              // lists, code) — the Preview is a true WYSIWYG of what gets
-              // saved. selectable: true gives per-block drag-select +
-              // right-click Copy.
-              child: AppMarkdownBody(
+              // v1.4.77: the Preview renders as ONE whole-document
+              // SelectableText — drag-select across ALL lines, Select all,
+              // and a right-click menu with Copy / Select all /
+              // "Copy as Markdown" (same contract as saved records).
+              child: SelectableMarkdownBody(
                 data: text,
                 hardenLineBreaks: widget.hardenLineBreaks,
-                selectable: true,
                 styleSheet: widget.styleSheet,
               ),
             ),
