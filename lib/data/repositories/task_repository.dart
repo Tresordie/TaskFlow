@@ -188,16 +188,17 @@ class TaskRepository {
   }
 
   /// Converts [draggedId] into a sub-step of [targetId] (drag-and-drop on
-  /// the board), merging the dragged task's Execution Log NOTE entries —
-  /// with their attachments and original timestamps — into the target's
-  /// log BEFORE deleting it, so no note is ever lost by the conversion.
-  /// Returns the number of merged note entries (0 if nothing happened).
-  Future<int> convertTaskToSubStep(int draggedId, int targetId) async {
-    if (draggedId == targetId) return 0;
+  /// the board), merging the dragged task's sub-step tree AND its Execution
+  /// Log NOTE entries — with attachments, due dates and original timestamps
+  /// — into the target BEFORE deleting it, so nothing is ever lost by the
+  /// conversion. Returns how many notes and sub-steps were merged.
+  Future<({int notes, int subSteps})> convertTaskToSubStep(
+      int draggedId, int targetId) async {
+    if (draggedId == targetId) return (notes: 0, subSteps: 0);
     final isar = await AppDatabase.instance;
     final dragged = await isar.tasks.get(draggedId);
     final target = await isar.tasks.get(targetId);
-    if (dragged == null || target == null) return 0;
+    if (dragged == null || target == null) return (notes: 0, subSteps: 0);
 
     // Sub-step append mirrors addSubStep(): normalize depths first, then
     // add with a fresh uid and record createdAt at the Task level
@@ -219,6 +220,70 @@ class TaskRepository {
         ..createdAt = DateTime.now(),
     ];
 
+    // v1.4.79: migrate the dragged task's sub-step tree under the new
+    // sub-step. uids are preserved (date metadata keys off them); every
+    // level sinks one deeper, and nodes that would overflow maxDepth are
+    // re-parented to their nearest ancestor sitting at maxDepth-1 so the
+    // tree stays valid without dropping any sub-step.
+    final origParent = <String, String?>{
+      for (final s in dragged.subSteps) s.uid: s.parentUid,
+    };
+    final newDepthByUid = <String, int>{newUid: 0};
+    final migratedSteps = <SubStep>[];
+    final pending = List<SubStep>.from(dragged.subSteps);
+    var guard = 0;
+    while (pending.isNotEmpty && guard++ < 10000) {
+      final s = pending.removeAt(0);
+      String newParentUid;
+      int newDepth;
+      if (s.parentUid == null) {
+        newParentUid = newUid;
+        newDepth = 1;
+      } else {
+        final parentNewDepth = newDepthByUid[s.parentUid];
+        if (parentNewDepth == null) {
+          pending.add(s); // parent not migrated yet — retry later
+          continue;
+        }
+        if (parentNewDepth + 1 <= SubStep.maxDepth) {
+          newParentUid = s.parentUid!;
+          newDepth = parentNewDepth + 1;
+        } else {
+          // Overflow: climb the original ancestor chain to the nearest one
+          // whose NEW depth leaves room (maxDepth - 1).
+          var ancestor = s.parentUid;
+          while (ancestor != null &&
+              (newDepthByUid[ancestor] ?? 0) > SubStep.maxDepth - 1) {
+            ancestor = origParent[ancestor];
+          }
+          newParentUid = ancestor ?? newUid;
+          newDepth = (newDepthByUid[newParentUid] ?? 0) + 1;
+        }
+      }
+      newDepthByUid[s.uid] = newDepth;
+      migratedSteps.add(SubStep()
+        ..uid = s.uid
+        ..title = s.title
+        ..completed = s.completed
+        ..completedAt = s.completedAt
+        ..parentUid = newParentUid
+        ..depth = newDepth);
+    }
+    target.subSteps = [...target.subSteps, ...migratedSteps];
+
+    // Carry over the date metadata (createdAt / dueDate) of every migrated
+    // sub-step. Fixed-length lists: rebuild via spread.
+    final migratedUids = {for (final s in migratedSteps) s.uid};
+    target.subStepDates = [
+      ...target.subStepDates,
+      for (final d in dragged.subStepDates)
+        if (migratedUids.contains(d.uid))
+          SubStepDates()
+            ..uid = d.uid
+            ..createdAt = d.createdAt
+            ..dueDate = d.dueDate,
+    ];
+
     // Merge NOTE entries only (user-requested scope): keep original uid /
     // timestamp / attachments, rebuild as a growable list (Isar hands back
     // fixed-length lists), then sort chronologically.
@@ -236,7 +301,7 @@ class TaskRepository {
       await isar.tasks.put(target);
       await isar.tasks.delete(draggedId);
     });
-    return mergedNotes.length;
+    return (notes: mergedNotes.length, subSteps: migratedSteps.length);
   }
 
   Future<void> updateTaskStatus(int id, TaskStatus status) async {

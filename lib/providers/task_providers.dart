@@ -271,9 +271,10 @@ class TaskListNotifier extends StateNotifier<AsyncValue<List<Task>>> {
   }
 
   /// Drag-and-drop conversion: [draggedId] becomes a sub-step of
-  /// [targetId] and its Execution Log notes are merged into the target.
-  /// Returns how many notes were merged (for the UI feedback).
-  Future<int> convertTaskToSubStep(int draggedId, int targetId) async {
+  /// [targetId]; its sub-step tree and Execution Log notes are merged into
+  /// the target. Returns how many notes / sub-steps were merged.
+  Future<({int notes, int subSteps})> convertTaskToSubStep(
+      int draggedId, int targetId) async {
     final merged = await _repo.convertTaskToSubStep(draggedId, targetId);
     await loadTasks();
     return merged;

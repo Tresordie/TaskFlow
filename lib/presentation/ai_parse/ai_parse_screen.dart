@@ -10,7 +10,6 @@ import '../../data/services/ai_service.dart';
 import '../../providers/ai_provider.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
-import '../shared/app_markdown_body.dart';
 import '../shared/markdown_input.dart';
 import '../shared/selectable_markdown_body.dart';
 
@@ -242,13 +241,13 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                           )
                         : SingleChildScrollView(
                             primary: false,
-                            // v1.4.74: block-level Markdown rendering for the
-                            // input preview (tables / headings / lists).
-                            child: AppMarkdownBody(
+                            // v1.4.79: whole-document SelectableText preview —
+                            // multi-line drag-select, Select all, right-click
+                            // Copy / Select all / Copy as Markdown.
+                            child: SelectableMarkdownBody(
                               data: sanitizeHtmlInMarkdown(
                                   _notesController.text),
                               hardenLineBreaks: true,
-                              selectable: true,
                               styleSheet:
                                   MarkdownStyleSheet.fromTheme(theme).copyWith(
                                 p: const TextStyle(fontSize: 13, height: 1.5),
