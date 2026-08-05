@@ -182,18 +182,69 @@ class _TaskDetailContent extends ConsumerWidget {
 
           const Divider(height: 32),
 
-          // Sub-steps section
-          if (task.subSteps.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: _SubStepsSection(task: task),
-            ),
-            const SizedBox(height: 16),
-          ],
-
-          // Execution Log section (main area)
+          // Sub-steps + Execution Log.
+          //
+          // Wide windows (≥1100px, typically maximized): side-by-side —
+          // the sub-task checklist in a fixed-width left pane and the
+          // Execution Log filling the rest, so BOTH stay visible no matter
+          // how many sub-steps exist.
+          //
+          // Narrow windows: stacked vertically, with the sub-step list
+          // height-capped and internally scrollable so it can never push
+          // the Execution Log off-screen.
           Expanded(
-            child: ExecutionLogWidget(task: task),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth >= 1100 &&
+                    task.subSteps.isNotEmpty) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        width: 380,
+                        child: Scrollbar(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(24, 0, 16, 16),
+                            child: _SubStepsSection(task: task),
+                          ),
+                        ),
+                      ),
+                      VerticalDivider(
+                        width: 1,
+                        thickness: 1,
+                        color:
+                            Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                      ),
+                      Expanded(
+                        child: ExecutionLogWidget(task: task),
+                      ),
+                    ],
+                  );
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (task.subSteps.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 300),
+                          child: Scrollbar(
+                            child: SingleChildScrollView(
+                              child: _SubStepsSection(task: task),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    Expanded(
+                      child: ExecutionLogWidget(task: task),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ],
       ),

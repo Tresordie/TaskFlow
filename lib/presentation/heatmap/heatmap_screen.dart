@@ -199,8 +199,40 @@ class HeatmapScreen extends ConsumerWidget {
         child: Text('No tasks yet', style: theme.textTheme.bodyMedium),
       );
     }
-    return Column(
-      children: sorted.map((task) => _ActivityTaskItem(task: task)).toList(),
+    // Wide windows (default-large / maximized): two balanced columns so the
+    // list doesn't stretch into one super-wide, hard-to-scan rail.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 900 && sorted.length > 3) {
+          final mid = (sorted.length / 2).ceil();
+          final left = sorted.sublist(0, mid);
+          final right = sorted.sublist(mid);
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    for (final t in left) _ActivityTaskItem(task: t)
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  children: [
+                    for (final t in right) _ActivityTaskItem(task: t)
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+        return Column(
+          children:
+              sorted.map((task) => _ActivityTaskItem(task: task)).toList(),
+        );
+      },
     );
   }
 }
