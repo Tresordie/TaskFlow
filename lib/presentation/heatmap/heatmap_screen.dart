@@ -100,7 +100,7 @@ class HeatmapScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${DateTime.now().year} Task Activity',
+                          'Task Activity',
                           style: theme.textTheme.titleLarge,
                         ),
                         const SizedBox(height: 10),
@@ -406,113 +406,112 @@ class _HeatmapGrid extends StatelessWidget {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     final now = DateTime.now();
-    final year = now.year;
+    final currentYear = now.year;
 
-    // Build task count map for the year
-    final countMap = <String, int>{};
+    // v1.4.76: instead of stretching gaps on wide windows, the heatmap
+    // SHOWS MORE YEARS side by side (up to 3) — more squares, same size.
+    // Count maps for the current year + the two previous ones.
+    final countMaps = <int, Map<String, int>>{};
     for (final task in tasks) {
-      if (task.createdAt.year == year) {
+      final y = task.createdAt.year;
+      if (y >= currentYear - 2 && y <= currentYear) {
         final key = '${task.createdAt.month}-${task.createdAt.day}';
-        countMap[key] = (countMap[key] ?? 0) + 1;
+        final m = countMaps.putIfAbsent(y, () => <String, int>{});
+        m[key] = (m[key] ?? 0) + 1;
+      }
+    }
+    var maxCount = 1;
+    for (final m in countMaps.values) {
+      for (final v in m.values) {
+        if (v > maxCount) maxCount = v;
       }
     }
 
-    final maxCount = countMap.values.isEmpty
-        ? 1
-        : countMap.values.reduce((a, b) => a > b ? a : b);
-
-    // Calculate weeks (columns) for the year
-    final jan1 = DateTime(year, 1, 1);
-    final dec31 = DateTime(year, 12, 31);
-    final startOffset = jan1.weekday - 1; // 0=Mon
-    final totalDays = dec31.difference(jan1).inDays + 1;
-    final totalWeeks = ((startOffset + totalDays) / 7).ceil();
+    int weeksOfYear(int year) {
+      final jan1 = DateTime(year, 1, 1);
+      final dec31 = DateTime(year, 12, 31);
+      final startOffset = jan1.weekday - 1;
+      final totalDays = dec31.difference(jan1).inDays + 1;
+      return ((startOffset + totalDays) / 7).ceil();
+    }
 
     Widget dayLabel(String d) => Center(
           child: Text(d,
               style: theme.textTheme.labelSmall?.copyWith(fontSize: 9)),
         );
 
-    /// Builds the whole grid. [pitch] is the cell size (capped so maximized
-    /// windows don't inflate cells into giants); [slot] is the week-column
-    /// width — when the window is wider than 53×pitch the spare space is
-    /// distributed between the columns, so the heatmap still spans the full
-    /// card width with comfortably-sized squares.
-    Widget buildGrid(double pitch, double slot) {
+    /// One year's grid: year caption + month labels + week columns.
+    Widget buildYear(int year, double pitch) {
       final cell = pitch - 2;
       final radius = (cell * 0.25).clamp(2.0, 5.0);
-      return Row(
+      final jan1 = DateTime(year, 1, 1);
+      final startOffset = jan1.weekday - 1;
+      final totalDays = DateTime(year, 12, 31).difference(jan1).inDays + 1;
+      final totalWeeks = weeksOfYear(year);
+      final countMap = countMaps[year] ?? const <String, int>{};
+
+      return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Weekday labels
-          Column(
-            children: [
-              const SizedBox(height: 22), // space for month labels row
-              SizedBox(height: pitch, child: dayLabel('Mon')),
-              SizedBox(height: pitch),
-              SizedBox(height: pitch, child: dayLabel('Wed')),
-              SizedBox(height: pitch),
-              SizedBox(height: pitch, child: dayLabel('Fri')),
-            ],
-          ),
-          const SizedBox(width: 6),
-          // Grid
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Month labels row
-              SizedBox(
-                height: 18,
-                child: _MonthLabels(
-                    year: year, totalWeeks: totalWeeks, pitch: slot),
+          // Year caption
+          SizedBox(
+            height: 14,
+            child: Text(
+              '$year',
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface.withOpacity(0.55),
               ),
-              const SizedBox(height: 4),
-              // Weeks
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: List.generate(totalWeeks, (weekIndex) {
-                  return SizedBox(
-                    width: slot,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: List.generate(7, (dayIndex) {
-                      final dayOfYear =
-                          weekIndex * 7 + dayIndex - startOffset + 1;
-                      if (dayOfYear < 1 || dayOfYear > totalDays) {
-                        return Container(
-                          width: cell,
-                          height: cell,
-                          margin: const EdgeInsets.all(1),
-                        );
-                      }
-                      final date = jan1.add(Duration(days: dayOfYear - 1));
-                      final key = '${date.month}-${date.day}';
-                      final count = countMap[key] ?? 0;
-                      final intensity = count == 0
-                          ? 0.0
-                          : (count / maxCount).clamp(0.15, 1.0);
+            ),
+          ),
+          // Month labels row
+          SizedBox(
+            height: 18,
+            child: _MonthLabels(
+                year: year, totalWeeks: totalWeeks, pitch: pitch),
+          ),
+          const SizedBox(height: 4),
+          // Weeks
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: List.generate(totalWeeks, (weekIndex) {
+              return Column(
+                children: List.generate(7, (dayIndex) {
+                  final dayOfYear =
+                      weekIndex * 7 + dayIndex - startOffset + 1;
+                  if (dayOfYear < 1 || dayOfYear > totalDays) {
+                    return Container(
+                      width: cell,
+                      height: cell,
+                      margin: const EdgeInsets.all(1),
+                    );
+                  }
+                  final date = jan1.add(Duration(days: dayOfYear - 1));
+                  final key = '${date.month}-${date.day}';
+                  final count = countMap[key] ?? 0;
+                  final intensity = count == 0
+                      ? 0.0
+                      : (count / maxCount).clamp(0.15, 1.0);
 
-                      return Tooltip(
-                        message:
-                            '${DateFormat('MMM d').format(date)}: $count task${count == 1 ? '' : 's'}',
-                        child: Container(
-                          width: cell,
-                          height: cell,
-                          margin: const EdgeInsets.all(1),
-                          decoration: BoxDecoration(
-                            color: count == 0
-                                ? theme.colorScheme.outline.withOpacity(0.12)
-                                : primary.withOpacity(intensity),
-                            borderRadius: BorderRadius.circular(radius),
-                          ),
-                        ),
-                      );
-                    }),
+                  return Tooltip(
+                    message:
+                        '${DateFormat('MMM d, yyyy').format(date)}: $count task${count == 1 ? '' : 's'}',
+                    child: Container(
+                      width: cell,
+                      height: cell,
+                      margin: const EdgeInsets.all(1),
+                      decoration: BoxDecoration(
+                        color: count == 0
+                            ? theme.colorScheme.outline.withOpacity(0.12)
+                            : primary.withOpacity(intensity),
+                        borderRadius: BorderRadius.circular(radius),
+                      ),
                     ),
                   );
                 }),
-              ),
-            ],
+              );
+            }),
           ),
         ],
       );
@@ -522,17 +521,57 @@ class _HeatmapGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final avail = constraints.maxWidth - labelColumnWidth;
-        final fitPitch = avail / totalWeeks;
-        // v1.4.75: cells stay comfortable (max 26px) while the spare width
-        // is spread across the week columns — the heatmap spans the full
-        // card width without right-side whitespace OR giant squares.
-        if (fitPitch >= 12) {
-          final pitch = fitPitch.clamp(12.0, 26.0);
-          return buildGrid(pitch, fitPitch);
+        // How many years fit at a comfortable ≤20px pitch? Wider windows
+        // get more years (more squares), never wider gaps or bigger cells.
+        var numYears = (avail / (53 * 20)).floor().clamp(1, 3);
+        var firstYear = currentYear - numYears + 1;
+        var sumWeeks = 0;
+        for (var y = firstYear; y <= currentYear; y++) {
+          sumWeeks += weeksOfYear(y);
+        }
+        var pitch = (avail / sumWeeks).clamp(12.0, 20.0);
+        // If clamping to the 12px floor overflows, drop the oldest year.
+        while (pitch <= 12.0 &&
+            avail / sumWeeks < 12 &&
+            numYears > 1) {
+          numYears--;
+          firstYear = currentYear - numYears + 1;
+          sumWeeks = 0;
+          for (var y = firstYear; y <= currentYear; y++) {
+            sumWeeks += weeksOfYear(y);
+          }
+          pitch = (avail / sumWeeks).clamp(12.0, 20.0);
+        }
+
+        Widget dayLabels() => Column(
+              children: [
+                const SizedBox(height: 36), // year(14) + months(18) + gap(4)
+                SizedBox(height: pitch, child: dayLabel('Mon')),
+                SizedBox(height: pitch),
+                SizedBox(height: pitch, child: dayLabel('Wed')),
+                SizedBox(height: pitch),
+                SizedBox(height: pitch, child: dayLabel('Fri')),
+              ],
+            );
+
+        Widget row(double p) => Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                dayLabels(),
+                const SizedBox(width: 6),
+                for (var y = firstYear; y <= currentYear; y++) ...[
+                  buildYear(y, p),
+                  if (y < currentYear) const SizedBox(width: 14),
+                ],
+              ],
+            );
+
+        if (avail / sumWeeks >= 12) {
+          return row(pitch);
         }
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          child: buildGrid(12, 12),
+          child: row(12),
         );
       },
     );

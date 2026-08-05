@@ -155,8 +155,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 Expanded(
                   flex: 3,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                    child: Center(
+                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                    // v1.4.76: hug the TOP of the area (no vertical
+                    // centering) in both default and maximized windows.
+                    child: Align(
+                      alignment: Alignment.topCenter,
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(
                             maxWidth: 1560, maxHeight: 1000),
