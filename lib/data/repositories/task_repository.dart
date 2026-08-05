@@ -362,6 +362,11 @@ class TaskRepository {
       newTask.status = TaskStatus.completed;
       newTask.completedAt = step.completedAt ?? DateTime.now();
     }
+    // Preserve the sub-step's ORIGINAL creation time instead of "now".
+    final originalCreatedAt = rootDates?.createdAt;
+    if (originalCreatedAt != null) {
+      newTask.createdAt = originalCreatedAt;
+    }
     newTask.subSteps = migrated;
     newTask.subStepDates = migratedDates;
 
