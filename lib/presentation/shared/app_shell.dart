@@ -12,17 +12,19 @@ class AppShell extends StatelessWidget {
     final isWide = MediaQuery.of(context).size.width > 768;
     final theme = Theme.of(context);
 
-    // The single app-wide SelectionArea (v1.4.24, relocated in v1.4.25):
-    // makes every page's read-only text mouse drag-selectable + copyable
-    // (Ctrl+C / right-click). It MUST live here — inside the Navigator's
-    // Overlay — because SelectionArea builds a SelectableRegion, which
-    // requires an Overlay ancestor; installing it in MaterialApp.builder
-    // (above the Navigator) throws in debug and silently breaks selection
-    // in release. Do not add screen-local SelectionAreas below this: the
-    // nesting also breaks drag selection.
-    final content = SelectionArea(
-      child: child,
-    );
+    // v1.4.71: the app-wide SelectionArea was REMOVED. Flutter's
+    // SelectableRegion collapses the active selection on right-click
+    // (its _handleRightClickDown hit-tests the selection rects and
+    // clears the selection whenever the click misses them — which
+    // happens constantly, because the rects are glyph-tight while the
+    // visible highlight covers whole lines). It also hijacks nested
+    // SelectableText widgets and breaks THEIR native right-click Copy /
+    // Copy-as-Markdown menus. Instead, every content area that needs
+    // selection renders a SelectableText-based widget (SelectableMarkdownBody
+    // for whole-document select + right-click menu, MarkdownBody with
+    // selectable: true elsewhere) — verified to keep the selection on
+    // right-click.
+    final content = child;
 
     return Scaffold(
       body: Column(

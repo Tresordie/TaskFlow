@@ -331,50 +331,44 @@ class _WorkLogScreenState extends ConsumerState<WorkLogScreen> {
         // fills the remaining height and scrolls its list internally, so no
         // bare page background is left below short content.
         //
-        // v1.4.28: each column is its own selection scope. The disabled
-        // barrier hides both columns from the app-wide SelectionArea, and
-        // each column's own SelectionArea restores drag selection inside
-        // it. Without the barrier, one drag across the AI summary could
-        // extend the document-order selection range into the left column
-        // and highlight the New record / Work records text too.
+        // v1.4.71: the per-column SelectionArea wrappers (and the disabled
+        // barrier) were removed together with the app-wide SelectionArea —
+        // SelectableRegion collapses the selection on right-click and
+        // hijacks the SelectableText-based content widgets. All record /
+        // summary / preview areas now use SelectableText rendering directly
+        // (SelectableMarkdownBody), which keeps the selection on right-click
+        // and shows Copy / "Copy as Markdown".
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(28, 18, 28, 28),
-            child: SelectionContainer.disabled(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: SelectionArea(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildInputCard(theme),
-                          const SizedBox(height: 14),
-                          Expanded(
-                              child:
-                                  _buildRecordsCard(state, filtered, theme)),
-                        ],
-                      ),
-                    ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildInputCard(theme),
+                      const SizedBox(height: 14),
+                      Expanded(
+                          child: _buildRecordsCard(state, filtered, theme)),
+                    ],
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    flex: 2,
-                    child: SelectionArea(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildSummaryCard(state, notifier, filtered, theme),
-                          const SizedBox(height: 14),
-                          Expanded(child: _buildHistoryCard(state, theme)),
-                        ],
-                      ),
-                    ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildSummaryCard(state, notifier, filtered, theme),
+                      const SizedBox(height: 14),
+                      Expanded(child: _buildHistoryCard(state, theme)),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
