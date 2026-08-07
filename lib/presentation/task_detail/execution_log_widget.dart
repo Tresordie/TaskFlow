@@ -108,6 +108,8 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
                     final entry = entries[index];
                     return _LogEntryItem(
                       entry: entry,
+                      isLatest: index == 0,
+                      isLast: index == entries.length - 1,
                       onEdit: () => _editEntry(entry),
                       onDelete: () => _deleteEntry(entry),
                     );
@@ -522,11 +524,20 @@ class _PendingAttachmentChip extends StatelessWidget {
 
 class _LogEntryItem extends StatelessWidget {
   final ExecutionEntry entry;
+
+  /// Newest entry (top of the reversed list) — rendered with the large
+  /// emphasized marker, like the highlighted event in a delivery timeline.
+  final bool isLatest;
+
+  /// Oldest entry — no connector line below it.
+  final bool isLast;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _LogEntryItem({
     required this.entry,
+    required this.isLatest,
+    required this.isLast,
     required this.onEdit,
     required this.onDelete,
   });
@@ -534,35 +545,45 @@ class _LogEntryItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _colorForType(entry.type);
+    final theme = Theme.of(context);
+    final lineColor = theme.colorScheme.outline.withOpacity(0.25);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+    return IntrinsicHeight(
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Timeline dot + line
-          Column(
-            children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ],
+          // Timeline rail: marker + connector line down to the next event.
+          SizedBox(
+            width: 26,
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                _TimelineMarker(type: entry.type, emphasized: isLatest),
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      margin: const EdgeInsets.only(top: 3, bottom: -12),
+                      color: lineColor,
+                    ),
+                  ),
+              ],
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
 
           // Content
           Expanded(
             child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.05),
+                color: color.withOpacity(isLatest ? 0.08 : 0.05),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: color.withOpacity(0.2)),
+                border: Border.all(
+                  color: color.withOpacity(isLatest ? 0.45 : 0.2),
+                  width: isLatest ? 1.2 : 1,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -715,6 +736,80 @@ class _LogEntryItem extends StatelessWidget {
     }
   }
 
+}
+
+/// Timeline event marker. The newest entry gets the large emphasized
+/// circle with a white type icon (delivery-tracking style); older entries
+/// use small solid dots with a soft halo.
+class _TimelineMarker extends StatelessWidget {
+  final EntryType type;
+  final bool emphasized;
+
+  const _TimelineMarker({required this.type, required this.emphasized});
+
+  IconData get _icon {
+    switch (type) {
+      case EntryType.note:
+        return Icons.edit_note;
+      case EntryType.pass:
+        return Icons.check;
+      case EntryType.fail:
+        return Icons.priority_high;
+      case EntryType.blocked:
+        return Icons.block;
+    }
+  }
+
+  Color _colorFor(EntryType t) {
+    switch (t) {
+      case EntryType.note:
+        return AppColors.info;
+      case EntryType.pass:
+        return AppColors.success;
+      case EntryType.fail:
+        return AppColors.error;
+      case EntryType.blocked:
+        return AppColors.warning;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _colorFor(type);
+    if (emphasized) {
+      // Large filled circle with white icon + outer halo ring.
+      return Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: color.withOpacity(0.3), width: 3),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(_icon, size: 14, color: Colors.white),
+        ),
+      );
+    }
+    // Small solid dot with a faint halo.
+    return Container(
+      width: 26,
+      height: 26,
+      alignment: Alignment.center,
+      child: Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: color.withOpacity(0.25), width: 3),
+        ),
+      ),
+    );
+  }
 }
 
 /// Theme-adaptive Markdown styling for log entries (light & dark). Shared by
