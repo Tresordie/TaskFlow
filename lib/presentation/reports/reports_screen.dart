@@ -14,6 +14,7 @@ import '../../data/services/report_service.dart';
 import '../../providers/ai_provider.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
+import '../../providers/typography_provider.dart';
 import '../shared/app_markdown_body.dart';
 import '../shared/markdown_input.dart';
 
@@ -1292,20 +1293,24 @@ class _ReportPreviewState extends State<_ReportPreview> {
   }
 
   /// Shared style sheet for the rendered report (view mode + live preview).
+  /// v1.4.85: the user-configurable content font family / size applies.
   MarkdownStyleSheet _reportStyleSheet(ThemeData theme) =>
-      MarkdownStyleSheet.fromTheme(theme).copyWith(
-        p: theme.textTheme.bodyMedium?.copyWith(height: 1.55),
-        tableHead: theme.textTheme.bodyMedium
-            ?.copyWith(fontWeight: FontWeight.w700, fontSize: 12.5),
-        tableBody: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-        h1: theme.textTheme.titleLarge
-            ?.copyWith(fontSize: 17, fontWeight: FontWeight.w700),
-        h2: theme.textTheme.titleMedium
-            ?.copyWith(fontSize: 14.5, fontWeight: FontWeight.w700),
-        h3: theme.textTheme.titleSmall?.copyWith(fontSize: 13),
-        blockquote: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.55)),
-        code: const TextStyle(fontFamily: 'monospace', fontSize: 12.5),
+      applyContentTypography(
+        context,
+        MarkdownStyleSheet.fromTheme(theme).copyWith(
+          p: theme.textTheme.bodyMedium?.copyWith(height: 1.55),
+          tableHead: theme.textTheme.bodyMedium
+              ?.copyWith(fontWeight: FontWeight.w700, fontSize: 12.5),
+          tableBody: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
+          h1: theme.textTheme.titleLarge
+              ?.copyWith(fontSize: 17, fontWeight: FontWeight.w700),
+          h2: theme.textTheme.titleMedium
+              ?.copyWith(fontSize: 14.5, fontWeight: FontWeight.w700),
+          h3: theme.textTheme.titleSmall?.copyWith(fontSize: 13),
+          blockquote: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.55)),
+          code: const TextStyle(fontFamily: 'monospace', fontSize: 12.5),
+        ),
       );
 
   /// Edit mode — split view: Markdown source on the left, live rendered

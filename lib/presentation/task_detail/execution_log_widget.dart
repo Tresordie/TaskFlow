@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/markdown/html_sanitize.dart';
 import '../../core/theme/app_colors.dart';
@@ -11,6 +12,7 @@ import '../../core/utils/open_folder.dart';
 import '../../data/models/task.dart';
 import '../../data/services/attachment_service.dart';
 import '../../providers/task_providers.dart';
+import '../../providers/typography_provider.dart';
 import '../shared/selectable_markdown_body.dart';
 import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
@@ -877,7 +879,7 @@ MarkdownStyleSheet _markdownStyleSheet(BuildContext context) {
   final isDark = theme.brightness == Brightness.dark;
   final base = MarkdownStyleSheet.fromTheme(theme);
 
-  return base.copyWith(
+  final sheet = base.copyWith(
     p: theme.textTheme.bodyLarge?.copyWith(fontSize: 14, height: 1.55),
     pPadding: const EdgeInsets.only(bottom: 6),
     h1: theme.textTheme.titleLarge?.copyWith(fontSize: 18),
@@ -921,6 +923,8 @@ MarkdownStyleSheet _markdownStyleSheet(BuildContext context) {
     // workreport.html's ~1.6em list padding).
     listIndent: 26,
   );
+  // v1.4.85: user-configurable content font family / size.
+  return applyContentTypography(context, sheet);
 }
 
 /// Renders the attachments of a saved log entry: image thumbnails (tap to
@@ -974,31 +978,136 @@ class _ImageAttachment extends StatelessWidget {
   void _showFullImage(BuildContext context) {
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
-          child: Stack(
-            children: [
-              InteractiveViewer(
-                child: Image.file(
-                  File(AttachmentService.resolvePathSync(attachment.path)),
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Center(
-                    child: Icon(Icons.broken_image, size: 48),
+      builder: (ctx) => _ResizableImageDialog(
+        file: File(AttachmentService.resolvePathSync(attachment.path)),
+      ),
+    );
+  }
+}
+
+/// v1.4.85: full-size image preview whose frame the user can resize by
+/// dragging the bottom-right corner grip. The chosen size is persisted and
+/// restored on the next open. Pinch / scroll zoom inside the frame still
+/// works via InteractiveViewer.
+class _ResizableImageDialog extends StatefulWidget {
+  final File file;
+
+  const _ResizableImageDialog({required this.file});
+
+  @override
+  State<_ResizableImageDialog> createState() => _ResizableImageDialogState();
+}
+
+class _ResizableImageDialogState extends State<_ResizableImageDialog> {
+  static const _kPref = 'settings.imagePreviewSize';
+  static const _minW = 380.0;
+  static const _minH = 260.0;
+  double _w = 900;
+  double _h = 640;
+
+  @override
+  void initState() {
+    super.initState();
+    _restore();
+  }
+
+  Future<void> _restore() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final v = prefs.getString(_kPref);
+      if (v == null) return;
+      final parts = v.split('x');
+      final w = double.tryParse(parts[0]);
+      final h = parts.length > 1 ? double.tryParse(parts[1]) : null;
+      if (w != null && h != null && mounted) {
+        setState(() {
+          _w = w;
+          _h = h;
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _persist() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kPref, '${_w.round()}x${_h.round()}');
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screen = MediaQuery.of(context).size;
+    final maxW = screen.width - 80;
+    final maxH = screen.height - 120;
+    final w = _w.clamp(_minW, maxW);
+    final h = _h.clamp(_minH, maxH);
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: SizedBox(
+        width: w,
+        height: h,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: InteractiveViewer(
+                    child: Center(
+                      child: Image.file(
+                        widget.file,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Center(
+                          child: Icon(Icons.broken_image,
+                              size: 48, color: Colors.white54),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-              Positioned(
-                top: 0,
-                right: 0,
-                child: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: () => Navigator.pop(ctx),
+            ),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            // Resize grip — drag to adjust the preview frame; the size is
+            // remembered for the next time.
+            Positioned(
+              right: 2,
+              bottom: 2,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeDownRight,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onPanUpdate: (d) {
+                    setState(() {
+                      _w = (_w + d.delta.dx).clamp(_minW, maxW);
+                      _h = (_h + d.delta.dy).clamp(_minH, maxH);
+                    });
+                  },
+                  onPanEnd: (_) => _persist(),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.open_in_full,
+                        size: 15, color: Colors.white70),
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

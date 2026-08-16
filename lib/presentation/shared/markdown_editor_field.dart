@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import '../../providers/typography_provider.dart';
 import 'markdown_input.dart';
 import 'selectable_markdown_body.dart';
 
@@ -159,7 +160,8 @@ class _MarkdownEditorFieldState extends State<MarkdownEditorField> {
       minLines: grow ? null : widget.minLines,
       expands: grow,
       textAlignVertical: grow ? TextAlignVertical.top : null,
-      style: widget.style ?? const TextStyle(fontSize: 13.5, height: 1.5),
+      style: applyInputTypography(
+          context, widget.style ?? const TextStyle(fontSize: 13.5, height: 1.5)),
       autofocus: widget.autofocus,
       decoration: widget.decoration ??
           InputDecoration(

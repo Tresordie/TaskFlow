@@ -9,6 +9,7 @@ import '../../data/models/task.dart';
 import '../../data/services/ai_service.dart';
 import '../../providers/ai_provider.dart';
 import '../../providers/color_settings_provider.dart';
+import '../../providers/typography_provider.dart';
 import '../../providers/task_providers.dart';
 import '../shared/markdown_input.dart';
 import '../shared/selectable_markdown_body.dart';
@@ -248,9 +249,12 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                               data: sanitizeHtmlInMarkdown(
                                   _notesController.text),
                               hardenLineBreaks: true,
-                              styleSheet:
-                                  MarkdownStyleSheet.fromTheme(theme).copyWith(
-                                p: const TextStyle(fontSize: 13, height: 1.5),
+                              styleSheet: applyContentTypography(
+                                context,
+                                MarkdownStyleSheet.fromTheme(theme).copyWith(
+                                  p: const TextStyle(
+                                      fontSize: 13, height: 1.5),
+                                ),
                               ),
                             ),
                           ),
@@ -264,10 +268,13 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                       maxLines: null,
                       expands: true,
                       textAlignVertical: TextAlignVertical.top,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        height: 1.5,
-                        fontFamily: 'Consolas',
+                      style: applyInputTypography(
+                        context,
+                        const TextStyle(
+                          fontSize: 13,
+                          height: 1.5,
+                          fontFamily: 'Consolas',
+                        ),
                       ),
                       decoration: InputDecoration(
                         hintText:
@@ -524,14 +531,16 @@ class _ParsedTaskCard extends ConsumerWidget {
                             // Copy / Copy as Markdown. HTML sanitized first.
                             SelectableMarkdownBody(
                               data: sanitizeHtmlInMarkdown(task.description),
-                              styleSheet:
-                                  MarkdownStyleSheet.fromTheme(theme).copyWith(
-                                p: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface
-                                      .withOpacity(0.6),
-                                  height: 1.45,
+                              styleSheet: applyContentTypography(
+                                context,
+                                MarkdownStyleSheet.fromTheme(theme).copyWith(
+                                  p: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurface
+                                        .withOpacity(0.6),
+                                    height: 1.45,
+                                  ),
+                                  pPadding: const EdgeInsets.only(bottom: 4),
                                 ),
-                                pPadding: const EdgeInsets.only(bottom: 4),
                               ),
                             ),
                           ],

@@ -11,6 +11,7 @@ import '../../core/markdown/html_export.dart';
 import '../../core/markdown/html_sanitize.dart';
 import '../../data/models/work_log.dart';
 import '../../providers/work_log_provider.dart';
+import '../../providers/typography_provider.dart';
 import '../shared/selectable_markdown_body.dart';
 import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
@@ -804,7 +805,7 @@ e.g.
   /// Preview and the saved record rows so the preview is a true WYSIWYG of
   /// what gets stored ("input-as-preview").
   MarkdownStyleSheet _recordMarkdownStyleSheet(ThemeData theme) {
-    return MarkdownStyleSheet(
+    final sheet = MarkdownStyleSheet(
       p: TextStyle(
           fontSize: 13,
           height: 1.45,
@@ -813,6 +814,8 @@ e.g.
       // workreport.html's ~1.6em list padding).
       listIndent: 26,
     );
+    // v1.4.85: user-configurable content font family / size.
+    return applyContentTypography(context, sheet);
   }
 
   Widget _recordRow(WorkLogRecord r, DateFormat dateFmt, DateFormat timeFmt,

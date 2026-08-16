@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/version.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/font_provider.dart';
+import '../../providers/typography_provider.dart';
 import '../../providers/ai_provider.dart';
 import '../../providers/sync_providers.dart';
 import '../../providers/task_providers.dart';
@@ -100,6 +101,30 @@ class SettingsScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         const _FontWeightCard(),
+
+        const SizedBox(height: 36),
+
+        // ─── Area Typography (v1.4.85) ───
+        Text('Content & Input Fonts', style: theme.textTheme.titleLarge),
+        const SizedBox(height: 6),
+        Text(
+          'Set the font family and size for rendered content (records, notes, summaries, previews) and for input fields separately',
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 16),
+        const _AreaTypographyCard(
+          title: 'Content Display',
+          subtitle: 'Records · Notes · Summaries · Previews',
+          icon: Icons.article_outlined,
+          isContent: true,
+        ),
+        const SizedBox(height: 12),
+        const _AreaTypographyCard(
+          title: 'Input Fields',
+          subtitle: 'Note editor · Work Log input · AI Parse input',
+          icon: Icons.edit_note,
+          isContent: false,
+        ),
 
         const SizedBox(height: 36),
 
@@ -450,6 +475,181 @@ class _CustomFontInputState extends ConsumerState<_CustomFontInput> {
     if (name.isEmpty) return;
     ref.read(fontProvider.notifier).setCustomFont(name);
     _controller.clear();
+  }
+}
+
+/// v1.4.85: font family + size controls for one text realm (content
+/// display OR input fields). Family "Follow global" and size "Default"
+/// inherit the app-wide font settings.
+class _AreaTypographyCard extends ConsumerWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool isContent;
+
+  const _AreaTypographyCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.isContent,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final typo = isContent
+        ? ref.watch(contentTypographyProvider)
+        : ref.watch(inputTypographyProvider);
+
+    void setFamily(String? family) {
+      if (isContent) {
+        ref.read(contentTypographyProvider.notifier).setFamily(family);
+      } else {
+        ref.read(inputTypographyProvider.notifier).setFamily(family);
+      }
+    }
+
+    void setSize(double? size) {
+      if (isContent) {
+        ref.read(contentTypographyProvider.notifier).setSize(size);
+      } else {
+        ref.read(inputTypographyProvider.notifier).setSize(size);
+      }
+    }
+
+    void reset() {
+      if (isContent) {
+        ref.read(contentTypographyProvider.notifier).reset();
+      } else {
+        ref.read(inputTypographyProvider.notifier).reset();
+      }
+    }
+
+    // Family options: follow global + every known font (presets + system).
+    // A persisted custom font that is not in the list stays selectable.
+    final familyItems = <DropdownMenuItem<String?>>[
+      const DropdownMenuItem(
+        value: null,
+        child: Text('Follow global font', style: TextStyle(fontSize: 13)),
+      ),
+      for (final f in AppFonts.all)
+        if (f.fontFamily != null)
+          DropdownMenuItem(
+            value: f.fontFamily,
+            child: Text(f.labelEn, style: const TextStyle(fontSize: 13)),
+          ),
+      if (typo.family != null &&
+          !AppFonts.all.any((f) => f.fontFamily == typo.family))
+        DropdownMenuItem(
+          value: typo.family,
+          child: Text('${typo.family} (custom)',
+              style: const TextStyle(fontSize: 13)),
+        ),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(title, style: theme.textTheme.titleMedium),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  subtitle,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.5),
+                  ),
+                ),
+              ),
+              if (typo.family != null || typo.size != null)
+                TextButton.icon(
+                  onPressed: reset,
+                  icon: const Icon(Icons.restart_alt, size: 15),
+                  label: const Text('Reset', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: DropdownButtonFormField<String?>(
+                  value: typo.family,
+                  isExpanded: true,
+                  isDense: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Font family',
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: familyItems,
+                  onChanged: setFamily,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: DropdownButtonFormField<double?>(
+                  value: typo.size,
+                  isExpanded: true,
+                  isDense: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Font size',
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child:
+                          Text('Default', style: TextStyle(fontSize: 13)),
+                    ),
+                    for (final s in [
+                      11.0,
+                      12.0,
+                      13.0,
+                      14.0,
+                      15.0,
+                      16.0,
+                      18.0,
+                      20.0
+                    ])
+                      DropdownMenuItem(
+                        value: s,
+                        child: Text('${s.toInt()} px',
+                            style: const TextStyle(fontSize: 13)),
+                      ),
+                  ],
+                  onChanged: setSize,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 
