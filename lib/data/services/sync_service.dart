@@ -79,39 +79,56 @@ class SyncNotifier extends StateNotifier<SyncState> {
 
   /// Copies local attachment files into the Drive mirror (only files that
   /// are not there yet — attachments are immutable uuid-named files, so
-  /// copy-if-missing is safe and idempotent). Returns files uploaded.
-  Future<int> _pushAttachments() async {
+  /// copy-if-missing is safe and idempotent). Returns (copied, failed).
+  Future<(int, int)> _pushAttachments() async {
     final local = await AttachmentService.attachmentsDir();
     final remote = Directory(_driveAttachmentsDir);
     if (!remote.existsSync()) remote.createSync(recursive: true);
-    var copied = 0;
+    var copied = 0, failed = 0;
     await for (final entity in local.list()) {
       if (entity is! File) continue;
       final dest = File(p.join(remote.path, p.basename(entity.path)));
-      if (!dest.existsSync()) {
+      if (dest.existsSync()) continue;
+      try {
         await entity.copy(dest.path);
         copied++;
+      } catch (_) {
+        failed++;
       }
     }
-    return copied;
+    return (copied, failed);
   }
 
   /// Copies attachment files from the Drive mirror into the local
-  /// attachments dir (only missing ones). Returns files downloaded.
-  Future<int> _pullAttachments() async {
+  /// attachments dir. IMPORTANT: the source existence check is skipped —
+  /// Google Drive for Desktop lists cloud-only placeholder files whose
+  /// existsSync() is false (large files especially), and pre-filtering on
+  /// it silently skipped them forever. The copy is attempted for every
+  /// listed file; placeholders that are not materialized yet fail and are
+  /// reported as pending so the next Sync Now retries them (by then Google
+  /// Drive usually has them, or the copy triggers the download).
+  /// Returns (copied, pending).
+  Future<(int, int)> _pullAttachments() async {
     final remote = Directory(_driveAttachmentsDir);
-    if (!remote.existsSync()) return 0;
+    if (!remote.existsSync()) return (0, 0);
     final local = await AttachmentService.attachmentsDir();
-    var copied = 0;
+    var copied = 0, pending = 0;
     await for (final entity in remote.list()) {
       if (entity is! File) continue;
       final dest = File(p.join(local.path, p.basename(entity.path)));
-      if (!dest.existsSync()) {
+      if (dest.existsSync()) continue;
+      try {
         await entity.copy(dest.path);
-        copied++;
+        if (dest.existsSync()) {
+          copied++;
+        } else {
+          pending++;
+        }
+      } catch (_) {
+        pending++;
       }
     }
-    return copied;
+    return (copied, pending);
   }
 
   Future<void> _restore() async {
@@ -184,12 +201,13 @@ class SyncNotifier extends StateNotifier<SyncState> {
       final file = File(_syncFilePath);
       if (!file.parent.existsSync()) file.parent.createSync(recursive: true);
       await file.writeAsString(await _backup.buildSnapshot());
-      final files = await _pushAttachments();
+      final (files, failed) = await _pushAttachments();
       state = state.copyWith(
         busy: false,
         lastSyncAt: DateTime.now(),
-        lastMessage: files > 0
-            ? 'Pushed local tasks + $files attachment file(s) → Drive'
+        lastMessage: files > 0 || failed > 0
+            ? 'Pushed tasks + $files attachment file(s) → Drive'
+                '${failed > 0 ? ' ($failed failed)' : ''}'
             : 'Pushed local tasks → ${file.path}',
       );
     } catch (e) {
@@ -217,12 +235,13 @@ class SyncNotifier extends StateNotifier<SyncState> {
       }
       final count =
           await _backup.restoreSnapshot(await file.readAsString(), merge: true);
-      final files = await _pullAttachments();
+      final (files, pending) = await _pullAttachments();
       state = state.copyWith(
         busy: false,
         lastSyncAt: DateTime.now(),
         lastMessage: 'Pulled $count task(s)'
             '${files > 0 ? ' + $files attachment file(s)' : ''}'
+            '${pending > 0 ? ' · $pending file(s) still uploading on Drive — Sync again shortly' : ''}'
             ' from Drive (merged by uid).',
       );
     } catch (e) {
@@ -231,14 +250,16 @@ class SyncNotifier extends StateNotifier<SyncState> {
     await _persist();
   }
 
-  /// Three-step sync for multi-device use:
-  ///   1. Pull — read the remote snapshot from Drive (if it exists)
-  ///   2. Merge — upsert those tasks into the local DB (by uid)
-  ///   3. Push — write the merged local state back to Drive
+  /// Two-PHASE sync for multi-device use (v1.4.86 wording matches the
+  /// order):
+  ///   PHASE 1 (Pull):  read the remote snapshot from Drive, merge those
+  ///                    tasks into the local DB (by uid) AND pull every
+  ///                    attachment file this machine still lacks.
+  ///   PHASE 2 (Push):  write the merged local state (tasks + attachment
+  ///                    files) back to Drive so it holds the union.
   ///
-  /// Unlike the old either/or logic, this guarantees the shared file
-  /// always converges to the union of every device's tasks, so nothing
-  /// is clobbered when two machines sync around the same time.
+  /// The shared file always converges to the union of every device's data,
+  /// so nothing is clobbered when two machines sync around the same time.
   Future<void> syncNow() async {
     if (!state.configured) {
       state = state.copyWith(lastMessage: 'No sync folder configured.');
@@ -249,29 +270,35 @@ class SyncNotifier extends StateNotifier<SyncState> {
       final file = File(_syncFilePath);
       var pulled = 0;
       var pulledFiles = 0;
+      var pendingFiles = 0;
 
-      // Steps 1 + 2: pull remote snapshot and merge into local DB,
-      // plus mirror any attachment binaries this machine lacks.
+      // ── PHASE 1 · PULL: remote tasks + missing attachments ──
       if (file.existsSync()) {
         pulled = await _backup.restoreSnapshot(await file.readAsString(),
             merge: true);
       }
-      pulledFiles = await _pullAttachments();
+      (pulledFiles, pendingFiles) = await _pullAttachments();
 
-      // Step 3: push the merged local state back so Drive holds the union
-      // (tasks AND attachment files from every device).
+      // ── PHASE 2 · PUSH: merged local tasks + local attachments ──
       if (!file.parent.existsSync()) {
         file.parent.createSync(recursive: true);
       }
       await file.writeAsString(await _backup.buildSnapshot());
-      final pushedFiles = await _pushAttachments();
+      final (pushedFiles, pushFailed) = await _pushAttachments();
 
+      final changed = pulled > 0 ||
+          pulledFiles > 0 ||
+          pushedFiles > 0 ||
+          pendingFiles > 0 ||
+          pushFailed > 0;
       state = state.copyWith(
         busy: false,
         lastSyncAt: DateTime.now(),
-        lastMessage: (pulled > 0 || pulledFiles > 0 || pushedFiles > 0)
-            ? 'Synced · $pulled task(s), '
-                '$pulledFiles file(s) pulled / $pushedFiles file(s) pushed.'
+        lastMessage: changed
+            ? 'Synced · Pull: $pulled task(s) + $pulledFiles file(s); '
+                'Push: tasks + $pushedFiles file(s).'
+                '${pendingFiles > 0 ? ' $pendingFiles file(s) still uploading on Drive — press Sync Now again shortly.' : ''}'
+                '${pushFailed > 0 ? ' $pushFailed push(es) failed.' : ''}'
             : 'Synced · already up to date, pushed local state to Drive.',
       );
     } catch (e) {

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -43,7 +44,26 @@ class _EditExecutionEntryDialogState
   void initState() {
     super.initState();
     _contentController = TextEditingController(text: widget.entry.content);
-    _contentFocus = markdownIndentFocusNode(_contentController);
+    // Tab indent + v1.4.86: Ctrl+V with an image (no text) on the clipboard
+    // attaches it, matching the new-entry input behavior.
+    _contentFocus = FocusNode(onKeyEvent: (node, event) {
+      if (event is KeyDownEvent) {
+        if (event.logicalKey == LogicalKeyboardKey.tab) {
+          if (HardwareKeyboard.instance.isShiftPressed) {
+            MarkdownInput.outdent(_contentController);
+          } else {
+            MarkdownInput.indent(_contentController);
+          }
+          return KeyEventResult.handled;
+        }
+        if (event.logicalKey == LogicalKeyboardKey.keyV &&
+            (HardwareKeyboard.instance.isControlPressed ||
+                HardwareKeyboard.instance.isMetaPressed)) {
+          _maybePasteClipboardImage();
+        }
+      }
+      return KeyEventResult.ignored;
+    });
     _selectedType = widget.entry.type;
     _attachments = List<Attachment>.from(widget.entry.attachments);
   }
@@ -123,6 +143,14 @@ class _EditExecutionEntryDialogState
                     label: 'File',
                     busy: _isPicking,
                     onPressed: _pickFiles,
+                  ),
+                  const SizedBox(width: 8),
+                  // v1.4.86: paste an image straight from the clipboard.
+                  _AddButton(
+                    icon: Icons.content_paste_go_rounded,
+                    label: 'Paste',
+                    busy: _isPicking,
+                    onPressed: _pasteImage,
                   ),
                 ],
               ),
@@ -206,6 +234,36 @@ class _EditExecutionEntryDialogState
       _attachments.addAll(picked);
       _isPicking = false;
     });
+  }
+
+  /// v1.4.86: explicit "paste image from clipboard" action.
+  Future<void> _pasteImage() async {
+    setState(() => _isPicking = true);
+    final pasted = await AttachmentService.pasteClipboardImage();
+    if (!mounted) return;
+    setState(() {
+      if (pasted != null) _attachments.add(pasted);
+      _isPicking = false;
+    });
+    if (pasted == null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No image in clipboard'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// Ctrl+V fallback: when the clipboard has no text (i.e. it holds an
+  /// image), attach it instead of doing nothing.
+  Future<void> _maybePasteClipboardImage() async {
+    final clip = await Clipboard.getData('text/plain');
+    if ((clip?.text ?? '').isNotEmpty) return; // normal text paste applies
+    final pasted = await AttachmentService.pasteClipboardImage();
+    if (pasted != null && mounted) {
+      setState(() => _attachments.add(pasted));
+    }
   }
 
   Future<void> _save() async {
