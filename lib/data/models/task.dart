@@ -110,6 +110,14 @@ class Task {
   /// keyed by sub-step uid. Additive property — Isar auto-migrates existing
   /// rows to an empty list.
   List<SubStepDates> subStepDates = [];
+
+  /// v1.4.83 reversibility: for sub-steps that were created by dragging a
+  /// standalone task onto this task, stores a full JSON snapshot of the
+  /// original task so extracting the sub-step later restores EVERYTHING
+  /// (description, priority, tags, dates, status, full execution log
+  /// including Pass/Fail/Blocked, sub-step tree). Additive Task-level
+  /// property — migrates safely.
+  List<SubStepOrigin> subStepOrigins = [];
 }
 
 @embedded
@@ -201,6 +209,16 @@ class SubStep {
 
   /// Cached nesting depth: 0 = top-level, 1 = child, 2 = grandchild.
   int depth = 0;
+}
+
+/// v1.4.83: origin snapshot for a sub-step created via drag-to-sub-step.
+/// [uid] is the sub-step's uid; [snapshot] is `jsonEncode(taskToSnapshot())`
+/// of the original standalone task, used to fully restore it when the
+/// sub-step is extracted back into a standalone task.
+@embedded
+class SubStepOrigin {
+  late String uid;
+  late String snapshot;
 }
 
 /// Creation / due-date metadata for a single sub-step. Lives at the Task

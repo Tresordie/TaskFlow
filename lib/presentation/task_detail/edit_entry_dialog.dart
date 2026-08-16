@@ -377,7 +377,7 @@ class _AttachmentChip extends StatelessWidget {
               ? ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: Image.file(
-                    File(attachment.path),
+                    File(AttachmentService.resolvePathSync(attachment.path)),
                     width: 34,
                     height: 34,
                     fit: BoxFit.cover,

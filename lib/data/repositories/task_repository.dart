@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:isar/isar.dart';
 import 'package:meta/meta.dart';
 import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
 import '../models/task.dart';
+import '../models/task_snapshot.dart';
 
 class TaskRepository {
   final _uuid = const Uuid();
@@ -205,6 +208,10 @@ class TaskRepository {
     // (SubStep's schema is frozen — SCHEMA FREEZE in task.dart).
     normalizeSubStepDepths(target.subSteps);
     final newUid = _uuid.v4();
+
+    // v1.4.83: snapshot the dragged task BEFORE mutating anything so the
+    // conversion is fully reversible via extractSubStepToTask.
+    _recordOrigin(target, newUid, dragged);
     target.subSteps = [
       ...target.subSteps,
       SubStep()
@@ -304,6 +311,17 @@ class TaskRepository {
     return (notes: mergedNotes.length, subSteps: migratedSteps.length);
   }
 
+  /// v1.4.83 reversibility: keep a full snapshot of the dragged task on the
+  /// target so extracting the sub-step later restores it EXACTLY.
+  void _recordOrigin(Task target, String newUid, Task dragged) {
+    target.subStepOrigins = [
+      ...target.subStepOrigins,
+      SubStepOrigin()
+        ..uid = newUid
+        ..snapshot = jsonEncode(taskToSnapshot(dragged)),
+    ];
+  }
+
   /// v1.4.79: the REVERSE of drag-to-sub-step — extracts the sub-step
   /// [subStepUid] (together with its whole subtree) from task [taskId] and
   /// promotes it into a standalone task. The new task inherits the source
@@ -317,6 +335,17 @@ class TaskRepository {
     final step =
         task.subSteps.where((s) => s.uid == subStepUid).firstOrNull;
     if (step == null) return null;
+
+    // v1.4.83 reversibility: when this sub-step was created by dragging a
+    // standalone task onto [task], restore the ORIGINAL task exactly from
+    // its snapshot (full execution log incl. Pass/Fail/Blocked, sub-step
+    // tree, description, dates, status, priority, tags, project).
+    final origin = task.subStepOrigins
+        .where((o) => o.uid == subStepUid)
+        .firstOrNull;
+    if (origin != null) {
+      return _extractWithOrigin(isar, task, step, origin);
+    }
 
     // Subtree = the step itself + all descendants.
     final doomed = subStepDescendantUids(task.subSteps, step);
@@ -389,6 +418,71 @@ class TaskRepository {
       await isar.tasks.put(newTask);
     });
     return newTask.title;
+  }
+
+  /// Restores the original task from [origin]'s snapshot. Merged items that
+  /// still exist in [task] are taken in their CURRENT (possibly edited)
+  /// form, then removed from [task] so nothing is duplicated.
+  Future<String?> _extractWithOrigin(
+      Isar isar, Task task, SubStep step, SubStepOrigin origin) async {
+    Map<String, dynamic> snap;
+    try {
+      snap = (jsonDecode(origin.snapshot) as Map).cast<String, dynamic>();
+    } catch (_) {
+      return null; // corrupted snapshot — refuse rather than lose data
+    }
+    final restored = taskFromSnapshot(snap);
+
+    // Prefer CURRENT versions of merged items (edited while merged in).
+    final curEntries = {for (final e in task.executionLog) e.uid: e};
+    restored.executionLog = [
+      for (final e in restored.executionLog) curEntries[e.uid] ?? e,
+    ];
+    final curSteps = {for (final s in task.subSteps) s.uid: s};
+    restored.subSteps = [
+      for (final s in restored.subSteps) curSteps[s.uid] ?? s,
+    ];
+    normalizeSubStepDepths(restored.subSteps);
+    final curDates = {for (final d in task.subStepDates) d.uid: d};
+    restored.subStepDates = [
+      for (final d in restored.subStepDates) curDates[d.uid] ?? d,
+    ];
+
+    // Remove from [task] exactly what the conversion moved into it:
+    // merged NOTE entries, merged sub-steps and the extracted sub-step.
+    final mergedNoteUids = {
+      for (final e in restored.executionLog)
+        if (e.type == EntryType.note) e.uid,
+    };
+    final removeStepUids = {
+      for (final s in restored.subSteps) s.uid,
+      step.uid,
+    };
+    task.executionLog = [
+      for (final e in task.executionLog)
+        if (!mergedNoteUids.contains(e.uid)) e,
+    ];
+    task.subSteps = [
+      for (final s in task.subSteps)
+        if (!removeStepUids.contains(s.uid)) s,
+    ];
+    task.subStepDates = [
+      for (final d in task.subStepDates)
+        if (!removeStepUids.contains(d.uid)) d,
+    ];
+    task.subStepOrigins = [
+      for (final o in task.subStepOrigins) if (o.uid != step.uid) o,
+    ];
+    _touch(task);
+
+    final top = await isar.tasks.where().sortBySortOrderDesc().findFirst();
+    restored.sortOrder = (top?.sortOrder ?? 0) + 1;
+
+    await isar.writeTxn(() async {
+      await isar.tasks.put(task);
+      await isar.tasks.put(restored);
+    });
+    return restored.title;
   }
 
   Future<void> updateTaskStatus(int id, TaskStatus status) async {

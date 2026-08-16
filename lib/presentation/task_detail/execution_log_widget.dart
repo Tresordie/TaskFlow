@@ -27,7 +27,26 @@ class ExecutionLogWidget extends ConsumerStatefulWidget {
 
 class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
   final _entryController = TextEditingController();
-  late final FocusNode _entryFocus = markdownIndentFocusNode(_entryController);
+  late final FocusNode _entryFocus = FocusNode(onKeyEvent: (node, event) {
+    if (event is KeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.tab) {
+        if (HardwareKeyboard.instance.isShiftPressed) {
+          MarkdownInput.outdent(_entryController);
+        } else {
+          MarkdownInput.indent(_entryController);
+        }
+        return KeyEventResult.handled;
+      }
+      // v1.4.83: Ctrl+V with an IMAGE on the clipboard (no text) attaches the
+      // clipboard image; with text on the clipboard the normal paste runs.
+      if (event.logicalKey == LogicalKeyboardKey.keyV &&
+          (HardwareKeyboard.instance.isControlPressed ||
+              HardwareKeyboard.instance.isMetaPressed)) {
+        _maybePasteClipboardImage();
+      }
+    }
+    return KeyEventResult.ignored;
+  });
   EntryType _selectedType = EntryType.note;
 
   // Resizable text input area height (logical pixels).
@@ -213,6 +232,14 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
                     busy: _isPicking,
                     onPressed: _pickFiles,
                   ),
+                  const SizedBox(width: 4),
+                  // Paste image from clipboard (v1.4.83)
+                  _AttachButton(
+                    icon: Icons.content_paste_go_rounded,
+                    tooltip: 'Paste image from clipboard (Ctrl+V)',
+                    busy: _isPicking,
+                    onPressed: _pasteImage,
+                  ),
                 ],
               ),
 
@@ -292,6 +319,36 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
       _pendingAttachments.addAll(picked);
       _isPicking = false;
     });
+  }
+
+  /// v1.4.83: explicit "paste image from clipboard" action.
+  Future<void> _pasteImage() async {
+    setState(() => _isPicking = true);
+    final pasted = await AttachmentService.pasteClipboardImage();
+    if (!mounted) return;
+    setState(() {
+      if (pasted != null) _pendingAttachments.add(pasted);
+      _isPicking = false;
+    });
+    if (pasted == null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No image in clipboard'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// Called on Ctrl+V: if the clipboard holds no text (i.e. the user copied
+  /// a screenshot / image), attach it as a pending attachment.
+  Future<void> _maybePasteClipboardImage() async {
+    final clip = await Clipboard.getData('text/plain');
+    if ((clip?.text ?? '').isNotEmpty) return; // normal text paste applies
+    final pasted = await AttachmentService.pasteClipboardImage();
+    if (pasted != null && mounted) {
+      setState(() => _pendingAttachments.add(pasted));
+    }
   }
 
   Future<void> _addEntry() async {
@@ -459,7 +516,7 @@ class _PendingAttachmentChip extends StatelessWidget {
               ? ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: Image.file(
-                    File(attachment.path),
+                    File(AttachmentService.resolvePathSync(attachment.path)),
                     width: 34,
                     height: 34,
                     fit: BoxFit.cover,
@@ -899,7 +956,7 @@ class _ImageAttachment extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Image.file(
-          File(attachment.path),
+          File(AttachmentService.resolvePathSync(attachment.path)),
           width: 132,
           height: 96,
           fit: BoxFit.cover,
@@ -925,7 +982,7 @@ class _ImageAttachment extends StatelessWidget {
             children: [
               InteractiveViewer(
                 child: Image.file(
-                  File(attachment.path),
+                  File(AttachmentService.resolvePathSync(attachment.path)),
                   fit: BoxFit.contain,
                   errorBuilder: (_, __, ___) => const Center(
                     child: Icon(Icons.broken_image, size: 48),

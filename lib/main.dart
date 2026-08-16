@@ -4,9 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import 'app/app.dart';
+import 'data/services/attachment_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Warm the attachments-dir cache so attachment paths (which are stored
+  // relative for cross-device portability) resolve synchronously everywhere.
+  await AttachmentService.init();
 
   // Custom title bar is desktop-only. On iOS/Android we keep the
   // native chrome, so skip window_manager entirely.

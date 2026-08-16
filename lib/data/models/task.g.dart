@@ -76,29 +76,35 @@ const TaskSchema = CollectionSchema(
       type: IsarType.objectList,
       target: r'SubStepDates',
     ),
-    r'subSteps': PropertySchema(
+    r'subStepOrigins': PropertySchema(
       id: 11,
+      name: r'subStepOrigins',
+      type: IsarType.objectList,
+      target: r'SubStepOrigin',
+    ),
+    r'subSteps': PropertySchema(
+      id: 12,
       name: r'subSteps',
       type: IsarType.objectList,
       target: r'SubStep',
     ),
     r'tags': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'tags',
       type: IsarType.stringList,
     ),
     r'title': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'title',
       type: IsarType.string,
     ),
     r'uid': PropertySchema(
-      id: 14,
+      id: 15,
       name: r'uid',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 15,
+      id: 16,
       name: r'updatedAt',
       type: IsarType.long,
     )
@@ -128,7 +134,8 @@ const TaskSchema = CollectionSchema(
     r'ExecutionEntry': ExecutionEntrySchema,
     r'Attachment': AttachmentSchema,
     r'SubStep': SubStepSchema,
-    r'SubStepDates': SubStepDatesSchema
+    r'SubStepDates': SubStepDatesSchema,
+    r'SubStepOrigin': SubStepOriginSchema
   },
   getId: _taskGetId,
   getLinks: _taskGetLinks,
@@ -164,6 +171,15 @@ int _taskEstimateSize(
     for (var i = 0; i < object.subStepDates.length; i++) {
       final value = object.subStepDates[i];
       bytesCount += SubStepDatesSchema.estimateSize(value, offsets, allOffsets);
+    }
+  }
+  bytesCount += 3 + object.subStepOrigins.length * 3;
+  {
+    final offsets = allOffsets[SubStepOrigin]!;
+    for (var i = 0; i < object.subStepOrigins.length; i++) {
+      final value = object.subStepOrigins[i];
+      bytesCount +=
+          SubStepOriginSchema.estimateSize(value, offsets, allOffsets);
     }
   }
   bytesCount += 3 + object.subSteps.length * 3;
@@ -213,16 +229,22 @@ void _taskSerialize(
     SubStepDatesSchema.serialize,
     object.subStepDates,
   );
-  writer.writeObjectList<SubStep>(
+  writer.writeObjectList<SubStepOrigin>(
     offsets[11],
+    allOffsets,
+    SubStepOriginSchema.serialize,
+    object.subStepOrigins,
+  );
+  writer.writeObjectList<SubStep>(
+    offsets[12],
     allOffsets,
     SubStepSchema.serialize,
     object.subSteps,
   );
-  writer.writeStringList(offsets[12], object.tags);
-  writer.writeString(offsets[13], object.title);
-  writer.writeString(offsets[14], object.uid);
-  writer.writeLong(offsets[15], object.updatedAt);
+  writer.writeStringList(offsets[13], object.tags);
+  writer.writeString(offsets[14], object.title);
+  writer.writeString(offsets[15], object.uid);
+  writer.writeLong(offsets[16], object.updatedAt);
 }
 
 Task _taskDeserialize(
@@ -259,17 +281,24 @@ Task _taskDeserialize(
         SubStepDates(),
       ) ??
       [];
-  object.subSteps = reader.readObjectList<SubStep>(
+  object.subStepOrigins = reader.readObjectList<SubStepOrigin>(
         offsets[11],
+        SubStepOriginSchema.deserialize,
+        allOffsets,
+        SubStepOrigin(),
+      ) ??
+      [];
+  object.subSteps = reader.readObjectList<SubStep>(
+        offsets[12],
         SubStepSchema.deserialize,
         allOffsets,
         SubStep(),
       ) ??
       [];
-  object.tags = reader.readStringList(offsets[12]) ?? [];
-  object.title = reader.readString(offsets[13]);
-  object.uid = reader.readString(offsets[14]);
-  object.updatedAt = reader.readLong(offsets[15]);
+  object.tags = reader.readStringList(offsets[13]) ?? [];
+  object.title = reader.readString(offsets[14]);
+  object.uid = reader.readString(offsets[15]);
+  object.updatedAt = reader.readLong(offsets[16]);
   return object;
 }
 
@@ -317,6 +346,14 @@ P _taskDeserializeProp<P>(
           ) ??
           []) as P;
     case 11:
+      return (reader.readObjectList<SubStepOrigin>(
+            offset,
+            SubStepOriginSchema.deserialize,
+            allOffsets,
+            SubStepOrigin(),
+          ) ??
+          []) as P;
+    case 12:
       return (reader.readObjectList<SubStep>(
             offset,
             SubStepSchema.deserialize,
@@ -324,13 +361,13 @@ P _taskDeserializeProp<P>(
             SubStep(),
           ) ??
           []) as P;
-    case 12:
-      return (reader.readStringList(offset) ?? []) as P;
     case 13:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 14:
       return (reader.readString(offset)) as P;
     case 15:
+      return (reader.readString(offset)) as P;
+    case 16:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1461,6 +1498,91 @@ extension TaskQueryFilter on QueryBuilder<Task, Task, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Task, Task, QAfterFilterCondition> subStepOriginsLengthEqualTo(
+      int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'subStepOrigins',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> subStepOriginsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'subStepOrigins',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> subStepOriginsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'subStepOrigins',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> subStepOriginsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'subStepOrigins',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition>
+      subStepOriginsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'subStepOrigins',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> subStepOriginsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'subStepOrigins',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
   QueryBuilder<Task, Task, QAfterFilterCondition> subStepsLengthEqualTo(
       int length) {
     return QueryBuilder.apply(this, (query) {
@@ -2083,6 +2205,13 @@ extension TaskQueryObject on QueryBuilder<Task, Task, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Task, Task, QAfterFilterCondition> subStepOriginsElement(
+      FilterQuery<SubStepOrigin> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'subStepOrigins');
+    });
+  }
+
   QueryBuilder<Task, Task, QAfterFilterCondition> subStepsElement(
       FilterQuery<SubStep> q) {
     return QueryBuilder.apply(this, (query) {
@@ -2553,6 +2682,13 @@ extension TaskQueryProperty on QueryBuilder<Task, Task, QQueryProperty> {
       subStepDatesProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'subStepDates');
+    });
+  }
+
+  QueryBuilder<Task, List<SubStepOrigin>, QQueryOperations>
+      subStepOriginsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'subStepOrigins');
     });
   }
 
@@ -4494,6 +4630,355 @@ extension SubStepQueryFilter
 
 extension SubStepQueryObject
     on QueryBuilder<SubStep, SubStep, QFilterCondition> {}
+
+// coverage:ignore-file
+// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
+
+const SubStepOriginSchema = Schema(
+  name: r'SubStepOrigin',
+  id: 7441143089492237041,
+  properties: {
+    r'snapshot': PropertySchema(
+      id: 0,
+      name: r'snapshot',
+      type: IsarType.string,
+    ),
+    r'uid': PropertySchema(
+      id: 1,
+      name: r'uid',
+      type: IsarType.string,
+    )
+  },
+  estimateSize: _subStepOriginEstimateSize,
+  serialize: _subStepOriginSerialize,
+  deserialize: _subStepOriginDeserialize,
+  deserializeProp: _subStepOriginDeserializeProp,
+);
+
+int _subStepOriginEstimateSize(
+  SubStepOrigin object,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  var bytesCount = offsets.last;
+  bytesCount += 3 + object.snapshot.length * 3;
+  bytesCount += 3 + object.uid.length * 3;
+  return bytesCount;
+}
+
+void _subStepOriginSerialize(
+  SubStepOrigin object,
+  IsarWriter writer,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  writer.writeString(offsets[0], object.snapshot);
+  writer.writeString(offsets[1], object.uid);
+}
+
+SubStepOrigin _subStepOriginDeserialize(
+  Id id,
+  IsarReader reader,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  final object = SubStepOrigin();
+  object.snapshot = reader.readString(offsets[0]);
+  object.uid = reader.readString(offsets[1]);
+  return object;
+}
+
+P _subStepOriginDeserializeProp<P>(
+  IsarReader reader,
+  int propertyId,
+  int offset,
+  Map<Type, List<int>> allOffsets,
+) {
+  switch (propertyId) {
+    case 0:
+      return (reader.readString(offset)) as P;
+    case 1:
+      return (reader.readString(offset)) as P;
+    default:
+      throw IsarError('Unknown property with id $propertyId');
+  }
+}
+
+extension SubStepOriginQueryFilter
+    on QueryBuilder<SubStepOrigin, SubStepOrigin, QFilterCondition> {
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition>
+      snapshotEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'snapshot',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition>
+      snapshotGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'snapshot',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition>
+      snapshotLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'snapshot',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition>
+      snapshotBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'snapshot',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition>
+      snapshotStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'snapshot',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition>
+      snapshotEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'snapshot',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition>
+      snapshotContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'snapshot',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition>
+      snapshotMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'snapshot',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition>
+      snapshotIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'snapshot',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition>
+      snapshotIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'snapshot',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition> uidEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'uid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition>
+      uidGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'uid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition> uidLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'uid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition> uidBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'uid',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition>
+      uidStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'uid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition> uidEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'uid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition> uidContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'uid',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition> uidMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'uid',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition>
+      uidIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'uid',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SubStepOrigin, SubStepOrigin, QAfterFilterCondition>
+      uidIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'uid',
+        value: '',
+      ));
+    });
+  }
+}
+
+extension SubStepOriginQueryObject
+    on QueryBuilder<SubStepOrigin, SubStepOrigin, QFilterCondition> {}
 
 // coverage:ignore-file
 // ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
