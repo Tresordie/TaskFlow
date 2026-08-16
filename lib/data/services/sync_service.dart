@@ -77,58 +77,43 @@ class SyncNotifier extends StateNotifier<SyncState> {
   String get _driveAttachmentsDir =>
       p.join(state.folderPath, 'TaskFlow', 'attachments');
 
-  /// Copies local attachment files into the Drive mirror (only files that
-  /// are not there yet — attachments are immutable uuid-named files, so
-  /// copy-if-missing is safe and idempotent). Returns (copied, failed).
+  /// Copies local attachment files into the Drive mirror. Returns
+  /// (copied, failed).
   Future<(int, int)> _pushAttachments() async {
     final local = await AttachmentService.attachmentsDir();
-    final remote = Directory(_driveAttachmentsDir);
-    if (!remote.existsSync()) remote.createSync(recursive: true);
-    var copied = 0, failed = 0;
-    await for (final entity in local.list()) {
-      if (entity is! File) continue;
-      final dest = File(p.join(remote.path, p.basename(entity.path)));
-      if (dest.existsSync()) continue;
-      try {
-        await entity.copy(dest.path);
-        copied++;
-      } catch (_) {
-        failed++;
-      }
-    }
-    return (copied, failed);
+    return _copyMissing(
+      from: local,
+      to: Directory(_driveAttachmentsDir),
+      pinOnFailure: false,
+    );
   }
 
   /// Copies attachment files from the Drive mirror into the local
-  /// attachments dir. IMPORTANT: the source existence check is skipped —
-  /// Google Drive for Desktop lists cloud-only placeholder files whose
-  /// existsSync() is false (large files especially), and pre-filtering on
-  /// it silently skipped them forever. The copy is attempted for every
-  /// listed file; placeholders that are not materialized yet fail and are
-  /// reported as pending so the next Sync Now retries them (by then Google
-  /// Drive usually has them, or the copy triggers the download).
-  /// Returns (copied, pending).
+  /// attachments dir. Cloud-only placeholders whose copy fails get PINNED
+  /// for offline use (triggering the Drive download) and the whole pass is
+  /// retried once after a short wait, so a single Sync Now usually pulls
+  /// everything. Returns (copied, pending).
   Future<(int, int)> _pullAttachments() async {
     final remote = Directory(_driveAttachmentsDir);
     if (!remote.existsSync()) return (0, 0);
     final local = await AttachmentService.attachmentsDir();
-    var copied = 0, pending = 0;
-    await for (final entity in remote.list()) {
-      if (entity is! File) continue;
-      final dest = File(p.join(local.path, p.basename(entity.path)));
-      if (dest.existsSync()) continue;
-      try {
-        await entity.copy(dest.path);
-        if (dest.existsSync()) {
-          copied++;
-        } else {
-          pending++;
-        }
-      } catch (_) {
-        pending++;
-      }
+    var (copied, failed) = await _copyMissing(
+      from: remote,
+      to: local,
+      pinOnFailure: true,
+    );
+    if (failed > 0) {
+      // Give Google Drive a moment to fetch the pinned files, then retry.
+      await Future.delayed(const Duration(seconds: 3));
+      final (more, stillFailed) = await _copyMissing(
+        from: remote,
+        to: local,
+        pinOnFailure: true,
+      );
+      copied += more;
+      failed = stillFailed;
     }
-    return (copied, pending);
+    return (copied, failed);
   }
 
   Future<void> _restore() async {
@@ -139,7 +124,124 @@ class SyncNotifier extends StateNotifier<SyncState> {
         enabled: prefs.getBool(_kEnabled) ?? false,
         lastSyncAt: _parse(prefs.getString(_kLastSync)),
       );
+      // v1.4.87: the Google Drive mount (drive letter / mount point) can
+      // change after a reboot, leaving the persisted absolute path stale.
+      // Self-heal at startup by relocating onto the current Drive mount.
+      if (state.folderPath.isNotEmpty &&
+          !Directory(state.folderPath).existsSync()) {
+        final relocated = _relocateDriveFolder();
+        if (relocated != null && relocated != state.folderPath) {
+          state = state.copyWith(folderPath: relocated);
+          await _persist();
+        }
+      }
     } catch (_) {}
+  }
+
+  /// Scans the drive letters for the current Google Drive for Desktop
+  /// mount and returns the folder that holds (or should hold) the TaskFlow
+  /// sync data. Preference: a mount that already contains the `TaskFlow`
+  /// sync folder; otherwise the first recognized Drive root.
+  static String? _relocateDriveFolder() {
+    if (!Platform.isWindows) return detectDriveFolder();
+    String? firstDriveRoot;
+    for (var letter = 'D'.codeUnitAt(0); letter <= 'Z'.codeUnitAt(0);
+        letter++) {
+      final root = '${String.fromCharCode(letter)}:\\';
+      if (!Directory(root).existsSync()) continue;
+      for (final base in [
+        root,
+        p.join(root, 'My Drive'),
+        p.join(root, '我的云端硬盘'),
+      ]) {
+        if (!Directory(base).existsSync()) continue;
+        // Strong marker: TaskFlow sync data already lives here.
+        if (Directory(p.join(base, 'TaskFlow')).existsSync()) return base;
+        firstDriveRoot ??= base == root ? null : base;
+      }
+    }
+    return firstDriveRoot ?? detectDriveFolder();
+  }
+
+  /// Makes sure the sync folder exists before a transfer — Google Drive
+  /// may still be mounting right after boot, so poll briefly and try to
+  /// relocate onto the current mount if the saved path went stale.
+  Future<bool> _ensureFolderReady() async {
+    if (state.configured && Directory(state.folderPath).existsSync()) {
+      return true;
+    }
+    for (var i = 0; i < 6; i++) {
+      await Future.delayed(const Duration(seconds: 1));
+      final relocated = _relocateDriveFolder();
+      if (relocated != null && relocated != state.folderPath) {
+        state = state.copyWith(folderPath: relocated);
+        await _persist();
+      }
+      if (state.configured && Directory(state.folderPath).existsSync()) {
+        return true;
+      }
+    }
+    return state.configured && Directory(state.folderPath).existsSync();
+  }
+
+  /// Asks Google Drive for Desktop to make [path] available offline
+  /// (`attrib +P` pins the file), which actively TRIGGERS the download of
+  /// cloud-only placeholders instead of waiting for Drive to materialize
+  /// them on its own schedule — this is why large attachments previously
+  /// needed many Sync Now rounds.
+  Future<void> _pinForOffline(String path) async {
+    if (!Platform.isWindows) return;
+    try {
+      await Process.run('attrib', ['+P', '-U', path]);
+    } catch (_) {}
+  }
+
+  /// Copies every file in [from] that is missing in [to] (copy-if-missing
+  /// is safe: attachments are immutable uuid-named files). Copies run with
+  /// bounded concurrency; failures (cloud placeholders not materialized
+  /// yet) optionally pin the source for offline use. Returns
+  /// (copied, failed).
+  Future<(int, int)> _copyMissing({
+    required Directory from,
+    required Directory to,
+    required bool pinOnFailure,
+  }) async {
+    if (!from.existsSync()) return (0, 0);
+    if (!to.existsSync()) to.createSync(recursive: true);
+    final files = <File>[];
+    await for (final entity in from.list()) {
+      if (entity is File) files.add(entity);
+    }
+    var copied = 0;
+    var failed = 0;
+    var index = 0;
+    Future<void> worker() async {
+      while (true) {
+        final i = index++;
+        if (i >= files.length) return;
+        final src = files[i];
+        final dest = File(p.join(to.path, p.basename(src.path)));
+        if (dest.existsSync()) continue;
+        try {
+          await src.copy(dest.path);
+          if (dest.existsSync()) {
+            copied++;
+          } else {
+            failed++;
+            if (pinOnFailure) await _pinForOffline(src.path);
+          }
+        } catch (_) {
+          failed++;
+          if (pinOnFailure) await _pinForOffline(src.path);
+        }
+      }
+    }
+
+    const concurrency = 4;
+    await Future.wait([
+      for (var k = 0; k < concurrency && k < files.length; k++) worker(),
+    ]);
+    return (copied, failed);
   }
 
   DateTime? _parse(String? v) =>
@@ -197,6 +299,14 @@ class SyncNotifier extends StateNotifier<SyncState> {
       return;
     }
     state = state.copyWith(busy: true);
+    if (!await _ensureFolderReady()) {
+      state = state.copyWith(
+          busy: false,
+          lastMessage: 'Google Drive folder not found — make sure Google '
+              'Drive for Desktop is running, then re-select the folder.');
+      await _persist();
+      return;
+    }
     try {
       final file = File(_syncFilePath);
       if (!file.parent.existsSync()) file.parent.createSync(recursive: true);
@@ -223,6 +333,14 @@ class SyncNotifier extends StateNotifier<SyncState> {
       return;
     }
     state = state.copyWith(busy: true);
+    if (!await _ensureFolderReady()) {
+      state = state.copyWith(
+          busy: false,
+          lastMessage: 'Google Drive folder not found — make sure Google '
+              'Drive for Desktop is running, then re-select the folder.');
+      await _persist();
+      return;
+    }
     try {
       final file = File(_syncFilePath);
       if (!file.existsSync()) {
@@ -266,6 +384,14 @@ class SyncNotifier extends StateNotifier<SyncState> {
       return;
     }
     state = state.copyWith(busy: true);
+    if (!await _ensureFolderReady()) {
+      state = state.copyWith(
+          busy: false,
+          lastMessage: 'Google Drive folder not found — make sure Google '
+              'Drive for Desktop is running, then re-select the folder.');
+      await _persist();
+      return;
+    }
     try {
       final file = File(_syncFilePath);
       var pulled = 0;
