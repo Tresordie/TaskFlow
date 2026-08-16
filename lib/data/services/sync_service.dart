@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'attachment_service.dart';
 import 'backup_service.dart';
 
 /// Google Drive sync strategy (Phase 4):
@@ -68,6 +69,50 @@ class SyncNotifier extends StateNotifier<SyncState> {
   /// it does not clutter the Drive root.
   String get _syncFilePath =>
       p.join(state.folderPath, 'TaskFlow', 'taskflow_sync.json');
+
+  /// v1.4.83: attachment binaries are mirrored next to the snapshot so other
+  /// devices can actually DISPLAY the synced images/files. Attachment DB
+  /// records store relative file names (v1.4.83), so once the file exists
+  /// in the local attachments dir it resolves automatically.
+  String get _driveAttachmentsDir =>
+      p.join(state.folderPath, 'TaskFlow', 'attachments');
+
+  /// Copies local attachment files into the Drive mirror (only files that
+  /// are not there yet — attachments are immutable uuid-named files, so
+  /// copy-if-missing is safe and idempotent). Returns files uploaded.
+  Future<int> _pushAttachments() async {
+    final local = await AttachmentService.attachmentsDir();
+    final remote = Directory(_driveAttachmentsDir);
+    if (!remote.existsSync()) remote.createSync(recursive: true);
+    var copied = 0;
+    await for (final entity in local.list()) {
+      if (entity is! File) continue;
+      final dest = File(p.join(remote.path, p.basename(entity.path)));
+      if (!dest.existsSync()) {
+        await entity.copy(dest.path);
+        copied++;
+      }
+    }
+    return copied;
+  }
+
+  /// Copies attachment files from the Drive mirror into the local
+  /// attachments dir (only missing ones). Returns files downloaded.
+  Future<int> _pullAttachments() async {
+    final remote = Directory(_driveAttachmentsDir);
+    if (!remote.existsSync()) return 0;
+    final local = await AttachmentService.attachmentsDir();
+    var copied = 0;
+    await for (final entity in remote.list()) {
+      if (entity is! File) continue;
+      final dest = File(p.join(local.path, p.basename(entity.path)));
+      if (!dest.existsSync()) {
+        await entity.copy(dest.path);
+        copied++;
+      }
+    }
+    return copied;
+  }
 
   Future<void> _restore() async {
     try {
@@ -139,10 +184,13 @@ class SyncNotifier extends StateNotifier<SyncState> {
       final file = File(_syncFilePath);
       if (!file.parent.existsSync()) file.parent.createSync(recursive: true);
       await file.writeAsString(await _backup.buildSnapshot());
+      final files = await _pushAttachments();
       state = state.copyWith(
         busy: false,
         lastSyncAt: DateTime.now(),
-        lastMessage: 'Pushed local tasks → ${file.path}',
+        lastMessage: files > 0
+            ? 'Pushed local tasks + $files attachment file(s) → Drive'
+            : 'Pushed local tasks → ${file.path}',
       );
     } catch (e) {
       state = state.copyWith(busy: false, lastMessage: 'Push failed: $e');
@@ -169,10 +217,13 @@ class SyncNotifier extends StateNotifier<SyncState> {
       }
       final count =
           await _backup.restoreSnapshot(await file.readAsString(), merge: true);
+      final files = await _pullAttachments();
       state = state.copyWith(
         busy: false,
         lastSyncAt: DateTime.now(),
-        lastMessage: 'Pulled $count task(s) from Drive (merged by uid).',
+        lastMessage: 'Pulled $count task(s)'
+            '${files > 0 ? ' + $files attachment file(s)' : ''}'
+            ' from Drive (merged by uid).',
       );
     } catch (e) {
       state = state.copyWith(busy: false, lastMessage: 'Pull failed: $e');
@@ -197,24 +248,30 @@ class SyncNotifier extends StateNotifier<SyncState> {
     try {
       final file = File(_syncFilePath);
       var pulled = 0;
+      var pulledFiles = 0;
 
-      // Steps 1 + 2: pull remote snapshot and merge into local DB.
+      // Steps 1 + 2: pull remote snapshot and merge into local DB,
+      // plus mirror any attachment binaries this machine lacks.
       if (file.existsSync()) {
         pulled = await _backup.restoreSnapshot(await file.readAsString(),
             merge: true);
       }
+      pulledFiles = await _pullAttachments();
 
-      // Step 3: push the merged local state back so Drive holds the union.
+      // Step 3: push the merged local state back so Drive holds the union
+      // (tasks AND attachment files from every device).
       if (!file.parent.existsSync()) {
         file.parent.createSync(recursive: true);
       }
       await file.writeAsString(await _backup.buildSnapshot());
+      final pushedFiles = await _pushAttachments();
 
       state = state.copyWith(
         busy: false,
         lastSyncAt: DateTime.now(),
-        lastMessage: pulled > 0
-            ? 'Synced · pulled $pulled task(s), merged & pushed to Drive.'
+        lastMessage: (pulled > 0 || pulledFiles > 0 || pushedFiles > 0)
+            ? 'Synced · $pulled task(s), '
+                '$pulledFiles file(s) pulled / $pushedFiles file(s) pushed.'
             : 'Synced · already up to date, pushed local state to Drive.',
       );
     } catch (e) {
