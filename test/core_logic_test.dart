@@ -431,7 +431,7 @@ void main() {
       expect(md, contains('AI: vendor quote pending, ETA next Tue'));
     });
 
-    test('multi-line AI summaries render as a bullet list in Details', () {
+    test('multi-line AI summaries render as a content list in Details', () {
       final data = sampleWeekly();
       final target = data.completed.first; // idbase64 fix deployed
       final md = ReportService(TaskRepository()).toMarkdown(
@@ -440,13 +440,12 @@ void main() {
           target: 'Validated factory release\nClosed after PVT sign-off'
         },
       );
-      // Details cell becomes a <br>-separated bullet list, replacing the
-      // heuristic "done 07-15" text in that cell ...
-      expect(
-        md,
-        contains(
-            '| idbase64 fix deployed | 🟩 | • Validated factory release<br>• Closed after PVT sign-off |'),
-      );
+      // v1.4.88: Details are a content list under a bold task header —
+      // exactly one "- " item per line (the old <br>-joined table cell
+      // rendered as literal "<br>" text in-app) ...
+      expect(md, contains('**🟩 idbase64 fix deployed** — Completed'));
+      expect(md, contains('- Validated factory release'));
+      expect(md, contains('- Closed after PVT sign-off'));
       // ... and the first bullet shows up under Achievements.
       expect(md, contains('  - Validated factory release'));
     });

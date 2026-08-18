@@ -522,17 +522,45 @@ class ReportService {
         if (dd.length > 2000) dd = '${dd.substring(0, 2000)}…';
         b.writeln('Description: $dd');
       }
-      final entries = d.logActivity[t] ?? const <ExecutionEntry>[];
+      // v1.4.88: the AI reads EVERY log entry of the task — not only the
+      // ones inside the reporting period — so its summary is based on real
+      // understanding of the whole history. In-period entries drive the
+      // summary; older ones are labeled "(earlier context)" as background.
+      // The earlier-context text is generously capped (6000 chars per task)
+      // only to keep pathological histories from blowing up the prompt.
+      final entries = [...t.executionLog]
+        ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
       if (entries.isNotEmpty) {
-        b.writeln('Execution Log (${entries.length} entries in period):');
+        final inPeriodCount = entries
+            .where((e) =>
+                !e.timestamp.isBefore(d.start) &&
+                e.timestamp.isBefore(d.end))
+            .length;
+        b.writeln('Execution Log (${entries.length} entries total, '
+            '$inPeriodCount in period):');
+        var earlierChars = 0;
+        var earlierTruncated = false;
         for (final e in entries) {
-          final content = e.content
-              .replaceAll(RegExp(r'\s+'), ' ')
-              .trim();
-          b.writeln('  [${f.format(e.timestamp)}] ${e.type.name}: $content');
+          final content =
+              e.content.replaceAll(RegExp(r'\s+'), ' ').trim();
+          final inPeriod = !e.timestamp.isBefore(d.start) &&
+              e.timestamp.isBefore(d.end);
+          if (inPeriod) {
+            b.writeln('  [${f.format(e.timestamp)}] ${e.type.name}: $content');
+          } else {
+            if (earlierTruncated) continue;
+            if (earlierChars + content.length > 6000) {
+              earlierTruncated = true;
+              b.writeln('  … (remaining earlier entries omitted for length)');
+              continue;
+            }
+            earlierChars += content.length;
+            b.writeln('  [${fr.format(e.timestamp)}] ${e.type.name} '
+                '(earlier context): $content');
+          }
         }
       } else {
-        b.writeln('Execution Log: (none in period)');
+        b.writeln('Execution Log: (no entries)');
       }
       b.writeln();
     }
@@ -557,16 +585,24 @@ class ReportService {
       'task has an Execution Log — a chronological series of Notes '
       'documenting progress, decisions, blockers, and outcomes.\n\n'
       'PROCESSING RULES — before generating output you MUST:\n'
-      '1. Read and comprehend every task\'s description AND every Execution '
-      'Log Note across all tasks. Do not skim or skip entries. Both sources '
-      'are equally important for generating accurate summaries.\n'
+      '1. Read and comprehend every task\'s description AND its ENTIRE '
+      'Execution Log — every entry, including the ones labeled "(earlier '
+      'context)" from before the reporting period. Do not skim or skip '
+      'entries. Summaries must be based on a genuine UNDERSTANDING of the '
+      'logs (what was done, why, what was decided, what the results were) '
+      '— not on surface copying. Entries inside the period drive the '
+      'summary; earlier-context entries provide background that explains '
+      'them.\n'
       '2. Classify each task under its Project.\n'
       '3. Synthesize — distill raw notes into concise, meaningful '
-      'summaries. Preserve all technical terminology, part numbers, '
-      'firmware versions, measurements, abbreviations, and proper nouns '
-      'exactly as written in the original notes. NEVER rewrite, '
-      'generalize, paraphrase, or substitute any technical identifier — '
-      'copy it verbatim.\n'
+      'summaries, but NEVER over-compress technical content. Technical '
+      'key points — part numbers, firmware versions, parameters, '
+      'measurements, test conditions, thresholds, model numbers, vendor '
+      'names, results, root causes — must stay COMPLETE and specific in '
+      'the summary. When in doubt between shortening and keeping a '
+      'technical detail, KEEP it. Copy every technical identifier '
+      'verbatim; never rewrite, generalize, paraphrase, or substitute '
+      'it.\n'
       '4. One fact per line — each bullet states exactly ONE fact, event, '
       'or decision. Never merge multiple facts into a single bullet or '
       'sentence. If a note contains three facts, that becomes three '
@@ -620,9 +656,11 @@ class ReportService {
       '## 3. Progress Details\n'
       '*(Grouped by project)*\n\n'
       '### {Project Name}\n\n'
-      '| Item | Status | Details |\n'
-      '|:-----|:------:|:--------|\n'
-      '| {Task title} | {🟩/🟨/🟥/⬜} | • {bullet 1}<br>• {bullet 2} |\n\n'
+      '**{🟩/🟨/🟥/⬜} {Task title}** — {Completed / In Progress / '
+      'Blocked / Planned}\n'
+      '- {detail item 1}\n'
+      '- {detail item 2}\n\n'
+      '(repeat the block for each task, blank line between blocks)\n\n'
       '---\n\n'
       '## 4. Plan for Next Period\n\n'
       '| Project | Task | Due | Priority |\n'
@@ -661,28 +699,32 @@ class ReportService {
       'title in the summary body.\n\n'
       '3. Progress Details:\n'
       '- Group tasks under their Project heading (H3).\n'
-      '- Table alignment (STRICT): every project table MUST use identical '
-      'fixed column widths — Item 25%, Status 8%, Details 67%. In HTML '
-      'output enforce via <colgroup><col style="width:25%"><col '
-      'style="width:8%"><col style="width:67%"></colgroup> inside each '
-      '<table>; do NOT let content auto-size columns differently.\n'
+      '- Layout (STRICT): each task is a CONTENT LIST, NOT a table. One '
+      'bold header line "**{status emoji} {Task title}** — {status '
+      'label}", followed immediately by its detail items as plain '
+      '"- " bullets — EXACTLY ONE item per line, each item on its own '
+      'line with a line break between items. NEVER put multiple items on '
+      'one line; NEVER use <br> or a table for details. Leave one blank '
+      'line between two task blocks.\n'
       '- Status icons: 🟩 Completed, 🟨 In Progress, 🟥 Blocked/overdue, '
       '⬜ Planned.\n'
-      '- Details column (MANDATORY for ALL tasks regardless of status): '
-      'summarize from BOTH the task description AND the Execution Log '
-      'Notes, combining both sources into a coherent summary — this '
-      'applies equally to Completed, In Progress, Blocked, and Planned '
-      'tasks. Maximum 5 bullets per task (use • separated by <br>). Each '
-      'bullet = one distinct fact or milestone — do not merge unrelated '
-      'facts. Preserve technical specifics: part numbers, firmware '
-      'versions, voltage/current values, dates, vendor names, tracking '
-      'numbers. Completed tasks are NOT exempt — their Details must '
+      '- Detail items (MANDATORY for ALL tasks regardless of status): '
+      'summarize from your understanding of the task description AND its '
+      'ENTIRE Execution Log (including earlier-context entries), '
+      'combining both sources into a coherent summary — this applies '
+      'equally to Completed, In Progress, Blocked, and Planned tasks. '
+      'Maximum 5 items per task. Each item = one distinct fact or '
+      'milestone — do not merge unrelated facts. Technical key points '
+      'must NOT be compressed away: keep part numbers, firmware '
+      'versions, parameters, measurements, test conditions, dates, '
+      'vendor names, tracking numbers, results and root causes complete '
+      'and specific. Completed tasks are NOT exempt — their items must '
       'contain a full summary of what was done, how, and the outcome. '
-      'NEVER dismiss a task that has content: if a task has a description '
-      'or ANY Execution Log entry (even slightly outside the period), you '
-      'MUST summarize it. The fallback "No execution logs in the reporting '
-      'period" is ONLY allowed when the task has literally NO description '
-      'AND NO log entries at all.\n\n'
+      'NEVER dismiss a task that has content: if a task has a '
+      'description or ANY Execution Log entry (even slightly outside '
+      'the period), you MUST summarize it. The fallback "No execution '
+      'logs in the reporting period" is ONLY allowed when the task has '
+      'literally NO description AND NO log entries at all.\n\n'
       '4. Plan for Next Period (MANDATORY — never omit):\n'
       '- This section is REQUIRED in every report. If there are no '
       'upcoming tasks, still include the section header with a note.\n'
@@ -721,9 +763,11 @@ class ReportService {
       '- All summaries use nested bullet hierarchy — zero flat '
       'paragraphs anywhere.\n'
       '- Executive Summary bullets ≤ 2 sentences each.\n'
-      '- Progress Details bullets ≤ 5 per task.\n'
-      '- All Progress Details project tables use identical column widths '
-      '(25%/8%/67%) — visually aligned.\n'
+      '- Progress Details: every task is a bold header line + "- " '
+      'bullet list, exactly one item per line, max 5 items per task; no '
+      'tables and no <br> in this section.\n'
+      '- Technical key points are complete and specific — nothing '
+      'over-compressed.\n'
       '- Status Dashboard progress fractions arithmetically correct.\n'
       '- Plan rows form contiguous per-project blocks (no interleaving), '
       'ordered by priority within each block.\n'
@@ -739,12 +783,17 @@ class ReportService {
       '任务按项目组织，每个任务包含执行日志——按时间顺序记录进展、决策、'
       '阻塞和结果的 Note 条目。\n\n'
       '处理规则——生成输出前必须：\n'
-      '1. 通读并理解每个任务的描述（description）以及全部执行日志，'
-      '不得跳过任何条目；两类来源对生成准确总结同等重要。\n'
+      '1. 通读并理解每个任务的描述（description）以及其全部执行日志——'
+      '包括标注为"(earlier context)"的报告期之前条目，不得跳过任何'
+      '条目。总结必须建立在对日志的真正理解之上（做了什么、为什么、'
+      '决策是什么、结果如何），而非表面摘抄；期内条目是总结的主体，'
+      '期前条目作为背景帮助解释期内进展。\n'
       '2. 将每个任务归类到其项目下。\n'
-      '3. 综合提炼——将原始日志提炼为简洁、有意义的总结。完整保留所有'
-      '技术术语、物料编号、固件版本、测量值、缩写和专有名词，'
-      '一律照抄原文，禁止改写、概括、转述或替换任何技术标识。\n'
+      '3. 综合提炼——将原始日志提炼为简洁、有意义的总结，但技术'
+      '要点绝不过度缩减：料号、固件版本、参数、测量值、测试条件、'
+      '阈值、型号、供应商、结果、根因等技术关键内容必须完整、具体'
+      '地保留在总结中；在"缩短"与"保留技术细节"之间犹豫时，一律'
+      '保留。所有技术标识一律照抄原文，禁止改写、概括、转述或替换。\n'
       '4. 一条一个事实——每个要点只陈述一个事实、事件或决策，'
       '禁止把多个事实合并进同一个要点或句子；一条日志含三个事实'
       '就拆成三个要点。\n'
@@ -786,9 +835,10 @@ class ReportService {
       '## 3. 进度明细\n'
       '*（按项目分组）*\n\n'
       '### {项目名}\n\n'
-      '| 事项 | 状态 | 详情 |\n'
-      '|:-----|:------:|:--------|\n'
-      '| {任务标题} | {🟩/🟨/🟥/⬜} | • {要点1}<br>• {要点2} |\n\n'
+      '**{🟩/🟨/🟥/⬜} {任务标题}** — {已完成 / 进行中 / 阻塞 / 计划中}\n'
+      '- {详情条目1}\n'
+      '- {详情条目2}\n\n'
+      '（每个任务重复上述块，块之间空一行）\n\n'
       '---\n\n'
       '## 4. 下期计划\n\n'
       '| 项目 | 任务 | 截止 | 优先级 |\n'
@@ -809,18 +859,20 @@ class ReportService {
       '意义、不超 2 句，禁止写成段落，保持精炼可扫读；进行中含'
       '子步骤比例与剩余工作；风险含逾期任务和阻塞日志条目，'
       '必须说明根因与进度影响。\n\n'
-      '3. 进度明细：按项目分组（H3）。表格对齐（严格）：每个项目表必须'
-      '使用相同的固定列宽——事项 25%、状态 8%、详情 67%；HTML 输出中'
-      '用 <colgroup><col style="width:25%"><col style="width:8%"><col '
-      'style="width:67%"></colgroup> 强制，禁止内容自适应导致各表列宽'
-      '不一。状态图标 🟩已完成 🟨进行中 🟥阻塞/逾期 ⬜计划中；详情列'
-      '（对所有状态的任务都必填）综合任务描述与执行日志两类来源总结——'
-      '已完成、进行中、阻塞、计划中任务一视同仁，每任务最多 5 个要点'
-      '（• 用 <br> 分隔），每个要点=一个独立事实，保留技术细节；'
-      '已完成任务不可豁免，其详情必须完整总结做了什么、如何做、结果如何；'
-      '禁止轻易略过有内容的任务：只要任务有描述或任何执行日志（即使'
-      '时间略超出报告期）就必须总结；仅当任务既无描述也无任何日志时，'
-      '才写"报告期内无执行日志；{简要状态}"。\n\n'
+      '3. 进度明细：按项目分组（H3）。版式（严格）：每个任务是一段'
+      '内容清单而非表格——一行加粗标题"**{状态图标} {任务标题}** — '
+      '{状态}"，紧跟其详情条目，每条用 "- " 列表项呈现，严格一条'
+      '一行、逐条换行，禁止多条挤在一行、禁止使用 <br> 或表格，'
+      '任务块之间空一行。状态图标 🟩已完成 🟨进行中 🟥阻塞/逾期 '
+      '⬜计划中；详情条目（对所有状态的任务都必填）基于对任务描述'
+      '与全部执行日志（含期前背景条目）的理解综合总结——已完成、'
+      '进行中、阻塞、计划中任务一视同仁，每任务最多 5 条，每条=一个'
+      '独立事实；技术要点不得被压缩掉：料号、固件版本、参数、测量值、'
+      '测试条件、日期、供应商、结果、根因必须完整具体；'
+      '已完成任务不可豁免，其条目必须完整总结做了什么、如何做、结果'
+      '如何；禁止轻易略过有内容的任务：只要任务有描述或任何执行日志'
+      '（即使时间略超出报告期）就必须总结；仅当任务既无描述也无任何'
+      '日志时，才写"报告期内无执行日志；{简要状态}"。\n\n'
       '4. 下期计划（必填，禁止省略）：每份报告都必须有此章节；'
       '即使没有后续任务，也要保留标题并加说明。含计划中、进行中'
       '（剩余工作）、阻塞（解除步骤）的任务。分组（严格）：行必须'
@@ -836,8 +888,9 @@ class ReportService {
       '需决策事项）全部齐备；每个任务至少出现在一个章节；技术术语、'
       '物料编号、缩写、测量值原样保留不得改写；每个要点只讲一个事实、'
       '不合并多事实；所有总结用嵌套列表层级、全报告零平铺段落；'
-      '摘要不超 2 句；明细每任务不超 5 条；进度明细各项目表列宽一致'
-      '（25%/8%/67%）视觉对齐；进度分数算术正确；'
+      '摘要不超 2 句；进度明细每个任务=加粗标题行+"- "清单，严格'
+      '一条一行，最多 5 条，本节禁止表格与 <br>；技术要点完整具体、'
+      '不过度压缩；进度分数算术正确；'
       '下期计划按项目连续成块不交叉、块内按优先级排序；'
       '报告应连贯、可在 2 分钟内扫读完毕。'
       '仅输出 Markdown 报告本身，不要额外说明或代码围栏。';
@@ -926,20 +979,29 @@ class ReportService {
     b.writeln('---');
     b.writeln();
 
-    // 3. Progress Details
+    // 3. Progress Details — v1.4.88: content-list layout (bold task
+    // header line + one "- " item per line), mirroring the AI prompt
+    // format so every renderer (in-app preview, Export.md, HTML, email)
+    // shows each detail item on its own line.
     b.writeln('## 3. ${l.progressDetails}');
     b.writeln('*${l.groupedByProject}*');
     b.writeln();
     for (final g in groups.entries) {
       b.writeln('### ${_term(g.key, aiTerms)}');
       b.writeln();
-      b.writeln('| ${l.item} | ${l.status} | ${l.details} |');
-      b.writeln('|:-----|:------:|:--------|');
       for (final t in g.value) {
         b.writeln(
-            '| ${_mdEscape(_title(t, aiTitles))} | ${_taskStatusEmoji(t, d)} | ${_detailsCellMd(_taskDetailsLines(t, l, aiSummaries))} |');
+            '**${_taskStatusEmoji(t, d)} ${_mdEscape(_title(t, aiTitles))}** '
+            '— ${_taskStatusLabel(t, d)}');
+        for (final line in _taskDetailsLines(t, l, aiSummaries)) {
+          // Strip any leading bullet glyph the AI summary may carry so the
+          // list never renders doubled markers ("- • text").
+          final item =
+              _oneLine(line).replaceFirst(RegExp(r'^[•\-\*]\s*'), '');
+          b.writeln('- $item');
+        }
+        b.writeln();
       }
-      b.writeln();
     }
     b.writeln('---');
     b.writeln();
@@ -1075,6 +1137,17 @@ class ReportService {
     return '⬜';
   }
 
+  /// Status label shown after the bold task header in the Progress
+  /// Details content list (v1.4.88).
+  String _taskStatusLabel(Task t, ReportData d) {
+    if (t.status == TaskStatus.completed) return 'Completed';
+    if (_isOverdue(t, d) || _hasEntryType(t, d, EntryType.blocked)) {
+      return 'Blocked';
+    }
+    if (t.status == TaskStatus.inProgress) return 'In Progress';
+    return 'Planned';
+  }
+
   /// DETAILS cell content as a list of lines: the AI summary bullets
   /// when available (applies to completed tasks too — their summaries
   /// describe what was accomplished), otherwise a single compact
@@ -1101,17 +1174,6 @@ class ReportService {
       parts.add(l.dueOn(DateFormat('MM-dd').format(t.dueDate!)));
     }
     return [parts.isEmpty ? '—' : parts.join(' · ')];
-  }
-
-  /// DETAILS cell for Markdown tables: a single line stays plain;
-  /// multiple AI bullets become "• a<br>• b" — `<br>` renders as a real
-  /// line break both in the in-app flutter_markdown preview and in
-  /// GitHub / VS Code / browser viewers of the exported file.
-  String _detailsCellMd(List<String> lines) {
-    if (lines.length <= 1) {
-      return _mdEscape(lines.isEmpty ? '—' : lines.first);
-    }
-    return lines.map((s) => '• ${_mdEscape(s)}').join('<br>');
   }
 
   /// First AI summary bullet for a task, shown as context under the
