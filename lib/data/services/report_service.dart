@@ -526,8 +526,9 @@ class ReportService {
       // ones inside the reporting period — so its summary is based on real
       // understanding of the whole history. In-period entries drive the
       // summary; older ones are labeled "(earlier context)" as background.
-      // The earlier-context text is generously capped (6000 chars per task)
-      // only to keep pathological histories from blowing up the prompt.
+      // The earlier-context text is generously capped (12000 chars per task,
+      // v1.4.89) only to keep pathological histories from blowing up the
+      // prompt.
       final entries = [...t.executionLog]
         ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
       if (entries.isNotEmpty) {
@@ -549,7 +550,7 @@ class ReportService {
             b.writeln('  [${f.format(e.timestamp)}] ${e.type.name}: $content');
           } else {
             if (earlierTruncated) continue;
-            if (earlierChars + content.length > 6000) {
+            if (earlierChars + content.length > 12000) {
               earlierTruncated = true;
               b.writeln('  … (remaining earlier entries omitted for length)');
               continue;
