@@ -291,23 +291,40 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _editingEntry != null ? _cancelEdit : _addEntry,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.all(12),
-                      minimumSize: const Size(44, 44),
-                      backgroundColor: _editingEntry != null
-                          ? AppColors.error.withOpacity(0.12)
-                          : null,
-                      foregroundColor: _editingEntry != null
-                          ? AppColors.error
-                          : null,
+                  // v1.4.90: in edit mode the primary action is an explicit
+                  // "Update" button (the lone X was too easy to mistake for
+                  // the only action); new-entry mode keeps the send icon.
+                  if (_editingEntry != null) ...[
+                    ElevatedButton.icon(
+                      onPressed: _addEntry,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                        minimumSize: const Size(44, 44),
+                      ),
+                      icon: const Icon(Icons.check, size: 18),
+                      label: const Text('Update'),
                     ),
-                    child: Icon(
-                      _editingEntry != null ? Icons.close : Icons.send,
-                      size: 18,
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _cancelEdit,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.all(12),
+                        minimumSize: const Size(44, 44),
+                        backgroundColor: AppColors.error.withOpacity(0.12),
+                        foregroundColor: AppColors.error,
+                      ),
+                      child: const Icon(Icons.close, size: 18),
                     ),
-                  ),
+                  ] else
+                    ElevatedButton(
+                      onPressed: _addEntry,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.all(12),
+                        minimumSize: const Size(44, 44),
+                      ),
+                      child: const Icon(Icons.send, size: 18),
+                    ),
                 ],
               ),
             ],
