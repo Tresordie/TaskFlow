@@ -16,7 +16,6 @@ import '../../providers/typography_provider.dart';
 import '../shared/selectable_markdown_body.dart';
 import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
-import 'edit_entry_dialog.dart';
 
 class ExecutionLogWidget extends ConsumerStatefulWidget {
   final Task task;
@@ -59,6 +58,11 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
   // Attachments staged for the next entry.
   final List<Attachment> _pendingAttachments = [];
   bool _isPicking = false;
+
+  // v1.4.90: inline edit — pressing Edit on a record loads its content,
+  // type and attachments into THIS input area; sending updates the record
+  // in place instead of creating a new entry.
+  ExecutionEntry? _editingEntry;
 
   @override
   void dispose() {
@@ -131,6 +135,7 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
                       entry: entry,
                       isLatest: index == 0,
                       isLast: index == entries.length - 1,
+                      isEditing: _editingEntry?.uid == entry.uid,
                       onEdit: () => _editEntry(entry),
                       onDelete: () => _deleteEntry(entry),
                     );
@@ -287,12 +292,21 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
-                    onPressed: _addEntry,
+                    onPressed: _editingEntry != null ? _cancelEdit : _addEntry,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.all(12),
                       minimumSize: const Size(44, 44),
+                      backgroundColor: _editingEntry != null
+                          ? AppColors.error.withOpacity(0.12)
+                          : null,
+                      foregroundColor: _editingEntry != null
+                          ? AppColors.error
+                          : null,
                     ),
-                    child: const Icon(Icons.send, size: 18),
+                    child: Icon(
+                      _editingEntry != null ? Icons.close : Icons.send,
+                      size: 18,
+                    ),
                   ),
                 ],
               ),
@@ -354,6 +368,10 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
   }
 
   Future<void> _addEntry() async {
+    // v1.4.90: while an existing record is loaded into the input area,
+    // sending updates that record instead of creating a new one.
+    if (_editingEntry != null) return _updateEntry();
+
     final content = _entryController.text.trim();
     // Allow sending when there is text OR at least one attachment.
     if (content.isEmpty && _pendingAttachments.isEmpty) return;
@@ -381,14 +399,75 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
     }
   }
 
+  /// v1.4.90: load the record into the input area for re-editing — its
+  /// content, type and attachments all come along, so the user edits in
+  /// the exact same environment used for new entries.
   void _editEntry(ExecutionEntry entry) {
-    showDialog(
-      context: context,
-      builder: (_) => EditExecutionEntryDialog(
-        taskId: widget.task.id,
-        entry: entry,
-      ),
-    );
+    setState(() {
+      _editingEntry = entry;
+      _entryController.text = entry.content;
+      _selectedType = entry.type;
+      _pendingAttachments
+        ..clear()
+        ..addAll(entry.attachments);
+    });
+    _entryFocus.requestFocus();
+  }
+
+  /// Leaves edit mode, restoring the input area to "new entry" state.
+  void _cancelEdit() {
+    setState(() {
+      _editingEntry = null;
+      _entryController.clear();
+      _pendingAttachments.clear();
+      _selectedType = EntryType.note;
+    });
+  }
+
+  /// Writes the edited content back to the record. The entry keeps its
+  /// original uid + timestamp so it stays at the same timeline position;
+  /// only content, type and attachments change.
+  Future<void> _updateEntry() async {
+    final original = _editingEntry;
+    if (original == null) return;
+
+    final content = _entryController.text.trim();
+    // Same rule as the edit dialog: needs text or at least one attachment.
+    if (content.isEmpty && _pendingAttachments.isEmpty) return;
+
+    final updated = ExecutionEntry()
+      ..uid = original.uid
+      ..timestamp = original.timestamp
+      ..content = content
+      ..type = _selectedType
+      ..attachments = List<Attachment>.from(_pendingAttachments);
+
+    // Leave edit mode immediately for a snappy feel.
+    setState(() {
+      _editingEntry = null;
+      _entryController.clear();
+      _pendingAttachments.clear();
+      _selectedType = EntryType.note;
+    });
+
+    try {
+      await ref
+          .read(taskListProvider.notifier)
+          .updateExecutionEntry(widget.task.id, original.uid, updated);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Log entry updated'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update log entry: $e')),
+      );
+    }
   }
 
   void _deleteEntry(ExecutionEntry entry) {
@@ -590,6 +669,10 @@ class _LogEntryItem extends StatelessWidget {
 
   /// Oldest entry — no connector line below it.
   final bool isLast;
+
+  /// v1.4.90: this record is currently loaded in the input area for
+  /// re-editing — highlighted so the user sees which record they edit.
+  final bool isEditing;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -597,6 +680,7 @@ class _LogEntryItem extends StatelessWidget {
     required this.entry,
     required this.isLatest,
     required this.isLast,
+    this.isEditing = false,
     required this.onEdit,
     required this.onDelete,
   });
@@ -637,11 +721,15 @@ class _LogEntryItem extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(isLatest ? 0.08 : 0.05),
+                color: isEditing
+                    ? AppColors.primary.withOpacity(0.07)
+                    : color.withOpacity(isLatest ? 0.08 : 0.05),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: color.withOpacity(isLatest ? 0.45 : 0.2),
-                  width: isLatest ? 1.2 : 1,
+                  color: isEditing
+                      ? AppColors.primary
+                      : color.withOpacity(isLatest ? 0.45 : 0.2),
+                  width: isEditing ? 1.6 : (isLatest ? 1.2 : 1),
                 ),
               ),
               child: Column(
@@ -666,6 +754,27 @@ class _LogEntryItem extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
+                      // v1.4.90: badge marking the record loaded into the
+                      // input area for re-editing.
+                      if (isEditing) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'Editing',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
                       Text(
                         DateFormat('MMM d, yyyy · HH:mm:ss').format(entry.timestamp),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
