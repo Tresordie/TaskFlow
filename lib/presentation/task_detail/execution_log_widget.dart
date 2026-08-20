@@ -291,30 +291,50 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // v1.4.90: in edit mode the primary action is an explicit
-                  // "Update" button (the lone X was too easy to mistake for
-                  // the only action); new-entry mode keeps the send icon.
+                  // v1.4.94: edit-mode actions restyled — a subdued
+                  // circular outlined Cancel on the left and the primary
+                  // Update rightmost (desktop convention: primary action
+                  // last). New-entry mode keeps the send icon.
                   if (_editingEntry != null) ...[
-                    ElevatedButton.icon(
-                      onPressed: _addEntry,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
-                        minimumSize: const Size(44, 44),
+                    Tooltip(
+                      message: 'Cancel editing',
+                      child: OutlinedButton(
+                        onPressed: _cancelEdit,
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(40, 40),
+                          maximumSize: const Size(40, 40),
+                          side: BorderSide(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .outline
+                                .withOpacity(0.35),
+                          ),
+                          foregroundColor: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.55),
+                          shape: const CircleBorder(),
+                        ),
+                        child: const Icon(Icons.close, size: 17),
                       ),
-                      icon: const Icon(Icons.check, size: 18),
-                      label: const Text('Update'),
                     ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: _cancelEdit,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.all(12),
-                        minimumSize: const Size(44, 44),
-                        backgroundColor: AppColors.error.withOpacity(0.12),
-                        foregroundColor: AppColors.error,
+                    const SizedBox(width: 10),
+                    Tooltip(
+                      message: 'Save changes to this entry',
+                      child: ElevatedButton.icon(
+                        onPressed: _addEntry,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          minimumSize: const Size(44, 40),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        icon: const Icon(Icons.check_rounded, size: 18),
+                        label: const Text('Update'),
                       ),
-                      child: const Icon(Icons.close, size: 18),
                     ),
                   ] else
                     ElevatedButton(
