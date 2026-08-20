@@ -73,6 +73,7 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final entries = widget.task.executionLog.reversed.toList();
 
     return Column(
@@ -291,32 +292,30 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // v1.4.94: edit-mode actions restyled — a subdued
-                  // circular outlined Cancel on the left and the primary
-                  // Update rightmost (desktop convention: primary action
-                  // last). New-entry mode keeps the send icon.
+                  // v1.4.95: balanced edit-mode actions — Cancel and Update
+                  // share the SAME height, corner radius and text weight so
+                  // the pair reads as one cohesive action group; primary
+                  // Update sits rightmost (desktop convention).
                   if (_editingEntry != null) ...[
                     Tooltip(
-                      message: 'Cancel editing',
+                      message: 'Discard changes',
                       child: OutlinedButton(
                         onPressed: _cancelEdit,
                         style: OutlinedButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(40, 40),
-                          maximumSize: const Size(40, 40),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          minimumSize: const Size(44, 40),
                           side: BorderSide(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .outline
-                                .withOpacity(0.35),
+                            color:
+                                theme.colorScheme.outline.withOpacity(0.35),
                           ),
-                          foregroundColor: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withOpacity(0.55),
-                          shape: const CircleBorder(),
+                          foregroundColor:
+                              theme.colorScheme.onSurface.withOpacity(0.65),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
-                        child: const Icon(Icons.close, size: 17),
+                        child: const Text('Cancel'),
                       ),
                     ),
                     const SizedBox(width: 10),
