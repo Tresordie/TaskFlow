@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/version.dart';
 import 'custom_title_bar.dart';
 
 class AppShell extends StatelessWidget {
@@ -137,22 +136,6 @@ class _Sidebar extends StatelessWidget {
                       fontSize: 15,
                     ),
                   ),
-                  const Spacer(),
-                  // v1.4.92: the app version is always visible in the GUI
-                  // (sidebar logo row) so the running build can be told at
-                  // a glance. Flexible keeps narrow sidebars from
-                  // overflowing.
-                  Flexible(
-                    child: Text(
-                      'v$kAppVersion',
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        fontSize: 10,
-                        color:
-                            theme.colorScheme.onSurface.withOpacity(0.45),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -232,17 +215,7 @@ class _Sidebar extends StatelessWidget {
               isActive: currentLocation == '/settings',
               onTap: () => context.go('/settings'),
             ),
-            // v1.4.92: version shown at the bottom of the sidebar too.
-            Center(
-              child: Text(
-                'v$kAppVersion',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontSize: 10,
-                  color: theme.colorScheme.onSurface.withOpacity(0.4),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
           ],
         ),
       ),
