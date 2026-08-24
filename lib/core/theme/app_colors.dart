@@ -197,11 +197,14 @@ class AppColors {
   //   dark:  base → surface0 → surface1 (border = surface2).
 
   // ─── Catppuccin Latte · Lavender (拿铁 · 薰衣草) ───
+  // v1.4.97: Latte surfaces lifted — the official base/mantle pairing read
+  // too grey/dim, so bg is a brighter airy tint, surface sits ABOVE it and
+  // cards approach soft near-white for a crisp, luminous light mode.
   static const ThemePalette catLatteLavender = ThemePalette(
-    bg: Color(0xFFEFF1F5),
-    surface: Color(0xFFE6E9EF),
-    card: Color(0xFFF7F8FB),
-    border: Color(0xFFCCD0DA),
+    bg: Color(0xFFF3F5F9),
+    surface: Color(0xFFEDF0F6),
+    card: Color(0xFFFBFCFE),
+    border: Color(0xFFD3D8E4),
     textPrimary: Color(0xFF4C4F69),
     textSecondary: Color(0xFF6C6F85),
     primary: Color(0xFF7287FD),
@@ -212,10 +215,10 @@ class AppColors {
 
   // ─── Catppuccin Latte · Mauve (拿铁 · 木槿紫) ───
   static const ThemePalette catLatteMauve = ThemePalette(
-    bg: Color(0xFFEFF1F5),
-    surface: Color(0xFFE6E9EF),
-    card: Color(0xFFF7F8FB),
-    border: Color(0xFFCCD0DA),
+    bg: Color(0xFFF3F5F9),
+    surface: Color(0xFFEDF0F6),
+    card: Color(0xFFFBFCFE),
+    border: Color(0xFFD3D8E4),
     textPrimary: Color(0xFF4C4F69),
     textSecondary: Color(0xFF6C6F85),
     primary: Color(0xFF8839EF),
