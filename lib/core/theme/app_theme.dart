@@ -4,13 +4,9 @@ import 'app_colors.dart';
 enum AppThemeMode {
   indigoLight,
   freshGreen,
-  oceanBlue,
   sunsetOrange,
-  sakuraPink,
   lavenderPurple,
   dark,
-  blueDark,
-  purpleDark,
   // v1.4.96: Catppuccin — four flavours × two accents.
   catLatteLavender,
   catLatteMauve,
@@ -27,20 +23,12 @@ enum AppThemeMode {
         return 'Indigo Light';
       case AppThemeMode.freshGreen:
         return 'Fresh Green';
-      case AppThemeMode.oceanBlue:
-        return 'Ocean Blue';
       case AppThemeMode.sunsetOrange:
         return 'Sunset Orange';
-      case AppThemeMode.sakuraPink:
-        return 'Sakura Pink';
       case AppThemeMode.lavenderPurple:
         return 'Lavender Purple';
       case AppThemeMode.dark:
         return 'Dark';
-      case AppThemeMode.blueDark:
-        return 'Ocean Dark';
-      case AppThemeMode.purpleDark:
-        return 'Violet Dark';
       case AppThemeMode.catLatteLavender:
         return 'Catppuccin Latte · Lavender';
       case AppThemeMode.catLatteMauve:
@@ -66,20 +54,12 @@ enum AppThemeMode {
         return '默认靛蓝';
       case AppThemeMode.freshGreen:
         return '清新淡绿';
-      case AppThemeMode.oceanBlue:
-        return '海洋蓝';
       case AppThemeMode.sunsetOrange:
         return '日落橙';
-      case AppThemeMode.sakuraPink:
-        return '樱花粉';
       case AppThemeMode.lavenderPurple:
         return '薰衣草紫';
       case AppThemeMode.dark:
         return '暗夜模式';
-      case AppThemeMode.blueDark:
-        return '暗夜海蓝';
-      case AppThemeMode.purpleDark:
-        return '暗夜薰紫';
       case AppThemeMode.catLatteLavender:
         return '拿铁 · 薰衣草';
       case AppThemeMode.catLatteMauve:
@@ -105,20 +85,12 @@ enum AppThemeMode {
         return AppColors.indigoLight;
       case AppThemeMode.freshGreen:
         return AppColors.freshGreen;
-      case AppThemeMode.oceanBlue:
-        return AppColors.oceanBlue;
       case AppThemeMode.sunsetOrange:
         return AppColors.sunsetOrange;
-      case AppThemeMode.sakuraPink:
-        return AppColors.sakuraPink;
       case AppThemeMode.lavenderPurple:
         return AppColors.lavenderPurple;
       case AppThemeMode.dark:
         return AppColors.dark;
-      case AppThemeMode.blueDark:
-        return AppColors.blueDark;
-      case AppThemeMode.purpleDark:
-        return AppColors.purpleDark;
       case AppThemeMode.catLatteLavender:
         return AppColors.catLatteLavender;
       case AppThemeMode.catLatteMauve:
@@ -142,16 +114,12 @@ enum AppThemeMode {
     switch (this) {
       case AppThemeMode.indigoLight:
       case AppThemeMode.freshGreen:
-      case AppThemeMode.oceanBlue:
       case AppThemeMode.sunsetOrange:
-      case AppThemeMode.sakuraPink:
       case AppThemeMode.lavenderPurple:
       case AppThemeMode.catLatteLavender:
       case AppThemeMode.catLatteMauve:
         return Brightness.light;
       case AppThemeMode.dark:
-      case AppThemeMode.blueDark:
-      case AppThemeMode.purpleDark:
       case AppThemeMode.catFrappeMauve:
       case AppThemeMode.catFrappeSapphire:
       case AppThemeMode.catMacchiatoMauve:
