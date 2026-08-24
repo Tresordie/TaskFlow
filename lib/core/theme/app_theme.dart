@@ -10,7 +10,16 @@ enum AppThemeMode {
   lavenderPurple,
   dark,
   blueDark,
-  purpleDark;
+  purpleDark,
+  // v1.4.96: Catppuccin — four flavours × two accents.
+  catLatteLavender,
+  catLatteMauve,
+  catFrappeMauve,
+  catFrappeSapphire,
+  catMacchiatoMauve,
+  catMacchiatoTeal,
+  catMochaMauve,
+  catMochaLavender;
 
   String get label {
     switch (this) {
@@ -32,6 +41,22 @@ enum AppThemeMode {
         return 'Ocean Dark';
       case AppThemeMode.purpleDark:
         return 'Violet Dark';
+      case AppThemeMode.catLatteLavender:
+        return 'Catppuccin Latte · Lavender';
+      case AppThemeMode.catLatteMauve:
+        return 'Catppuccin Latte · Mauve';
+      case AppThemeMode.catFrappeMauve:
+        return 'Catppuccin Frappé · Mauve';
+      case AppThemeMode.catFrappeSapphire:
+        return 'Catppuccin Frappé · Sapphire';
+      case AppThemeMode.catMacchiatoMauve:
+        return 'Catppuccin Macchiato · Mauve';
+      case AppThemeMode.catMacchiatoTeal:
+        return 'Catppuccin Macchiato · Teal';
+      case AppThemeMode.catMochaMauve:
+        return 'Catppuccin Mocha · Mauve';
+      case AppThemeMode.catMochaLavender:
+        return 'Catppuccin Mocha · Lavender';
     }
   }
 
@@ -55,6 +80,22 @@ enum AppThemeMode {
         return '暗夜海蓝';
       case AppThemeMode.purpleDark:
         return '暗夜薰紫';
+      case AppThemeMode.catLatteLavender:
+        return '拿铁 · 薰衣草';
+      case AppThemeMode.catLatteMauve:
+        return '拿铁 · 木槿紫';
+      case AppThemeMode.catFrappeMauve:
+        return '冰沙 · 木槿紫';
+      case AppThemeMode.catFrappeSapphire:
+        return '冰沙 · 蓝晶';
+      case AppThemeMode.catMacchiatoMauve:
+        return '玛奇朵 · 木槿紫';
+      case AppThemeMode.catMacchiatoTeal:
+        return '玛奇朵 · 青碧';
+      case AppThemeMode.catMochaMauve:
+        return '摩卡 · 木槿紫';
+      case AppThemeMode.catMochaLavender:
+        return '摩卡 · 薰衣草';
     }
   }
 
@@ -78,6 +119,22 @@ enum AppThemeMode {
         return AppColors.blueDark;
       case AppThemeMode.purpleDark:
         return AppColors.purpleDark;
+      case AppThemeMode.catLatteLavender:
+        return AppColors.catLatteLavender;
+      case AppThemeMode.catLatteMauve:
+        return AppColors.catLatteMauve;
+      case AppThemeMode.catFrappeMauve:
+        return AppColors.catFrappeMauve;
+      case AppThemeMode.catFrappeSapphire:
+        return AppColors.catFrappeSapphire;
+      case AppThemeMode.catMacchiatoMauve:
+        return AppColors.catMacchiatoMauve;
+      case AppThemeMode.catMacchiatoTeal:
+        return AppColors.catMacchiatoTeal;
+      case AppThemeMode.catMochaMauve:
+        return AppColors.catMochaMauve;
+      case AppThemeMode.catMochaLavender:
+        return AppColors.catMochaLavender;
     }
   }
 
@@ -89,10 +146,18 @@ enum AppThemeMode {
       case AppThemeMode.sunsetOrange:
       case AppThemeMode.sakuraPink:
       case AppThemeMode.lavenderPurple:
+      case AppThemeMode.catLatteLavender:
+      case AppThemeMode.catLatteMauve:
         return Brightness.light;
       case AppThemeMode.dark:
       case AppThemeMode.blueDark:
       case AppThemeMode.purpleDark:
+      case AppThemeMode.catFrappeMauve:
+      case AppThemeMode.catFrappeSapphire:
+      case AppThemeMode.catMacchiatoMauve:
+      case AppThemeMode.catMacchiatoTeal:
+      case AppThemeMode.catMochaMauve:
+      case AppThemeMode.catMochaLavender:
         return Brightness.dark;
     }
   }

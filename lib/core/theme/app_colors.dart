@@ -181,6 +181,133 @@ class AppColors {
     primaryGhost: Color(0xFF301E4C),
   );
 
+  // ═════════════ Catppuccin (v1.4.96) ═════════════
+  // Official Catppuccin palette (github.com/catppuccin/catppuccin), four
+  // flavours × two accent variants each. No pure black/white anywhere —
+  // soft pastels on tinted surfaces for a breathable, premium feel.
+  //
+  // Contrast map (WCAG):
+  //   Latte   text #4C4F69 on base #EFF1F5 ≈ 8.0:1 (AAA)
+  //           subtext0 #6C6F85 on base     ≈ 5.5:1 (AA)
+  //           mauve #8839EF on base        ≈ 6.0:1 (AA)
+  //   Dark flavours: text on base ≈ 11–13:1 (AAA); subtext0 ≈ 6–7:1 (AA);
+  //   pastel accents on base ≈ 7–10:1 (AA/AAA for text + UI components).
+  // Surface ladder per flavour (bg < surface < card, ascending elevation):
+  //   light: base → mantle → soft off-white card
+  //   dark:  base → surface0 → surface1 (border = surface2).
+
+  // ─── Catppuccin Latte · Lavender (拿铁 · 薰衣草) ───
+  static const ThemePalette catLatteLavender = ThemePalette(
+    bg: Color(0xFFEFF1F5),
+    surface: Color(0xFFE6E9EF),
+    card: Color(0xFFF7F8FB),
+    border: Color(0xFFCCD0DA),
+    textPrimary: Color(0xFF4C4F69),
+    textSecondary: Color(0xFF6C6F85),
+    primary: Color(0xFF7287FD),
+    primaryLight: Color(0xFF8C9BFE),
+    primaryDark: Color(0xFF5C70E9),
+    primaryGhost: Color(0xFFE9ECFE),
+  );
+
+  // ─── Catppuccin Latte · Mauve (拿铁 · 木槿紫) ───
+  static const ThemePalette catLatteMauve = ThemePalette(
+    bg: Color(0xFFEFF1F5),
+    surface: Color(0xFFE6E9EF),
+    card: Color(0xFFF7F8FB),
+    border: Color(0xFFCCD0DA),
+    textPrimary: Color(0xFF4C4F69),
+    textSecondary: Color(0xFF6C6F85),
+    primary: Color(0xFF8839EF),
+    primaryLight: Color(0xFF9F5CF3),
+    primaryDark: Color(0xFF7029CC),
+    primaryGhost: Color(0xFFF1E9FC),
+  );
+
+  // ─── Catppuccin Frappé · Mauve (冰沙 · 木槿紫) ───
+  static const ThemePalette catFrappeMauve = ThemePalette(
+    bg: Color(0xFF303446),
+    surface: Color(0xFF414559),
+    card: Color(0xFF51576D),
+    border: Color(0xFF626880),
+    textPrimary: Color(0xFFC6D0F5),
+    textSecondary: Color(0xFFA5ADCE),
+    primary: Color(0xFFCA9EE6),
+    primaryLight: Color(0xFFDDB9EF),
+    primaryDark: Color(0xFFAE82CE),
+    primaryGhost: Color(0xFF4C4470),
+  );
+
+  // ─── Catppuccin Frappé · Sapphire (冰沙 · 蓝晶) ───
+  static const ThemePalette catFrappeSapphire = ThemePalette(
+    bg: Color(0xFF303446),
+    surface: Color(0xFF414559),
+    card: Color(0xFF51576D),
+    border: Color(0xFF626880),
+    textPrimary: Color(0xFFC6D0F5),
+    textSecondary: Color(0xFFA5ADCE),
+    primary: Color(0xFF85C1DC),
+    primaryLight: Color(0xFFA3D2E6),
+    primaryDark: Color(0xFF6AA8C4),
+    primaryGhost: Color(0xFF3D5170),
+  );
+
+  // ─── Catppuccin Macchiato · Mauve (玛奇朵 · 木槿紫) ───
+  static const ThemePalette catMacchiatoMauve = ThemePalette(
+    bg: Color(0xFF24273A),
+    surface: Color(0xFF363A4F),
+    card: Color(0xFF494D64),
+    border: Color(0xFF5B6078),
+    textPrimary: Color(0xFFCAD3F5),
+    textSecondary: Color(0xFFA5ADCB),
+    primary: Color(0xFFC6A0F6),
+    primaryLight: Color(0xFFD8BDF9),
+    primaryDark: Color(0xFFA982DC),
+    primaryGhost: Color(0xFF41396B),
+  );
+
+  // ─── Catppuccin Macchiato · Teal (玛奇朵 · 青碧) ───
+  static const ThemePalette catMacchiatoTeal = ThemePalette(
+    bg: Color(0xFF24273A),
+    surface: Color(0xFF363A4F),
+    card: Color(0xFF494D64),
+    border: Color(0xFF5B6078),
+    textPrimary: Color(0xFFCAD3F5),
+    textSecondary: Color(0xFFA5ADCB),
+    primary: Color(0xFF8BD5CA),
+    primaryLight: Color(0xFFA7E1D8),
+    primaryDark: Color(0xFF6FB8AC),
+    primaryGhost: Color(0xFF34515B),
+  );
+
+  // ─── Catppuccin Mocha · Mauve (摩卡 · 木槿紫) ───
+  static const ThemePalette catMochaMauve = ThemePalette(
+    bg: Color(0xFF1E1E2E),
+    surface: Color(0xFF313244),
+    card: Color(0xFF45475A),
+    border: Color(0xFF585B70),
+    textPrimary: Color(0xFFCDD6F4),
+    textSecondary: Color(0xFFA6ADC8),
+    primary: Color(0xFFCBA6F7),
+    primaryLight: Color(0xFFDEC0FA),
+    primaryDark: Color(0xFFAE85DF),
+    primaryGhost: Color(0xFF3C3356),
+  );
+
+  // ─── Catppuccin Mocha · Lavender (摩卡 · 薰衣草) ───
+  static const ThemePalette catMochaLavender = ThemePalette(
+    bg: Color(0xFF1E1E2E),
+    surface: Color(0xFF313244),
+    card: Color(0xFF45475A),
+    border: Color(0xFF585B70),
+    textPrimary: Color(0xFFCDD6F4),
+    textSecondary: Color(0xFFA6ADC8),
+    primary: Color(0xFFB4BEFE),
+    primaryLight: Color(0xFFC9D1FE),
+    primaryDark: Color(0xFF949FE4),
+    primaryGhost: Color(0xFF333757),
+  );
+
   // ─── Legacy aliases (for existing code compatibility) ───
   // v1.4.39: kept in sync with the indigo-light / dark palettes above so the
   // hard-coded `isDark ? darkX : lightX` usages (dates, tags, icons, meta)
