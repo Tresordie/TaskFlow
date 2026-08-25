@@ -3,6 +3,8 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/theme/font_stack.dart';
+
 /// v1.4.85: separate, persisted typography controls for the two text
 /// realms of the app:
 ///
@@ -116,9 +118,14 @@ MarkdownStyleSheet applyContentTypography(
   final family = typo.family;
 
   TextStyle fix(TextStyle? s, double size, {FontWeight? weight}) {
+    // v1.5.2 (D5 fix): a family override MUST carry the CJK fallback
+    // chain — fontFamily alone would drop Chinese glyphs onto the system
+    // default and break mixed-layout gray uniformity.
     var out = (s ?? const TextStyle()).copyWith(
       fontSize: size,
       fontFamily: family ?? s?.fontFamily,
+      fontFamilyFallback:
+          family != null ? FontStack.fallback : s?.fontFamilyFallback,
     );
     if (weight != null) out = out.copyWith(fontWeight: weight);
     return out;
@@ -152,8 +159,11 @@ TextStyle applyInputTypography(BuildContext context, TextStyle base) {
   } catch (_) {
     return base; // no ProviderScope (e.g. bare widget tests)
   }
+  // v1.5.2 (D5 fix): family overrides always carry the CJK fallback chain.
   return base.copyWith(
     fontFamily: typo.family ?? base.fontFamily,
     fontSize: typo.size ?? base.fontSize,
+    fontFamilyFallback:
+        typo.family != null ? FontStack.fallback : base.fontFamilyFallback,
   );
 }

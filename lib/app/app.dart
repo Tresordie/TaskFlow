@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/theme/app_theme.dart';
+import '../core/theme/font_stack.dart';
 import '../providers/theme_provider.dart';
 import '../providers/font_provider.dart';
 import '../app/router.dart';
@@ -74,12 +75,14 @@ class TaskFlowApp extends ConsumerWidget {
       return theme.copyWith(textTheme: textTheme);
     }
 
-    // System font: apply the family to every text style (v1.4.22: was only
-    // 7 hand-picked styles before, leaving e.g. bodySmall/labelLarge on the
-    // old family and producing inconsistent rendering).
-    return theme.copyWith(
-      textTheme: theme.textTheme.apply(fontFamily: family),
-    );
+    // Bundled / system font (v1.5.2): apply the family to every text
+    // style, and for pairing presets attach the CJK fallback chain —
+    // setting fontFamily alone is forbidden where Chinese may render.
+    var textTheme = theme.textTheme.apply(fontFamily: family);
+    if (font.cjkFamily != null) {
+      textTheme = _applyCjkFallback(textTheme, family, font.cjkFamily!);
+    }
+    return theme.copyWith(textTheme: textTheme);
   }
 
   /// v1.4.99: triggers the google_fonts download/registration of a paired
@@ -99,16 +102,11 @@ class TaskFlowApp extends ConsumerWidget {
     }
   }
 
-  /// Sets fontFamily + a fallback chain (paired CJK family first, then the
-  /// bundled HarmonyOS Sans SC and system CJK faces) on every text style.
+  /// Sets fontFamily + the shared pairing fallback chain (paired CJK
+  /// family first, bundled safety nets + emoji owner after) on every text
+  /// style (v1.5.2: chain centralized in FontStack).
   TextTheme _applyCjkFallback(TextTheme t, String latin, String cjkFamily) {
-    final fb = [
-      cjkFamily,
-      'HarmonyOS Sans SC',
-      'Microsoft YaHei UI',
-      'Microsoft YaHei',
-      'PingFang SC',
-    ];
+    final fb = FontStack.pairingFallback(cjkFamily);
     TextStyle? fix(TextStyle? s) =>
         s?.copyWith(fontFamily: latin, fontFamilyFallback: fb);
     return t.copyWith(
@@ -176,8 +174,6 @@ class TaskFlowApp extends ConsumerWidget {
         return GoogleFonts.notoSansScTextTheme(base);
       case 'Poppins':
         return GoogleFonts.poppinsTextTheme(base);
-      case 'Inter':
-        return GoogleFonts.interTextTheme(base);
       case 'Lora':
         return GoogleFonts.loraTextTheme(base);
       case 'Nunito':

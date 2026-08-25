@@ -53,20 +53,21 @@ class AppFonts {
       isGoogleFont: true,
     ),
     // v1.4.99: curated Chinese-English pairing presets.
+    // v1.5.2: Latin half switched from Inter (unbundled) to the bundled
+    // Manrope variable font; preset ids are KEPT so users' saved choices
+    // migrate to the new pairing instead of falling back to default.
     FontOption(
       id: 'pairInterNoto',
-      labelZh: 'Inter × 思源黑体（现代均衡）',
-      labelEn: 'Inter + Noto Sans SC',
-      fontFamily: 'Inter',
-      isGoogleFont: true,
+      labelZh: 'Manrope × 思源黑体（现代均衡）',
+      labelEn: 'Manrope + Noto Sans SC',
+      fontFamily: 'Manrope',
       cjkFamily: 'Noto Sans SC',
     ),
     FontOption(
       id: 'pairInterMiSans',
-      labelZh: 'Inter × MiSans（屏幕锐利）',
-      labelEn: 'Inter + MiSans',
-      fontFamily: 'Inter',
-      isGoogleFont: true,
+      labelZh: 'Manrope × MiSans（屏幕锐利）',
+      labelEn: 'Manrope + MiSans',
+      fontFamily: 'Manrope',
       cjkFamily: 'MiSans',
     ),
     FontOption(
@@ -175,13 +176,13 @@ class AppFonts {
 
   /// The out-of-the-box font (used until the user picks one).
   ///
-  /// v1.4.23: defaults to Noto Sans SC instead of the system font. The system
-  /// default renders Latin via Segoe UI but Chinese via the Microsoft YaHei
-  /// fallback, which is visibly lighter than the Latin glyphs — so Chinese
-  /// text looked too faint. Noto Sans SC covers both scripts with true
-  /// 100–900 weights, so mixed Chinese + English renders evenly and crisply.
+  /// v1.5.2: defaults to the SYSTEM preset, which now means the bundled
+  /// Manrope × MiSans stack (ThemeData fontFamily + FontStack.fallback).
+  /// Bundled = offline-first: no google_fonts download before the real
+  /// face appears (the old Noto-Sans-SC default flashed system fonts on
+  /// first launch / offline).
   static FontOption get defaultFont => presets.firstWhere(
-        (f) => f.id == 'notoSansSC',
+        (f) => f.id == 'system',
         orElse: () => presets[0],
       );
 }

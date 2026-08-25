@@ -1,7 +1,7 @@
 name: taskflow
 description: Cross-platform task management app for hardware test engineers.
 publish_to: 'none'
-version: 1.5.1+1
+version: 1.5.2+1
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -53,36 +53,32 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Bundled fonts (v1.4.29 aesthetics): Inter for Latin, HarmonyOS Sans SC
-  # for CJK. Bundling both gives consistent, modern mixed Chinese/English
-  # rendering on every machine (no dependence on which system fonts happen
-  # to be installed). Weights are kept minimal to bound app size.
+  # Bundled fonts (v1.5.2 font upgrade — Manrope × MiSans):
+  #  - Manrope: Latin primary, VARIABLE font (single file covers wght
+  #    200–800, OFL 1.1 — see assets/fonts/FONT_LICENSES.md).
+  #  - MiSans: CJK primary (Xiaomi, free for commercial use), 3 weights.
+  #  - HarmonyOS Sans SC: CJK safety-net fallback, Regular only.
   fonts:
-    # English / Latin — Inter (open source, SIL OFL)
-    - family: Inter
+    # English / Latin — Manrope variable font.
+    - family: Manrope
       fonts:
-        - asset: assets/fonts/Inter-Regular.ttf
-          weight: 400
-        - asset: assets/fonts/Inter-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/Inter-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/Inter-Bold.ttf
-          weight: 700
-    # Chinese / CJK — HarmonyOS Sans SC (Huawei, free for commercial use)
-    - family: HarmonyOS Sans SC
-      fonts:
-        - asset: assets/fonts/HarmonyOS_Sans_SC_Regular.ttf
-          weight: 400
-        - asset: assets/fonts/HarmonyOS_Sans_SC_Medium.ttf
-          weight: 500
-        - asset: assets/fonts/HarmonyOS_Sans_SC_Bold.ttf
-          weight: 700
-    # Chinese / CJK — MiSans (Xiaomi, free for commercial use), v1.4.99
-    # pairing preset "Inter × MiSans". Two weights keep the size bounded.
+        - asset: assets/fonts/Manrope.ttf
+    # Chinese / CJK — MiSans (Xiaomi, free for commercial use).
     - family: MiSans
       fonts:
         - asset: assets/fonts/MiSans-Regular.ttf
           weight: 400
         - asset: assets/fonts/MiSans-Medium.ttf
           weight: 500
+        - asset: assets/fonts/MiSans-Semibold.ttf
+          weight: 600
+    # Chinese / CJK fallback — HarmonyOS Sans SC (Huawei, free for
+    # commercial use); Regular only to bound app size.
+    - family: HarmonyOS Sans SC
+      fonts:
+        - asset: assets/fonts/HarmonyOS_Sans_SC_Regular.ttf
+          weight: 400
+
+  assets:
+    # Font license declarations shipped with the app (v1.5.2).
+    - assets/fonts/FONT_LICENSES.md

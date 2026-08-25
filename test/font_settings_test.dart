@@ -62,11 +62,13 @@ void main() {
     });
   });
 
-  group('AppFonts default font (v1.4.23)', () {
-    test('defaults to Noto Sans SC so Chinese is not rendered too light', () {
-      expect(AppFonts.defaultFont.id, 'notoSansSC');
-      expect(AppFonts.defaultFont.fontFamily, 'Noto Sans SC');
-      expect(AppFonts.defaultFont.isGoogleFont, isTrue);
+  group('AppFonts default font (v1.4.23 → v1.5.2)', () {
+    test('defaults to the bundled system stack (Manrope × MiSans)', () {
+      // v1.5.2: the default is the SYSTEM preset — ThemeData supplies the
+      // bundled Manrope (Latin) + MiSans (CJK) stack, so first launch and
+      // offline use never flash unregistered fonts.
+      expect(AppFonts.defaultFont.id, 'system');
+      expect(AppFonts.defaultFont.fontFamily, isNull);
     });
   });
 

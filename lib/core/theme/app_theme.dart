@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
+import 'font_stack.dart';
 
 enum AppThemeMode {
   indigoLight,
@@ -141,19 +142,12 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: mode.brightness,
-      // v1.4.29 aesthetics: bundled Inter for Latin + HarmonyOS Sans SC for
-      // CJK. Flutter's per-glyph fallback renders English with Inter and
-      // Chinese with HarmonyOS automatically, giving even, modern mixed
-      // text on every machine. System fonts remain as a final safety net.
-      fontFamily: 'Inter',
-      fontFamilyFallback: const [
-        'HarmonyOS Sans SC',
-        'Microsoft YaHei UI',
-        'Microsoft YaHei',
-        'PingFang SC',
-        'Noto Sans SC',
-        'sans-serif',
-      ],
+      // v1.5.2 font upgrade: Manrope (Latin, variable) × MiSans (CJK).
+      // The fallback chain owns Chinese glyphs, digits/punctuation
+      // attribution and the emoji owner — see FontStack. Rule: never set
+      // fontFamily alone where Chinese may render.
+      fontFamily: FontStack.latin,
+      fontFamilyFallback: FontStack.fallback,
       // Use the surface color for the scaffold background so the window
       // background matches the content panels and title bar. This removes the
       // visible two-color "layered" frame (bg vs surface) around the content.
