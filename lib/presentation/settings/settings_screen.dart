@@ -526,14 +526,17 @@ class _AreaTypographyCard extends ConsumerWidget {
     }
 
     // Family options: follow global + every known font (presets + system).
+    // v1.4.99: dedupe by family name — the pairing presets reuse families
+    // (e.g. Inter) and DropdownButtonFormField crashes on duplicate values.
     // A persisted custom font that is not in the list stays selectable.
+    final seen = <String>{};
     final familyItems = <DropdownMenuItem<String?>>[
       const DropdownMenuItem(
         value: null,
         child: Text('Follow global font', style: TextStyle(fontSize: 13)),
       ),
       for (final f in AppFonts.all)
-        if (f.fontFamily != null)
+        if (f.fontFamily != null && seen.add(f.fontFamily!))
           DropdownMenuItem(
             value: f.fontFamily,
             child: Text(f.labelEn, style: const TextStyle(fontSize: 13)),

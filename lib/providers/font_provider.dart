@@ -10,12 +10,17 @@ class FontOption {
   final String? fontFamily; // null = system default
   final bool isGoogleFont; // true = download via google_fonts package
 
+  /// v1.4.99: paired CJK family for the Chinese-English pairing presets.
+  /// null = use the bundled HarmonyOS Sans SC default.
+  final String? cjkFamily;
+
   const FontOption({
     required this.id,
     required this.labelZh,
     required this.labelEn,
     this.fontFamily,
     this.isGoogleFont = false,
+    this.cjkFamily,
   });
 }
 
@@ -46,6 +51,39 @@ class AppFonts {
       labelEn: 'Poppins',
       fontFamily: 'Poppins',
       isGoogleFont: true,
+    ),
+    // v1.4.99: curated Chinese-English pairing presets.
+    FontOption(
+      id: 'pairInterNoto',
+      labelZh: 'Inter × 思源黑体（现代均衡）',
+      labelEn: 'Inter + Noto Sans SC',
+      fontFamily: 'Inter',
+      isGoogleFont: true,
+      cjkFamily: 'Noto Sans SC',
+    ),
+    FontOption(
+      id: 'pairInterMiSans',
+      labelZh: 'Inter × MiSans（屏幕锐利）',
+      labelEn: 'Inter + MiSans',
+      fontFamily: 'Inter',
+      isGoogleFont: true,
+      cjkFamily: 'MiSans',
+    ),
+    FontOption(
+      id: 'pairLoraSerif',
+      labelZh: 'Lora × 思源宋体（文艺优雅）',
+      labelEn: 'Lora + Noto Serif SC',
+      fontFamily: 'Lora',
+      isGoogleFont: true,
+      cjkFamily: 'Noto Serif SC',
+    ),
+    FontOption(
+      id: 'pairNunitoWenKai',
+      labelZh: 'Nunito × 霞鹜文楷（温暖人文）',
+      labelEn: 'Nunito + LXGW WenKai',
+      fontFamily: 'Nunito',
+      isGoogleFont: true,
+      cjkFamily: 'LXGW WenKai TC',
     ),
   ];
 

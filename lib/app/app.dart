@@ -63,7 +63,14 @@ class TaskFlowApp extends ConsumerWidget {
       // and letter-spacing are preserved (v1.4.22 fix — previously the
       // Material defaults were used, which made all text thinner and less
       // legible whenever a Google font was selected).
-      final textTheme = _googleFontTextTheme(family, theme.textTheme);
+      var textTheme = _googleFontTextTheme(family, theme.textTheme);
+      // v1.4.99: Chinese-English pairing — the paired CJK family becomes
+      // the FIRST fallback on every style, so Latin renders in the Latin
+      // face and CJK glyphs fall through to the paired Chinese face.
+      if (font.cjkFamily != null) {
+        _ensureCjkFontLoaded(font.cjkFamily!);
+        textTheme = _applyCjkFallback(textTheme, family, font.cjkFamily!);
+      }
       return theme.copyWith(textTheme: textTheme);
     }
 
@@ -72,6 +79,54 @@ class TaskFlowApp extends ConsumerWidget {
     // old family and producing inconsistent rendering).
     return theme.copyWith(
       textTheme: theme.textTheme.apply(fontFamily: family),
+    );
+  }
+
+  /// v1.4.99: triggers the google_fonts download/registration of a paired
+  /// CJK family. Once loaded the family name resolves everywhere, so plain
+  /// fontFamilyFallback entries work. MiSans needs no download — it is
+  /// either bundled as an asset font or installed on the system.
+  void _ensureCjkFontLoaded(String family) {
+    switch (family) {
+      case 'Noto Sans SC':
+        GoogleFonts.notoSansSc();
+      case 'Noto Serif SC':
+        GoogleFonts.notoSerifSc();
+      case 'LXGW WenKai TC':
+        GoogleFonts.lxgwWenKaiTc();
+      default:
+        break;
+    }
+  }
+
+  /// Sets fontFamily + a fallback chain (paired CJK family first, then the
+  /// bundled HarmonyOS Sans SC and system CJK faces) on every text style.
+  TextTheme _applyCjkFallback(TextTheme t, String latin, String cjkFamily) {
+    final fb = [
+      cjkFamily,
+      'HarmonyOS Sans SC',
+      'Microsoft YaHei UI',
+      'Microsoft YaHei',
+      'PingFang SC',
+    ];
+    TextStyle? fix(TextStyle? s) =>
+        s?.copyWith(fontFamily: latin, fontFamilyFallback: fb);
+    return t.copyWith(
+      displayLarge: fix(t.displayLarge),
+      displayMedium: fix(t.displayMedium),
+      displaySmall: fix(t.displaySmall),
+      headlineLarge: fix(t.headlineLarge),
+      headlineMedium: fix(t.headlineMedium),
+      headlineSmall: fix(t.headlineSmall),
+      titleLarge: fix(t.titleLarge),
+      titleMedium: fix(t.titleMedium),
+      titleSmall: fix(t.titleSmall),
+      bodyLarge: fix(t.bodyLarge),
+      bodyMedium: fix(t.bodyMedium),
+      bodySmall: fix(t.bodySmall),
+      labelLarge: fix(t.labelLarge),
+      labelMedium: fix(t.labelMedium),
+      labelSmall: fix(t.labelSmall),
     );
   }
 
@@ -121,6 +176,12 @@ class TaskFlowApp extends ConsumerWidget {
         return GoogleFonts.notoSansScTextTheme(base);
       case 'Poppins':
         return GoogleFonts.poppinsTextTheme(base);
+      case 'Inter':
+        return GoogleFonts.interTextTheme(base);
+      case 'Lora':
+        return GoogleFonts.loraTextTheme(base);
+      case 'Nunito':
+        return GoogleFonts.nunitoTextTheme(base);
       default:
         return base;
     }

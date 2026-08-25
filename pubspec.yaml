@@ -1,7 +1,7 @@
 name: taskflow
 description: Cross-platform task management app for hardware test engineers.
 publish_to: 'none'
-version: 1.4.98+1
+version: 1.4.99+1
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -78,3 +78,11 @@ flutter:
           weight: 500
         - asset: assets/fonts/HarmonyOS_Sans_SC_Bold.ttf
           weight: 700
+    # Chinese / CJK — MiSans (Xiaomi, free for commercial use), v1.4.99
+    # pairing preset "Inter × MiSans". Two weights keep the size bounded.
+    - family: MiSans
+      fonts:
+        - asset: assets/fonts/MiSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/MiSans-Medium.ttf
+          weight: 500

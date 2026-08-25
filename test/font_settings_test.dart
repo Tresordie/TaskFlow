@@ -15,7 +15,13 @@ void main() {
 
   group('AppFonts preset curation (v1.4.22)', () {
     test('removed Latin-only / mono / display fonts are gone', () {
-      final families = AppFonts.presets.map((f) => f.fontFamily).toSet();
+      // v1.4.99: pairing presets intentionally reuse Latin families (Inter,
+      // Lora, Nunito) as the LATIN half of a Chinese-English pair, so the
+      // curation rule applies to STANDALONE presets only.
+      final families = AppFonts.presets
+          .where((f) => f.cjkFamily == null)
+          .map((f) => f.fontFamily)
+          .toSet();
       const removed = [
         'Inter',
         'Roboto',
@@ -31,7 +37,12 @@ void main() {
     });
 
     test('v1.4.24/25: serif/regular-script/ZCOOL fonts removed', () {
-      final families = AppFonts.presets.map((f) => f.fontFamily).toSet();
+      // Standalone-only check (see v1.4.99 note above): Noto Serif SC and
+      // LXGW WenKai TC now exist ONLY as the CJK half of pairing presets.
+      final families = AppFonts.presets
+          .where((f) => f.cjkFamily == null)
+          .map((f) => f.fontFamily)
+          .toSet();
       // Removed per user request (v1.4.24: serif + regular script;
       // v1.4.25: ZCOOL families).
       expect(families.contains('Noto Serif SC'), isFalse);
