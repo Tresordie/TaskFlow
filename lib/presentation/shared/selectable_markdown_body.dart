@@ -89,12 +89,18 @@ class SelectableMarkdownBody extends StatelessWidget {
         md.TableSyntax(),
         md.UnorderedListWithCheckboxSyntax(),
         md.OrderedListWithCheckboxSyntax(),
+        // v1.5.0: footnotes (definitions appendix; references become sup
+        // markers via the link syntax automatically).
+        md.FootnoteDefSyntax(),
       ],
       inlineSyntaxes: [
+        // v1.5.0: custom rich syntaxes MUST precede StrikethroughSyntax —
+        // the package's strikethrough greedily consumes single-tilde runs
+        // and would otherwise eat `~subscript~` before our syntax sees it.
+        ...RichMarkdown.syntaxes(),
+        ...LatexMarkdown.syntaxes(),
         md.StrikethroughSyntax(),
         md.AutolinkExtensionSyntax(),
-        ...LatexMarkdown.syntaxes(),
-        ...RichMarkdown.syntaxes(),
       ],
       encodeHtml: false,
     );
@@ -154,9 +160,46 @@ class SelectableMarkdownBody extends StatelessWidget {
                 .copyWith(color: Colors.grey.withOpacity(0.5)),
           )
         ];
+      case 'div':
+        // v1.5.0: the footnotes appendix emitted by FootnoteDefSyntax —
+        // flatten it to numbered note lines so the definitions stay
+        // selectable instead of being dropped.
+        return _footnoteDivSpans(el, style);
       default:
         return _inlineSpans(el, style, context);
     }
+  }
+
+  /// Flattens the trailing footnote appendix (`div.footnotes`) into one
+  /// numbered line per note. Back-link glyphs (↩) are navigation aids with
+  /// no meaning in a static view, so they are stripped.
+  List<InlineSpan> _footnoteDivSpans(md.Element el, TextStyle? style) {
+    final s = (style ?? const TextStyle()).copyWith(
+      fontSize: 12,
+      color: (style ?? const TextStyle()).color?.withOpacity(0.7) ??
+          Colors.grey.withOpacity(0.8),
+    );
+    final notes = <String>[];
+    void walk(md.Element e) {
+      for (final c in e.children ?? <md.Node>[]) {
+        if (c is! md.Element) continue;
+        if (c.tag == 'li') {
+          final t = c.textContent.replaceAll('↩', '').trim();
+          if (t.isNotEmpty) notes.add(t);
+        } else {
+          walk(c);
+        }
+      }
+    }
+
+    walk(el);
+    if (notes.isEmpty) return const [];
+    final out = <InlineSpan>[];
+    for (var i = 0; i < notes.length; i++) {
+      if (i > 0) out.add(TextSpan(text: '\n', style: s));
+      out.add(TextSpan(text: '${i + 1}. ${notes[i]}', style: s));
+    }
+    return out;
   }
 
   /// Renders a list (`ul`/`ol`) with every item on its own line, indented by
@@ -377,6 +420,54 @@ class SelectableMarkdownBody extends StatelessWidget {
         // textual [ ] / [x] so the state is not silently dropped.
         final checked = el.attributes.containsKey('checked');
         return [TextSpan(text: checked ? '[x] ' : '[ ] ', style: style)];
+      case 'sup':
+        // v1.5.0: footnote reference — keep the marker visible and
+        // selectable as a bracketed, slightly smaller number.
+        final s = (style ?? const TextStyle())
+            .copyWith(fontSize: (style?.fontSize ?? 14) * 0.75);
+        return [TextSpan(text: '[${el.textContent}]', style: s)];
+      case 'richUnderline':
+        // v1.5.0: style the custom rich tags instead of dropping their
+        // formatting (previously fell through to the plain-text default).
+        final s = (style ?? const TextStyle())
+            .copyWith(decoration: TextDecoration.underline);
+        return [TextSpan(style: s, children: _inlineSpans(el, s, context))];
+      case 'richHighlight':
+        final s = (style ?? const TextStyle())
+            .copyWith(backgroundColor: Colors.yellow.withOpacity(0.4));
+        return [TextSpan(style: s, children: _inlineSpans(el, s, context))];
+      case 'richFontColor':
+        final color = parseRichTextColor(el.attributes['color'] ?? '');
+        final s = color == null
+            ? (style ?? const TextStyle())
+            : (style ?? const TextStyle()).copyWith(color: color);
+        return [TextSpan(style: s, children: _inlineSpans(el, s, context))];
+      case 'richFontSize':
+        final raw = double.tryParse(el.attributes['size'] ?? '1') ?? 1.0;
+        final factor = raw.clamp(0.5, 3.0);
+        final s = (style ?? const TextStyle())
+            .copyWith(fontSize: (style?.fontSize ?? 14.0) * factor);
+        return [TextSpan(style: s, children: _inlineSpans(el, s, context))];
+      case 'richSup':
+      case 'richSub':
+        // Superscript / subscript as smaller inline text — a WidgetSpan
+        // with real baseline shifting would NOT be selectable, so size is
+        // the TextSpan-friendly cue (lossless select/copy contract wins).
+        final s = (style ?? const TextStyle())
+            .copyWith(fontSize: (style?.fontSize ?? 14.0) * 0.7);
+        return [TextSpan(style: s, children: _inlineSpans(el, s, context))];
+      case 'latexInline':
+      case 'latexBlock':
+        // The flattened renderer cannot draw math glyphs; keep the TeX
+        // source visible in a monospace tint so nothing is silently
+        // dropped (lossless contract). True math rendering happens in
+        // AppMarkdownBody (flutter_math_fork).
+        final s = styleSheet?.code ??
+            (style ?? const TextStyle()).copyWith(
+              fontFamily: 'monospace',
+              backgroundColor: Colors.black.withOpacity(0.05),
+            );
+        return [TextSpan(text: el.textContent, style: s)];
       case 'ul':
       case 'ol':
         // A list reached from an inline context: render it as an indented

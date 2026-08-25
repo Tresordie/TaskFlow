@@ -71,6 +71,32 @@ class FontSizeSyntax extends md.InlineSyntax {
   }
 }
 
+/// `^superscript^` — superscript text (v1.5.0). Rendered at a smaller
+/// size inline; true baseline shifting would need a WidgetSpan, which is
+/// not selectable — the smaller-size presentation keeps the whole-document
+/// select/copy contract intact.
+class SuperscriptSyntax extends md.InlineSyntax {
+  SuperscriptSyntax() : super(r'\^([^\s^~$]+)\^');
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    parser.addNode(md.Element.text('richSup', match.group(1) ?? ''));
+    return true;
+  }
+}
+
+/// `~subscript~` — subscript text (v1.5.0). Single tilde only, so it never
+/// collides with `~~strikethrough~~`.
+class SubscriptSyntax extends md.InlineSyntax {
+  SubscriptSyntax() : super(r'~([^\s^~$]+)~');
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    parser.addNode(md.Element.text('richSub', match.group(1) ?? ''));
+    return true;
+  }
+}
+
 /// Parses `#RGB` / `#RRGGBB` / `#RRGGBBAA` hex strings and a small palette
 /// of CSS-style color names. Returns null when unparseable.
 Color? parseRichTextColor(String raw) {
@@ -181,6 +207,104 @@ class FontSizeBuilder extends MarkdownElementBuilder {
   }
 }
 
+/// Renders `^superscript^` spans at 70% size (selectable TextSpan-friendly
+/// superscript — see [SuperscriptSyntax]).
+class SuperscriptBuilder extends MarkdownElementBuilder {
+  final TextStyle? baseStyle;
+
+  SuperscriptBuilder({this.baseStyle});
+
+  @override
+  Widget visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    final style = preferredStyle ?? baseStyle ?? const TextStyle();
+    final base = style.fontSize ?? 14.0;
+    return Text(
+      element.textContent,
+      style: style.copyWith(fontSize: base * 0.7),
+    );
+  }
+}
+
+/// Renders `~subscript~` spans at 70% size (see [SubscriptSyntax]).
+class SubscriptBuilder extends MarkdownElementBuilder {
+  final TextStyle? baseStyle;
+
+  SubscriptBuilder({this.baseStyle});
+
+  @override
+  Widget visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    final style = preferredStyle ?? baseStyle ?? const TextStyle();
+    final base = style.fontSize ?? 14.0;
+    return Text(
+      element.textContent,
+      style: style.copyWith(fontSize: base * 0.7),
+    );
+  }
+}
+
+/// Renders footnote references (`sup.footnote-ref`, emitted by the
+/// markdown package's FootnoteRefSyntax) as small, compact markers
+/// (v1.5.0).
+class FootnoteRefBuilder extends MarkdownElementBuilder {
+  @override
+  Widget visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    final style = preferredStyle ?? const TextStyle();
+    final base = style.fontSize ?? 14.0;
+    return Text(
+      element.textContent,
+      style: style.copyWith(fontSize: base * 0.75),
+    );
+  }
+}
+
+/// Renders the trailing `div.footnotes` appendix: a small "Notes" label
+/// followed by the definition texts, one line each (v1.5.0). The raw
+/// back-link glyphs (↩) are dropped — they are navigation aids that have
+/// no meaning in a static app view.
+class FootnoteDefBuilder extends MarkdownElementBuilder {
+  final TextStyle? baseStyle;
+
+  FootnoteDefBuilder({this.baseStyle});
+
+  @override
+  Widget visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    final style = (preferredStyle ?? baseStyle ?? const TextStyle()).copyWith(
+      fontSize: 12,
+      color: (preferredStyle ?? baseStyle ?? const TextStyle())
+          .color
+          ?.withOpacity(0.7),
+    );
+    // Collect each <li>'s text as one note line (strip back-ref arrows).
+    final notes = <String>[];
+    void walk(md.Element e) {
+      for (final c in e.children ?? <md.Node>[]) {
+        if (c is! md.Element) continue;
+        if (c.tag == 'li') {
+          final t = c.textContent.replaceAll('↩', '').trim();
+          if (t.isNotEmpty) notes.add(t);
+        } else {
+          walk(c);
+        }
+      }
+    }
+
+    walk(element);
+    if (notes.isEmpty) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < notes.length; i++)
+            Text('${i + 1}. ${notes[i]}', style: style),
+        ],
+      ),
+    );
+  }
+}
+
 /// Convenience wiring for a [MarkdownBody]: the syntaxes + builders needed
 /// to render the rich-text extensions (underline, highlight, font color,
 /// font size) inside Markdown content.
@@ -192,6 +316,8 @@ class RichMarkdown {
         HighlightSyntax(),
         FontColorSyntax(),
         FontSizeSyntax(),
+        SuperscriptSyntax(),
+        SubscriptSyntax(),
       ];
 
   static Map<String, MarkdownElementBuilder> builders(TextStyle? baseStyle) => {
@@ -199,5 +325,11 @@ class RichMarkdown {
         'richHighlight': HighlightBuilder(baseStyle: baseStyle),
         'richFontColor': FontColorBuilder(baseStyle: baseStyle),
         'richFontSize': FontSizeBuilder(baseStyle: baseStyle),
+        'richSup': SuperscriptBuilder(baseStyle: baseStyle),
+        'richSub': SubscriptBuilder(baseStyle: baseStyle),
+        // Footnotes: `sup` tags in this app only come from the package's
+        // FootnoteRefSyntax (our own ^x^ syntax emits 'richSup').
+        'sup': FootnoteRefBuilder(),
+        'div': FootnoteDefBuilder(baseStyle: baseStyle),
       };
 }

@@ -126,6 +126,35 @@ class MarkdownInput {
   /// mirroring workreport.html's md-editor Shift+Tab.
   static void outdent(TextEditingController c) => _indentBlock(c, null);
 
+  /// Inserts a footnote reference `[^n]` at the caret and appends the
+  /// matching definition `[^n]: ` at the end of the document (v1.5.0).
+  /// The number is the next unused positive integer, and the caret lands
+  /// inside the definition ready for typing.
+  static void insertFootnote(TextEditingController c) {
+    final text = c.text;
+    final s = _sel(c);
+    // Find the next unused footnote number.
+    final used = RegExp(r'^\[\^(\d+)\]:', multiLine: true)
+        .allMatches(text)
+        .map((m) => int.parse(m.group(1)!))
+        .toSet();
+    var n = 1;
+    while (used.contains(n)) {
+      n++;
+    }
+    final ref = '[^$n]';
+    final withRef = text.replaceRange(s.start, s.end, ref);
+    final separator = withRef.endsWith('\n\n') || withRef.isEmpty
+        ? ''
+        : (withRef.endsWith('\n') ? '\n' : '\n\n');
+    final def = '[^$n]: ';
+    final full = '$withRef$separator$def';
+    c.value = TextEditingValue(
+      text: full,
+      selection: TextSelection.collapsed(offset: full.length),
+    );
+  }
+
   /// Shared multi-line (de)indent: with [prefix] != null adds two spaces to
   /// every line; with null removes up to two leading spaces per line. The
   /// resulting block is re-selected ([TextSelection.baseOffset] → extent)
@@ -476,6 +505,14 @@ class MarkdownToolbar extends StatelessWidget {
                 () => MarkdownInput.wrapSelection(controller, '`', '`')),
             btn(Icons.terminal, 'Code block (```)',
                 () => MarkdownInput.codeBlock(controller)),
+            gap,
+            // v1.5.0: footnote / superscript / subscript extensions.
+            btn(Icons.note_add_outlined, 'Footnote ([^1] + definition)',
+                () => MarkdownInput.insertFootnote(controller)),
+            textBtn('x²', 'Superscript (^text^)',
+                () => MarkdownInput.wrapSelection(controller, '^', '^')),
+            textBtn('x₂', 'Subscript (~text~)',
+                () => MarkdownInput.wrapSelection(controller, '~', '~')),
             gap,
             btn(Icons.format_indent_increase, 'Indent (Tab)',
                 () => MarkdownInput.indent(controller)),

@@ -59,13 +59,19 @@ class AppMarkdownBody extends StatelessWidget {
         md.TableSyntax(),
         md.UnorderedListWithCheckboxSyntax(),
         md.OrderedListWithCheckboxSyntax(),
+        // v1.5.0: footnotes — definitions (`[^1]: text`) are collected and
+        // emitted as a trailing appendix; the matching `[^1]` references
+        // are turned into sup markers automatically by the link syntax.
         md.FootnoteDefSyntax(),
       ],
       inlineSyntaxes: [
+        // v1.5.0: custom rich syntaxes MUST precede StrikethroughSyntax —
+        // the package's strikethrough greedily consumes single-tilde runs
+        // and would otherwise eat `~subscript~` before our syntax sees it.
+        ...RichMarkdown.syntaxes(),
+        ...LatexMarkdown.syntaxes(),
         md.StrikethroughSyntax(),
         md.AutolinkExtensionSyntax(),
-        ...LatexMarkdown.syntaxes(),
-        ...RichMarkdown.syntaxes(),
       ],
       builders: {
         ...LatexMarkdown.builders(baseStyle),
