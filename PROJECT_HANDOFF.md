@@ -208,4 +208,4 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 
 | 日期 | 交班模型 | 接班模型 | 本次会话主要变更 |
 |---|---|---|---|
-| 2026-08-25 | Qoder（本会话，v1.4.85→v1.5.0） | 待定 | 字体排版设置、可调节图片预览、编辑对话框粘图、Drive 同步加固（两阶段/占位文件/路径自愈合）、报告全量日志+清单版式、内联编辑流程、Catppuccin 主题体系、主题精简与 Latte 清晰度修复、中英字体配对四预设（含内置 MiSans）、扩展 Markdown（脚注/上下标/高亮样式修复） |
+| 2026-08-26 | Qoder（本会话，v1.4.85→v1.5.2） | 待定 | 字体排版设置、可调节图片预览、编辑对话框粘图、Drive 同步加固（两阶段/占位文件/路径自愈合）、报告全量日志+清单版式、内联编辑流程、Catppuccin 主题体系、主题精简与 Latte 清晰度修复、中英字体配对四预设（含内置 MiSans）、扩展 Markdown（脚注/上下标/高亮样式修复）、v1.5.1 块间距修正（标题紧贴/段-列表无空行）、v1.5.2 字体升级 Manrope×MiSans（包体 42→35.8MB，FontStack 混排链，双 Provider 补中文回退） |
