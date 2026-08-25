@@ -107,7 +107,25 @@ class SelectableMarkdownBody extends StatelessWidget {
     final nodes = document.parse(markdown);
     final children = <InlineSpan>[];
     for (var i = 0; i < nodes.length; i++) {
-      if (i > 0) children.add(TextSpan(text: '\n\n', style: style));
+      if (i > 0) {
+        // v1.5.1: compact separators matching standard Markdown previews —
+        // a heading hugs the block that follows it, and a list that
+        // directly continues a paragraph ("如下：\n- …") gets no blank
+        // line. Only true paragraph breaks keep a full blank line, which
+        // removes the "too many empty lines" look of the old uniform \n\n.
+        final prev = nodes[i - 1];
+        final cur = nodes[i];
+        final prevTag = prev is md.Element ? prev.tag : '';
+        final curTag = cur is md.Element ? cur.tag : '';
+        final prevIsHeading =
+            prevTag.length == 2 && prevTag.startsWith('h');
+        final paraIntoList = prevTag == 'p' &&
+            (curTag == 'ul' || curTag == 'ol');
+        children.add(TextSpan(
+          text: (prevIsHeading || paraIntoList) ? '\n' : '\n\n',
+          style: style,
+        ));
+      }
       children.addAll(_blockSpans(nodes[i], style, context, listDepth: 0));
     }
     return TextSpan(style: style, children: children);
