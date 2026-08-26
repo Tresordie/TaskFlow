@@ -97,12 +97,10 @@ class MarkdownInput {
     );
   }
 
-  /// Indents like workreport.html's md-editor (Tab):
-  /// - no selection → indent the WHOLE current line at its START (two
-  ///   spaces). Inserting at the line start instead of at the caret makes
-  ///   the indent ALWAYS visible — with the caret at the middle / end of a
-  ///   line a caret insert would land inside or after the text where no
-  ///   indentation can be seen (the "Tab has no indent effect" report);
+  /// Indents (Tab):
+  /// - no selection → insert TWO SPACES AT THE CARET (v1.6.1 user request):
+  ///   only the content AFTER the cursor shifts right; the text before it
+  ///   stays put — this is a plain caret insertion, NOT a whole-line indent;
   /// - active selection → prefix every line the selection touches and keep
   ///   the whole block selected, so repeated Tabs keep indenting the same
   ///   lines one level at a time.
@@ -110,10 +108,8 @@ class MarkdownInput {
     final text = c.text;
     final s = _sel(c);
     if (s.start == s.end) {
-      final lineStart =
-          s.start == 0 ? 0 : text.lastIndexOf('\n', s.start - 1) + 1;
       c.value = TextEditingValue(
-        text: text.replaceRange(lineStart, lineStart, '  '),
+        text: text.replaceRange(s.start, s.start, '  '),
         selection: TextSelection.collapsed(offset: s.start + 2),
       );
       return;

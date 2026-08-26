@@ -1,7 +1,9 @@
-// Verification tests for Tab-key behavior inside MarkdownEditorField:
-// Tab on a list-item line nests the whole line (workreport.html "list
-// indent" effect); Tab on plain text inserts two spaces at the caret;
-// multi-line selection (de)indents the block and keeps it selected.
+// Verification tests for Tab-key behavior inside MarkdownEditorField
+// (v1.6.1 contract): with a collapsed caret, Tab inserts TWO SPACES AT
+// THE CARET — the content after the cursor shifts right, the content
+// before it stays put (user request: not a whole-line indent). With a
+// multi-line selection, Tab still (de)indents the whole block and keeps
+// it selected.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,36 +29,39 @@ void main() {
     return controller;
   }
 
-  testWidgets('Tab at list line start nests the line', (tester) async {
-    final c = await pumpEditor(tester, '- a\n- b', 4);
+  testWidgets('Tab at list line start inserts spaces at the caret',
+      (tester) async {
+    final c = await pumpEditor(tester, '- a\n- b', 4); // start of '- b'
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.pump();
     expect(c.text, '- a\n  - b');
     expect(c.selection.baseOffset, 6);
   });
 
-  testWidgets('Tab at list line middle nests the whole line', (tester) async {
-    final c = await pumpEditor(tester, '- a\n- b', 6); // caret inside '- b'
+  testWidgets('Tab at list line middle inserts spaces AT the caret',
+      (tester) async {
+    final c = await pumpEditor(tester, '- a\n- b', 6); // before 'b' in '- b'
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.pump();
-    expect(c.text, '- a\n  - b');
+    expect(c.text, '- a\n-   b');
     expect(c.selection.baseOffset, 8);
   });
 
-  testWidgets('Tab at list line end nests the whole line', (tester) async {
+  testWidgets('Tab at list line end appends spaces at the caret',
+      (tester) async {
     final c = await pumpEditor(tester, '- a\n- b', 7); // caret at end
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.pump();
-    expect(c.text, '- a\n  - b');
+    expect(c.text, '- a\n- b  ');
     expect(c.selection.baseOffset, 9);
   });
 
-  testWidgets('Tab on plain text indents the whole line at its start',
+  testWidgets('Tab on plain text inserts two spaces at the caret',
       (tester) async {
     final c = await pumpEditor(tester, 'abcd', 2);
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.pump();
-    expect(c.text, '  abcd');
+    expect(c.text, 'ab  cd');
     expect(c.selection.baseOffset, 4);
   });
 

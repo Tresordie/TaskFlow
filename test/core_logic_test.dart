@@ -14,6 +14,7 @@ import 'package:taskflow/presentation/reports/reports_screen.dart';
 import 'package:taskflow/presentation/shared/markdown_input.dart';
 import 'package:taskflow/presentation/shared/suggestion_field.dart';
 import 'package:taskflow/providers/ai_provider.dart';
+import 'package:taskflow/providers/date_nav_providers.dart';
 import 'package:taskflow/providers/task_providers.dart';
 
 /// In-memory [TaskRepository] so report aggregation (_build) can be
@@ -1414,10 +1415,11 @@ void main() {
     // is; with an active selection it (de)indents every touched line and
     // keeps the whole block selected for repeated presses.
 
-    test('indent with no selection indents the whole line at its start', () {
+    test('indent with no selection inserts two spaces at the caret (v1.6.1)',
+        () {
       final c = ctl('abcd', base: 2);
       MarkdownInput.indent(c);
-      expect(c.text, '  abcd');
+      expect(c.text, 'ab  cd');
       expect(c.selection.baseOffset, 4);
       expect(c.selection.isCollapsed, isTrue);
     });
@@ -1580,6 +1582,16 @@ void main() {
 
       expect(container.read(distinctProjectsProvider), ['Cosmo', 'Metro']);
       expect(container.read(distinctTagsProvider), ['ate', 'firmware', 'lyft']);
+    });
+  });
+
+  group('default date navigation range (v1.6.1)', () {
+    test('spans the last 30 days, ending today', () {
+      final range = defaultMonthRange();
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      expect(range.end, today);
+      expect(range.end.difference(range.start).inDays, 29);
     });
   });
 }

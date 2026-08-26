@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -6,12 +7,15 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 
+import '../../core/markdown/html_export.dart';
 import '../../core/markdown/html_sanitize.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../data/services/ai_service.dart';
 import '../../data/services/content_extractor.dart';
+import '../../providers/ai_parse_providers.dart';
 import '../../providers/ai_provider.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/typography_provider.dart';
@@ -38,18 +42,8 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
       markdownIndentFocusNode(_instructionsController);
   late final FocusNode _notesFocus;
 
-  bool _parsing = false;
   bool _creating = false;
   bool _previewMode = false;
-  String? _error;
-  List<ParsedTask> _results = [];
-  // v1.6.0: analyze/summarize mode output (markdown), shown when the user
-  // supplies parsing instructions and/or attaches documents.
-  String _summary = '';
-
-  /// Attached documents: (fileName, extractedText). Text is extracted at
-  /// attach time so failures surface immediately.
-  final List<({String name, String content})> _attachments = [];
 
   static const _maxFileBytes = ContentExtractor.maxFileBytes;
 
@@ -63,10 +57,30 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
   void initState() {
     super.initState();
     _notesFocus = markdownIndentFocusNode(_notesController);
+    // v1.6.1: restore the session draft (input, summary and results all
+    // survive page switches — see ai_parse_providers.dart) and keep it in
+    // sync while the user types.
+    final session = ref.read(aiParseSessionProvider);
+    _notesController.text = session.notes;
+    _instructionsController.text = session.instructions;
+    _notesController.addListener(_persistNotes);
+    _instructionsController.addListener(_persistInstructions);
+  }
+
+  void _persistNotes() {
+    ref.read(aiParseSessionProvider.notifier).setNotes(_notesController.text);
+  }
+
+  void _persistInstructions() {
+    ref
+        .read(aiParseSessionProvider.notifier)
+        .setInstructions(_instructionsController.text);
   }
 
   @override
   void dispose() {
+    _notesController.removeListener(_persistNotes);
+    _instructionsController.removeListener(_persistInstructions);
     _notesController.dispose();
     _instructionsController.dispose();
     _instructionsFocus.dispose();
@@ -81,6 +95,7 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
       allowedExtensions: ContentExtractor.supportedExtensions,
     );
     if (picked == null || picked.files.isEmpty) return;
+    final notifier = ref.read(aiParseSessionProvider.notifier);
     for (final f in picked.files) {
       final path = f.path;
       if (path == null) continue;
@@ -90,12 +105,11 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
           throw const FormatException('文件超过 150 MB 上限');
         }
         final text = await ContentExtractor.extract(file);
-        setState(() {
-          _attachments.add((name: f.name, content: text));
-          _error = null;
-        });
+        notifier.addAttachment(name: f.name, content: text);
+        notifier.clearError();
       } catch (e) {
-        setState(() => _error = '${f.name}: ${e.toString().replaceFirst('FormatException: ', '')}');
+        notifier.showError(
+            '${f.name}: ${e.toString().replaceFirst('FormatException: ', '')}');
       }
     }
   }
@@ -110,73 +124,89 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
   Future<void> _parse() async {
     final notes = _notesController.text.trim();
     final instructions = _instructionsController.text.trim();
-    if (notes.isEmpty && _attachments.isEmpty) return;
+    final session = ref.read(aiParseSessionProvider);
+    if (notes.isEmpty && session.attachments.isEmpty) return;
 
     final config = ref.read(aiConfigProvider);
     if (!config.isConfigured) {
-      setState(() => _error =
+      ref.read(aiParseSessionProvider.notifier).showError(
           'AI is not configured yet. Open Settings → AI Assistant to set your API endpoint first.');
       return;
     }
 
-    setState(() {
-      _parsing = true;
-      _error = null;
-      _summary = '';
-    });
+    final notifier = ref.read(aiParseSessionProvider.notifier);
 
-    try {
-      final service = AiService(
-        baseUrl: config.baseUrl,
-        apiKey: config.apiKey,
-        model: config.model,
-      );
-
-      // v1.6.0: instructions and/or attachments switch to the ANALYZE mode
-      // (free-form markdown summary); the plain no-prompt flow keeps the
-      // original structured task extraction.
-      if (instructions.isNotEmpty || _attachments.isNotEmpty) {
-        final buf = StringBuffer();
-        for (final a in _attachments) {
-          buf.writeln('【附件：${a.name}】');
-          buf.writeln(a.content);
-          buf.writeln();
-        }
-        if (notes.isNotEmpty) buf.writeln(notes);
-        final content = buf.toString().trim();
-        final email = _attachments.any((a) => a.name.toLowerCase().endsWith('.eml')) ||
-            _looksLikeEmail('$instructions\n$content');
-        final result = await service.analyzeContent(
-          content: content,
-          instructions: instructions,
-          email: email,
-        );
-        setState(() {
-          _summary = result;
-          _results = [];
-          _parsing = false;
-        });
-        return;
+    // v1.6.0: instructions and/or attachments switch to the ANALYZE mode
+    // (free-form markdown summary); the plain no-prompt flow keeps the
+    // original structured task extraction.
+    // v1.6.1: fire-and-forget — the work runs inside the session notifier
+    // (ai_parse_providers.dart), so switching pages neither cancels the AI
+    // call nor loses the result; the UI follows the provider state.
+    if (instructions.isNotEmpty || session.attachments.isNotEmpty) {
+      final buf = StringBuffer();
+      for (final a in session.attachments) {
+        buf.writeln('【附件：${a.name}】');
+        buf.writeln(a.content);
+        buf.writeln();
       }
+      if (notes.isNotEmpty) buf.writeln(notes);
+      final content = buf.toString().trim();
+      final email = session.attachments
+              .any((a) => a.name.toLowerCase().endsWith('.eml')) ||
+          _looksLikeEmail('$instructions\n$content');
+      unawaited(notifier.summarize(
+        content: content,
+        instructions: instructions,
+        email: email,
+        config: config,
+      ));
+      return;
+    }
 
-      final tasks = await service.parseNotes(notes);
-      setState(() {
-        _results = tasks;
-        _parsing = false;
-        if (tasks.isEmpty) {
-          _error = 'No actionable tasks found in the notes.';
-        }
-      });
+    unawaited(notifier.parseTasks(notes: notes, config: config));
+  }
+
+  /// v1.6.1: saves the summary as a Markdown or standalone HTML file
+  /// (same pipeline as the Work Log downloads).
+  Future<void> _downloadSummary({required bool markdown}) async {
+    final summary = ref.read(aiParseSessionProvider).summary;
+    if (summary.isEmpty) return;
+    final stamp = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final ext = markdown ? 'md' : 'html';
+    try {
+      final path = await FilePicker.platform.saveFile(
+        dialogTitle:
+            markdown ? 'Save Markdown summary' : 'Save HTML summary',
+        fileName: 'ai-summary-$stamp.$ext',
+      );
+      if (path == null) return;
+      final content = markdown
+          ? summary
+          : wrapHtmlExportPage(markdownToHtmlExport(summary),
+              title: 'AI Parse Summary');
+      await File(path).writeAsString(content);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$ext saved: $path', maxLines: 2,
+              overflow: TextOverflow.ellipsis),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } catch (e) {
-      setState(() {
-        _parsing = false;
-        _error = e.toString();
-      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Save failed: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
   Future<void> _createSelected() async {
-    final selected = _results.where((t) => t.selected).toList();
+    final session = ref.read(aiParseSessionProvider);
+    final selected = session.results.where((t) => t.selected).toList();
     if (selected.isEmpty) return;
 
     setState(() => _creating = true);
@@ -200,11 +230,9 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      setState(() {
-        _creating = false;
-        _results = [];
-        _notesController.clear();
-      });
+      setState(() => _creating = false);
+      ref.read(aiParseSessionProvider.notifier).clearResults();
+      _notesController.clear();
       context.go('/today');
     } catch (e) {
       if (!mounted) return;
@@ -219,12 +247,18 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
     }
   }
 
-  int get _selectedCount => _results.where((t) => t.selected).length;
+  int _selectedCountOf(List<ParsedTask> results) =>
+      results.where((t) => t.selected).length;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final config = ref.watch(aiConfigProvider);
+    // v1.6.1: session state (notes/instructions/attachments/summary/results)
+    // lives in the app-level provider — the page renders whatever state the
+    // session has, including a summary that finished while the user was on
+    // another page.
+    final session = ref.watch(aiParseSessionProvider);
 
     return Padding(
       padding: const EdgeInsets.all(20),
@@ -295,31 +329,33 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: OutlinedButton.icon(
-                  onPressed: _parsing ? null : _attachFiles,
+                  onPressed: session.summarizing ? null : _attachFiles,
                   icon: const Icon(Icons.attach_file, size: 16),
                   label: const Text('附件'),
                 ),
               ),
             ],
           ),
-          if (_attachments.isNotEmpty)
+          if (session.attachments.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Wrap(
                 spacing: 8,
                 runSpacing: 6,
                 children: [
-                  for (var i = 0; i < _attachments.length; i++)
+                  for (var i = 0; i < session.attachments.length; i++)
                     InputChip(
                       avatar: Icon(Icons.description_outlined,
                           size: 15, color: theme.colorScheme.primary),
                       label: Text(
-                        _attachments[i].name,
+                        session.attachments[i].name,
                         style: const TextStyle(fontSize: 12),
                       ),
-                      onDeleted: _parsing
+                      onDeleted: session.summarizing
                           ? null
-                          : () => setState(() => _attachments.removeAt(i)),
+                          : () => ref
+                              .read(aiParseSessionProvider.notifier)
+                              .removeAttachment(i),
                     ),
                 ],
               ),
@@ -477,59 +513,75 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
           Row(
             children: [
               FilledButton.icon(
-                onPressed: (_parsing || _creating) ? null : _parse,
+                onPressed: (session.summarizing || _creating) ? null : _parse,
                 style: FilledButton.styleFrom(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
-                icon: _parsing
+                icon: session.summarizing
                     ? const SizedBox(
                         width: 14,
                         height: 14,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.auto_awesome, size: 16),
-                label: Text(_parsing
+                label: Text(session.summarizing
                     ? 'Parsing…'
-                    : (_instructionsController.text.trim().isNotEmpty ||
-                            _attachments.isNotEmpty)
+                    : (session.instructions.trim().isNotEmpty ||
+                            session.attachments.isNotEmpty)
                         ? 'Analyze with AI'
                         : 'Parse with AI'),
               ),
               const SizedBox(width: 12),
-              // v1.6.0: copy the analyze-mode summary.
-              if (_summary.isNotEmpty) ...[
+              // v1.6.0: copy the analyze-mode summary (raw Markdown).
+              // v1.6.1: plus one-click Markdown / HTML file downloads.
+              if (session.summary.isNotEmpty) ...[
                 TextButton.icon(
                   onPressed: () {
-                    Clipboard.setData(ClipboardData(text: _summary));
+                    Clipboard.setData(ClipboardData(text: session.summary));
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text('Summary copied to clipboard'),
+                          content: Text('Markdown copied to clipboard'),
                           behavior: SnackBarBehavior.floating),
                     );
                   },
                   icon: const Icon(Icons.copy, size: 16),
-                  label: const Text('Copy'),
+                  label: const Text('Copy Markdown'),
+                ),
+                const SizedBox(width: 12),
+                TextButton.icon(
+                  onPressed: () => _downloadSummary(markdown: true),
+                  icon: const Icon(Icons.download, size: 16),
+                  label: const Text('Save .md'),
+                ),
+                const SizedBox(width: 12),
+                TextButton.icon(
+                  onPressed: () => _downloadSummary(markdown: false),
+                  icon: const Icon(Icons.web, size: 16),
+                  label: const Text('Save .html'),
                 ),
                 const SizedBox(width: 12),
               ],
-              if (_results.isNotEmpty) ...[
+              if (session.results.isNotEmpty) ...[
                 TextButton(
                   onPressed: () => setState(() {
-                    final all = _selectedCount == _results.length;
-                    for (final t in _results) {
+                    final all = _selectedCountOf(session.results) ==
+                        session.results.length;
+                    for (final t in session.results) {
                       t.selected = !all;
                     }
                   }),
-                  child: Text(_selectedCount == _results.length
+                  child: Text(_selectedCountOf(session.results) ==
+                          session.results.length
                       ? 'Deselect all'
                       : 'Select all'),
                 ),
                 const Spacer(),
                 FilledButton.icon(
-                  onPressed: (_creating || _selectedCount == 0)
-                      ? null
-                      : _createSelected,
+                  onPressed:
+                      (_creating || _selectedCountOf(session.results) == 0)
+                          ? null
+                          : _createSelected,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.success,
                     padding: const EdgeInsets.symmetric(
@@ -544,14 +596,14 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                       : const Icon(Icons.add_task, size: 16),
                   label: Text(_creating
                       ? 'Creating…'
-                      : 'Create $_selectedCount task${_selectedCount == 1 ? '' : 's'}'),
+                      : 'Create ${_selectedCountOf(session.results)} task${_selectedCountOf(session.results) == 1 ? '' : 's'}'),
                 ),
               ],
             ],
           ),
 
           // Error
-          if (_error != null) ...[
+          if (session.error != null) ...[
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
@@ -569,7 +621,7 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      _error!,
+                      session.error!,
                       style: const TextStyle(
                           fontSize: 12.5, color: AppColors.error),
                     ),
@@ -583,7 +635,7 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
 
           // Results — v1.6.0: analyze-mode markdown summary first, then the
           // structured task cards from the classic extraction flow.
-          if (_summary.isNotEmpty) ...[
+          if (session.summary.isNotEmpty) ...[
             Expanded(
               child: Container(
                 width: double.infinity,
@@ -598,7 +650,7 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                 child: SingleChildScrollView(
                   controller: _scrollController,
                   child: AppMarkdownBody(
-                    data: _summary,
+                    data: session.summary,
                     styleSheet: applyContentTypography(
                       context,
                       MarkdownStyleSheet.fromTheme(theme).copyWith(
@@ -609,9 +661,9 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                 ),
               ),
             ),
-          ] else if (_results.isNotEmpty) ...[
+          ] else if (session.results.isNotEmpty) ...[
             Text(
-              'Extracted ${_results.length} task${_results.length == 1 ? '' : 's'} — review and uncheck what you don\'t need:',
+              'Extracted ${session.results.length} task${session.results.length == 1 ? '' : 's'} — review and uncheck what you don\'t need:',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: theme.colorScheme.onSurface.withOpacity(0.7),
@@ -621,9 +673,10 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
             Expanded(
               child: ListView.separated(
                 controller: _scrollController,
-                itemCount: _results.length,
+                itemCount: session.results.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, i) => _ParsedTaskCard(task: _results[i]),
+                itemBuilder: (context, i) =>
+                    _ParsedTaskCard(task: session.results[i]),
               ),
             ),
           ] else
@@ -637,7 +690,9 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                         color: theme.colorScheme.onSurface.withOpacity(0.15)),
                     const SizedBox(height: 12),
                     Text(
-                      _parsing ? 'Thinking…' : 'Parsed tasks will appear here',
+                      session.summarizing
+                          ? 'Thinking…'
+                          : 'Parsed tasks will appear here',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurface.withOpacity(0.35),
                       ),

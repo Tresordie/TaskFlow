@@ -4,6 +4,12 @@ import 'package:flutter/material.dart';
 /// Calendar and the Reports Custom range (v1.6.0): rounded floating
 /// dialog, tinted header, primary-accent selection and hover highlights —
 /// replacing the stock flat Material look with the app's visual language.
+///
+/// v1.6.1: Material's range picker sizes its dialog to
+/// `MediaQuery.sizeOf` — the FULL WINDOW — with zero insets, so on desktop
+/// the calendar floated in the middle of a fullscreen sheet with huge
+/// blank margins on both sides (user report). The builder now feeds the
+/// picker a COMPACT size override so the dialog hugs the calendar grid.
 Future<DateTimeRange?> showAppDateRangePicker({
   required BuildContext context,
   required DateTime firstDate,
@@ -13,6 +19,11 @@ Future<DateTimeRange?> showAppDateRangePicker({
   final theme = Theme.of(context);
   final isDark = theme.brightness == Brightness.dark;
   final scheme = theme.colorScheme;
+
+  // Compact content size for the picker (portrait month layout: a single
+  // month grid is at most 480 logical px wide, so 420 fits it with almost
+  // no side gutter).
+  const pickerSize = Size(420, 520);
 
   return showDateRangePicker(
     context: context,
@@ -38,6 +49,24 @@ Future<DateTimeRange?> showAppDateRangePicker({
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
             side: BorderSide(color: scheme.outlineVariant.withOpacity(0.6)),
+          ),
+          // Range-picker specific slots — the calendar mode reads THESE
+          // (not the plain fields above), so they must be set explicitly
+          // for the themed look to actually apply.
+          rangePickerShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(color: scheme.outlineVariant.withOpacity(0.6)),
+          ),
+          rangePickerBackgroundColor: theme.colorScheme.surface,
+          rangePickerSurfaceTintColor: Colors.transparent,
+          rangePickerElevation: 0,
+          rangePickerHeaderBackgroundColor:
+              scheme.primary.withOpacity(isDark ? 0.14 : 0.10),
+          rangePickerHeaderForegroundColor: scheme.primary,
+          rangePickerHeaderHeadlineStyle: theme.textTheme.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: 0.1),
+          rangePickerHeaderHelpStyle: theme.textTheme.bodySmall?.copyWith(
+            color: scheme.primary.withOpacity(0.8),
           ),
           headerBackgroundColor: scheme.primary.withOpacity(isDark ? 0.14 : 0.10),
           headerForegroundColor: scheme.primary,
@@ -95,11 +124,22 @@ Future<DateTimeRange?> showAppDateRangePicker({
       );
       return Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding:
-            const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+        surfaceTintColor: Colors.transparent,
+        elevation: isDark ? 0 : 10,
+        shadowColor: scheme.primary.withOpacity(0.18),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(18),
-          child: Theme(data: pickerTheme, child: child ?? const SizedBox.shrink()),
+          child: Theme(
+            data: pickerTheme,
+            // v1.6.1: the range picker takes its dialog size from the
+            // closest MediaQuery — override it to a compact, calendar-hugging
+            // size so no fullscreen blank margins appear on desktop.
+            child: MediaQuery(
+              data: MediaQuery.of(context).copyWith(size: pickerSize),
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
         ),
       );
     },

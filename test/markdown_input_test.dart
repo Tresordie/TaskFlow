@@ -3,11 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:taskflow/presentation/shared/markdown_input.dart';
 
-/// Regression contracts for Tab / Shift+Tab indentation (v1.5.10 user
-/// report: "Tab only indents the content after the cursor"). The indent
-/// must ALWAYS apply at the LINE START — i.e. the whole line shifts no
-/// matter where the caret sits inside it — and a multi-line selection
-/// indents every touched line from its start.
+/// Regression contracts for Tab / Shift+Tab indentation (v1.6.1 user
+/// request: "press Tab at the cursor position — the content AFTER the
+/// cursor indents by two spaces, not the whole line"). With a collapsed
+/// caret, Tab must insert TWO SPACES AT THE CARET, so only the text after
+/// the cursor shifts right and everything before it stays put. A
+/// multi-line selection still indents every touched line from its start
+/// (block indent), and Shift+Tab removes the line's leading indentation.
 void main() {
   TextEditingController controllerWith(
       String text, int caret, [int? extent]) {
@@ -21,32 +23,36 @@ void main() {
     return c;
   }
 
-  group('MarkdownInput.indent — whole-line contract', () {
-    test('caret at line start indents the whole line', () {
+  group('MarkdownInput.indent — caret-insert contract', () {
+    test('caret at line start inserts two spaces there', () {
       final c = controllerWith('第一行', 0);
       MarkdownInput.indent(c);
       expect(c.text, '  第一行');
+      expect(c.selection.baseOffset, 2);
     });
 
-    test('caret MID-LINE still indents from the line start (whole line)',
+    test('caret MID-LINE inserts two spaces AT the caret (not the line)',
         () {
       final c = controllerWith('第一行', 2); // after "第一"
       MarkdownInput.indent(c);
-      expect(c.text, '  第一行');
-      // The caret follows its text (+2 inserted before it).
+      // The text BEFORE the caret ("第一") stays put.
+      expect(c.text, '第一  行');
+      // The caret moves past the inserted spaces.
       expect(c.selection.baseOffset, 4);
     });
 
-    test('caret at line end indents the whole line', () {
+    test('caret at line end appends two spaces there', () {
       final c = controllerWith('第一行', 3);
       MarkdownInput.indent(c);
-      expect(c.text, '  第一行');
+      expect(c.text, '第一行  ');
+      expect(c.selection.baseOffset, 5);
     });
 
-    test('caret mid-line on line 2 indents ONLY line 2, from its start', () {
+    test('caret mid-line on line 2 inserts spaces on line 2 only', () {
       final c = controllerWith('第一行\n第二行', 6); // after "第二"
       MarkdownInput.indent(c);
-      expect(c.text, '第一行\n  第二行');
+      expect(c.text, '第一行\n第二  行');
+      expect(c.selection.baseOffset, 8);
     });
 
     test('multi-line selection indents EVERY touched line from its start',

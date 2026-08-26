@@ -34,9 +34,9 @@ String markdownToHtmlExport(String src) {
 
 /// Wraps an exported HTML [body] in the dark-themed standalone page used by
 /// the Work Log "save as HTML" action.
-String wrapHtmlExportPage(String body) {
+String wrapHtmlExportPage(String body, {String title = 'Work Summary'}) {
   return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8"/>\n'
-      '<title>Work Summary</title>\n'
+      '<title>$title</title>\n'
       '<style>\n'
       '  body{font-family:Inter,"Segoe UI",sans-serif;background:#0a0a0f;color:#e8eaf0;'
       'padding:40px 48px;max-width:960px;margin:0 auto;line-height:1.85;font-size:15px;}\n'
