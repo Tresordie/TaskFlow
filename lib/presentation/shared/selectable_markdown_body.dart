@@ -7,8 +7,8 @@ import 'package:markdown/markdown.dart' as md;
 import '../../core/markdown/gfm_extensions.dart';
 import '../../core/markdown/latex_support.dart';
 import '../../core/markdown/rich_markdown.dart';
-import '../../core/markdown/table_support.dart' as table_support;
 import '../../core/theme/app_colors.dart';
+import 'app_markdown_body.dart' show TaskCheckboxGlyph;
 
 /// A whole-Note selectable Markdown renderer.
 ///
@@ -220,10 +220,11 @@ class SelectableMarkdownBody extends StatelessWidget {
   }
 
   /// Renders a GFM alert (`> [!NOTE]` …) in its flattened, fully selectable
-  /// form: the first line is the colored TYPE label, then every content
-  /// block keeps the quote gutter — tinted with the alert's accent color so
-  /// the semantic survives the single-TextSpan architecture (no WidgetSpan
-  /// containers, v1.5.3). Known, accepted downgrade vs. the block renderer.
+  /// form: the first line is an accent bar + colored TYPE label, then every
+  /// content line keeps a matching `▎` gutter so the whole alert stays
+  /// visually boxed while fitting the single-TextSpan architecture (no
+  /// WidgetSpan containers). Known, accepted downgrade vs. the block
+  /// renderer's tinted card.
   List<InlineSpan> _alertSpans(
     md.Element el,
     String type,
@@ -234,16 +235,19 @@ class SelectableMarkdownBody extends StatelessWidget {
     final accent = AppColors.alertAccent(type, brightness);
     final labelStyle = (style ?? const TextStyle()).copyWith(
       color: accent,
-      fontWeight: FontWeight.w700,
-      letterSpacing: 0.5,
+      fontWeight: FontWeight.w800,
+      letterSpacing: 0.6,
     );
     final gutterStyle = (style ?? const TextStyle()).copyWith(
       color: accent.withOpacity(0.85),
     );
-    final out = <InlineSpan>[TextSpan(text: type.toUpperCase(), style: labelStyle)];
+    final out = <InlineSpan>[
+      TextSpan(text: '▎', style: labelStyle),
+      TextSpan(text: type.toUpperCase(), style: labelStyle),
+    ];
     for (final child in el.children ?? <md.Node>[]) {
       out.add(TextSpan(text: '\n', style: style));
-      _appendGuttered(out, child, style, gutterStyle, context, '│ ');
+      _appendGuttered(out, child, style, gutterStyle, context, '▎ ');
     }
     return out;
   }
@@ -296,19 +300,25 @@ class SelectableMarkdownBody extends StatelessWidget {
       if (out.isNotEmpty) {
         out.add(TextSpan(text: '\n$gutter', style: style));
       }
-      // v1.5.3: task-list items carry their checkbox as the marker — the
-      // ☐ / ☑ glyph REPLACES the bullet instead of following it. Read-only;
-      // there is deliberately no tap-to-toggle interaction.
+      // v1.5.4: task-list items carry a Material checkbox as the marker —
+      // the icon WidgetSpan REPLACES the bullet instead of following it
+      // (v1.5.3 used the faint ☐/☑ Unicode glyphs). Read-only; there is
+      // deliberately no tap-to-toggle interaction. The trailing space span
+      // keeps one text gap between icon and label.
       final taskState = _taskState(item);
-      final marker = taskState != null
-          ? (taskState ? '☑ ' : '☐ ')
-          : (isOrdered ? '$idx. ' : '• ');
-      final markerStyle = taskState != null && taskState
-          ? (style ?? const TextStyle())
-              .copyWith(color: Theme.of(context).colorScheme.primary)
-          : style;
+      final markerSpans = taskState != null
+          ? <InlineSpan>[
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: TaskCheckboxGlyph(checked: taskState),
+              ),
+              const TextSpan(text: ' '),
+            ]
+          : null;
+      final marker = markerSpans ??
+          [TextSpan(text: isOrdered ? '$idx. ' : '• ', style: style)];
       out.add(TextSpan(text: '${'    ' * depth}', style: style));
-      out.add(TextSpan(text: marker, style: markerStyle));
+      out.addAll(marker);
       // A <li>'s children are its inline content plus, for nested lists,
       // further <ul>/<ol> blocks — render those on new lines, indented one
       // level deeper, rather than inline.
@@ -377,17 +387,25 @@ class SelectableMarkdownBody extends StatelessWidget {
     return out;
   }
 
-  /// Renders a table as an aligned monospace grid: every column is padded
-  /// to the widest cell so the rows line up visually (CJK characters count
-  /// double-width), with a boxed header row. Keeps every cell's text intact
-  /// and each row on its own line while still fitting a single TextSpan tree.
+  /// Renders a table as a REAL bordered `Table` widget embedded via a
+  /// [WidgetSpan] (v1.5.4, user-approved route change). The v1.5.3
+  /// monospace text grid silently misaligned on mixed CJK content — a CJK
+  /// glyph's advance is not exactly twice the Latin monospace advance —
+  /// and read as ASCII art rather than a table (pitfall 8.24).
+  ///
+  /// Styling mirrors the block chain's native tables (theme outline
+  /// borders, bold header row, padded cells) so Preview and saved record
+  /// stay WYSIWYG. Accepted downgrade — same tier as math formulas: the
+  /// table's text takes no part in the drag selection and is absent from
+  /// Ctrl+C copies; right-click "Copy as Markdown" still carries the full
+  /// original source.
   List<InlineSpan> _tableSpans(
     md.Element el,
     TextStyle? style,
     BuildContext context,
   ) {
-    final s = styleSheet?.code ??
-        (style ?? const TextStyle()).copyWith(fontFamily: 'monospace');
+    final theme = Theme.of(context);
+    final s = style ?? const TextStyle();
     final headStyle = s.copyWith(fontWeight: FontWeight.w700);
     final rows = <md.Element>[];
     void collect(md.Element e) {
@@ -403,50 +421,77 @@ class SelectableMarkdownBody extends StatelessWidget {
 
     collect(el);
 
-    List<String> cellTexts(md.Element tr) {
-      final texts = <String>[];
-      for (final cell in tr.children ?? <md.Node>[]) {
-        if (cell is md.Element && (cell.tag == 'th' || cell.tag == 'td')) {
-          texts.add(
-            TextSpan(children: _inlineSpans(cell, s, context)).toPlainText(),
-          );
-        }
-      }
-      return texts;
-    }
+    List<md.Element> rowCells(md.Element tr) => tr.children
+            ?.whereType<md.Element>()
+            .where((e) => e.tag == 'th' || e.tag == 'td')
+            .toList() ??
+        const [];
 
-    final rowTexts = rows.map(cellTexts).toList();
-    if (rowTexts.isEmpty) return const [];
-
-    // Column widths in display units (CJK ≈ 2 columns) — shared with the
-    // export/contract helpers in table_support.dart (v1.5.3).
-    final colCount =
-        rowTexts.map((r) => r.length).reduce((a, b) => a > b ? a : b);
-    final widths = List<int>.generate(
-      colCount,
-      (c) => rowTexts
-          .map((r) => c < r.length ? table_support.displayWidth(r[c]) : 0)
-          .reduce((a, b) => a > b ? a : b),
+    final colCount = rows.fold<int>(
+      0,
+      (max, tr) => rowCells(tr).length > max ? rowCells(tr).length : max,
     );
 
-    String fmtRow(List<String> cells) =>
-        '| ${List.generate(colCount, (c) => table_support.padCell(c < cells.length ? cells[c] : '', widths[c])).join(' | ')} |';
-    final rule =
-        '+-${widths.map((w) => '-' * w).join('-+-')}-+';
+    final tableRows = <TableRow>[
+      for (var r = 0; r < rows.length; r++)
+        TableRow(
+          decoration: r == 0 && rows.length > 1
+              ? BoxDecoration(
+                  color: theme.colorScheme.onSurface.withOpacity(0.035),
+                )
+              : null,
+          children: [
+            for (var c = 0; c < colCount; c++)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text.rich(TextSpan(
+                    children: _cellContent(rowCells(rows[r]), c, s, headStyle,
+                        context),
+                  )),
+                ),
+              ),
+          ],
+        ),
+    ];
 
-    final out = <InlineSpan>[];
-    for (var r = 0; r < rowTexts.length; r++) {
-      if (r > 0) out.add(TextSpan(text: '\n', style: s));
-      final isHeader = r == 0 && rowTexts.length > 1;
-      out.add(TextSpan(
-        text: fmtRow(rowTexts[r]),
-        style: isHeader ? headStyle : s,
-      ));
-      if (isHeader) {
-        out.add(TextSpan(text: '\n$rule', style: s));
-      }
-    }
-    return out;
+    return [
+      WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Table(
+            border: TableBorder.all(
+              color: theme.colorScheme.outlineVariant,
+              width: 1,
+            ),
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            columnWidths: {
+              for (var c = 0; c < colCount; c++) c: const IntrinsicColumnWidth(),
+            },
+            children: tableRows,
+          ),
+        ),
+      ),
+    ];
+  }
+
+  /// The inline spans of cell [c] in [cells]: bold-styled when the cell is
+  /// a header (`th`), plain body style otherwise. Empty text for missing
+  /// cells keeps ragged AI tables rectangular.
+  List<InlineSpan> _cellContent(
+    List<md.Element> cells,
+    int c,
+    TextStyle s,
+    TextStyle headStyle,
+    BuildContext context,
+  ) {
+    if (c >= cells.length) return [TextSpan(text: '', style: s)];
+    final cell = cells[c];
+    final isHead = cell.tag == 'th';
+    return _inlineSpans(cell, isHead ? headStyle : s, context);
   }
 
   /// Converts an element's inline children into styled spans.
@@ -515,17 +560,15 @@ class SelectableMarkdownBody extends StatelessWidget {
         return [TextSpan(style: s, children: _inlineSpans(el, s, context))];
       case 'input':
         // Task-list checkbox (from the hoist syntaxes). Normally consumed
-        // by _listSpans as the ☐ / ☑ marker; this is the safety net for a
+        // by _listSpans as the icon marker; this is the safety net for a
         // checkbox reached through another path (never literal brackets).
         final checked = el.attributes.containsKey('checked');
         return [
-          TextSpan(
-            text: checked ? '☑ ' : '☐ ',
-            style: checked
-                ? (style ?? const TextStyle())
-                    .copyWith(color: Theme.of(context).colorScheme.primary)
-                : style,
-          )
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: TaskCheckboxGlyph(checked: checked),
+          ),
+          const TextSpan(text: ' '),
         ];
       case 'sup':
         // v1.5.0: footnote reference — keep the marker visible and

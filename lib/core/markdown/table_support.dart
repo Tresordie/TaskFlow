@@ -60,27 +60,8 @@ String normalizeMultilineTableRows(String markdown,
   return out.join('\n');
 }
 
-/// Display width of [text] in terminal-style columns: East-Asian-Wide /
-/// Fullwidth characters (CJK ideographs, Hangul, fullwidth forms …) count
-/// as 2, everything else as 1. Used to align the flattened renderer's
-/// text tables so Chinese and Latin cells line up.
-int displayWidth(String text) {
-  var w = 0;
-  for (final r in text.runes) {
-    w += (r >= 0x1100 &&
-            (r <= 0x115F ||
-                (r >= 0x2E80 && r <= 0xA4CF) ||
-                (r >= 0xAC00 && r <= 0xD7A3) ||
-                (r >= 0xF900 && r <= 0xFAFF) ||
-                (r >= 0xFE30 && r <= 0xFE4F) ||
-                (r >= 0xFF00 && r <= 0xFF60) ||
-                (r >= 0xFFE0 && r <= 0xFFE6)))
-        ? 2
-        : 1;
-  }
-  return w;
-}
-
-/// Pads [text] with spaces to [width] display columns (see [displayWidth]).
-String padCell(String text, int width) =>
-    text + ' ' * (width - displayWidth(text)).clamp(0, 60);
+/// Display-width helpers were removed in v1.5.4: the flattened renderer
+/// now embeds a REAL bordered `Table` (WidgetSpan) instead of the old
+/// monospace text grid — whose column alignment silently broke whenever a
+/// CJK glyph's advance was not exactly twice the Latin monospace advance
+/// (MiSans ≈ 1em vs Courier ≈ 0.6em). See pitfall 8.24.

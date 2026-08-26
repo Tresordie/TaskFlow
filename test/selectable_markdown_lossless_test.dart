@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:taskflow/presentation/shared/app_markdown_body.dart'
+    show TaskCheckboxGlyph;
 import 'package:taskflow/presentation/shared/selectable_markdown_body.dart';
 
 /// Guards the whole-Note renderer ([SelectableMarkdownBody]) against the
@@ -84,9 +86,9 @@ Vout < 5V and temp -> stable, A & B pass.
       'a quoted line',
       'hello code block',
       '}',
-      'Col A',
-      'a1',
-      'b2',
+      // 'Col A' and the other cells are asserted via finders below — since
+      // v1.5.4 the table embeds as a WidgetSpan, so its text leaves the
+      // plain-text selection flow (same tier as formulas).
       'underline',
       'highlight',
       'red',
@@ -107,20 +109,27 @@ Vout < 5V and temp -> stable, A & B pass.
     expect(plain, contains('1. first'));
     expect(plain, contains('2. second'));
 
-    // ── Checkboxes render as ☐ / ☑ glyphs (v1.5.3; previously literal
-    //    [ ] / [x] brackets). ──
-    expect(plain, contains('☐ open task'));
-    expect(plain, contains('☑ done task'));
+    // ── Checkboxes render as Material icon markers (v1.5.4; previously
+    //    literal [ ] / [x] brackets, then faint ☐/☑ glyphs). ──
+    expect(plain, contains('\uFFFC open task'));
+    expect(plain, contains('\uFFFC done task'));
     expect(plain, isNot(contains('[ ] open task')));
     expect(plain, isNot(contains('[x] done task')));
+    final checkboxes = tester
+        .widgetList<TaskCheckboxGlyph>(find.byType(TaskCheckboxGlyph))
+        .toList();
+    expect(checkboxes.map((c) => c.checked).toList(), [false, true]);
 
-    // ── Table renders as an aligned, boxed monospace grid. ──
-    expect(plain, contains('| Col A'));
-    expect(plain, contains('a1'));
-    expect(plain, contains('b1'));
-    expect(plain, contains('a2'));
-    expect(plain, contains('b2'));
-    expect(plain, contains('+-')); // header rule
+    // ── Table embeds as a REAL bordered table (v1.5.4; the v1.5.3 ASCII
+    //    grid misaligned on CJK). Cell text lives in widgets now, so it no
+    //    longer appears in plain text — assert via finders instead.
+    final table = tester.widget<Table>(find.byType(Table));
+    expect(table.children.length, 3); // header + 2 data rows
+    for (final frag in const ['Col A', 'a1', 'b1', 'a2', 'b2']) {
+      expect(find.textContaining(frag), findsOneWidget,
+          reason: 'table cell must render: $frag');
+    }
+    expect(find.byType(Table), findsOneWidget);
 
     // ── Blockquote gets a gutter. ──
     expect(plain, contains('│ a quoted line'));

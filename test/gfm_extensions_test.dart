@@ -77,29 +77,25 @@ void main() {
       expect(text, isNot(contains('| A1 | P0')));
     });
 
-    testWidgets('selectable chain aligns columns with CJK double-width',
+    testWidgets('selectable chain embeds a real bordered table (CJK safe)',
         (tester) async {
       await tester.binding.setSurfaceSize(const Size(1280, 1600));
       await tester.pumpWidget(selectableBody(tableSrc, harden: true));
+      await tester.pumpAndSettle();
+
+      // v1.5.4: the flattened renderer embeds a REAL Table via WidgetSpan —
+      // no ASCII pipes, and CJK cells render in their natural font so
+      // columns cannot misalign.
+      final table = tester.widget<Table>(find.byType(Table));
+      expect(table.children.length, 3); // header + 2 data rows
+      expect(find.textContaining('整理并分享采购清单给 Foxlink'), findsOneWidget);
+      expect(find.textContaining('跟进软件更新'), findsOneWidget);
+
       final plain = await selectablePlain(tester);
+      expect(plain, isNot(contains('| A1 | P0'))); // no literal pipes
 
-      expect(plain, contains('| #'));
-      expect(plain, contains('整理并分享采购清单给 Foxlink'));
-      expect(plain, contains('+-')); // header rule line
-      expect(plain, isNot(contains('A1 | P0 | 整理'))); // not glued raw
-
-      // Every bordered line must have the SAME display width — the CJK
-      // cells count double-width, so naive char-padding would misalign.
-      final lines = plain
-          .split('\n')
-          .where((l) => l.startsWith('|') || l.startsWith('+-'))
-          .toList();
-      expect(lines.length, greaterThanOrEqualTo(4));
-      final width = table_support.displayWidth(lines.first);
-      for (final l in lines) {
-        expect(table_support.displayWidth(l), width,
-            reason: 'misaligned table row: "$l"');
-      }
+      // Whole-document selection contract still holds.
+      expect(find.byType(SelectableText), findsOneWidget);
     });
 
     testWidgets('multi-line table rows are merged back (pitfall 8.10)',
@@ -110,12 +106,13 @@ void main() {
 第二行内容 |''';
       await tester.binding.setSurfaceSize(const Size(1280, 1600));
       await tester.pumpWidget(selectableBody(broken));
-      final plain = await selectablePlain(tester);
+      await tester.pumpAndSettle();
 
       // The merge must restore ONE data row containing both fragments.
-      expect(plain, contains('第一行内容'));
-      expect(plain, contains('第二行内容'));
-      expect(plain, contains('| 项目'));
+      final table = tester.widget<Table>(find.byType(Table));
+      expect(table.children.length, 2); // header + merged row
+      expect(find.textContaining('第一行内容'), findsOneWidget);
+      expect(find.textContaining('第二行内容'), findsOneWidget);
     });
 
     testWidgets('<br> inside a cell renders a line break, not literal text',
@@ -125,10 +122,15 @@ void main() {
 | a | 行一<br>行二 |''';
       await tester.binding.setSurfaceSize(const Size(1280, 1600));
       await tester.pumpWidget(selectableBody(src));
-      final plain = await selectablePlain(tester);
+      await tester.pumpAndSettle();
 
-      expect(plain, contains('行一\n行二'));
-      expect(plain, isNot(contains('<br>')));
+      final richTexts = find
+          .byType(RichText)
+          .evaluate()
+          .map((e) => (e.widget as RichText).text.toPlainText());
+      final joined = richTexts.join('\n');
+      expect(joined, contains('行一\n行二'));
+      expect(joined, isNot(contains('<br>')));
     });
   });
 
@@ -139,29 +141,38 @@ void main() {
     const taskSrc = '''- [ ] 验证 Power distribution 方案是否符合指导
 - [x] 已确认 splice harness 是否需要''';
 
-    testWidgets('block chain shows ☐ / ☑ glyphs, never literal brackets',
-        (tester) async {
+    testWidgets('block chain shows Material checkboxes, never literal '
+        'brackets', (tester) async {
       await tester.pumpWidget(appBody(taskSrc, harden: true));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('☐'), findsOneWidget);
-      expect(find.textContaining('☑'), findsOneWidget);
+      // v1.5.4: real checkbox icons (open + checked), not faint glyphs.
+      final glyphs =
+          tester.widgetList<TaskCheckboxGlyph>(find.byType(TaskCheckboxGlyph));
+      expect(glyphs.map((g) => g.checked).toList(), [false, true]);
       final text = blockText(tester);
       expect(text, contains('验证 Power distribution 方案是否符合指导'));
       expect(text, isNot(contains('[ ]')));
       expect(text, isNot(contains('[x]')));
     });
 
-    testWidgets('selectable chain: glyph REPLACES the bullet', (tester) async {
+    testWidgets('selectable chain: icon marker REPLACES the bullet',
+        (tester) async {
       await tester.binding.setSurfaceSize(const Size(1280, 1600));
       await tester.pumpWidget(selectableBody(taskSrc, harden: true));
       final plain = await selectablePlain(tester);
 
-      expect(plain, contains('☐ 验证 Power distribution'));
-      expect(plain, contains('☑ 已确认 splice harness'));
-      expect(plain, isNot(contains('• ☐')));
+      // The WidgetSpan icon shows up as \uFFFC in plain text; the item
+      // label follows after one space. No bullet, no literal brackets.
+      expect(plain, contains('\uFFFC 验证 Power distribution'));
+      expect(plain, contains('\uFFFC 已确认 splice harness'));
+      expect(plain, isNot(contains('• \uFFFC')));
       expect(plain, isNot(contains('[ ]')));
       expect(plain, isNot(contains('[x]')));
+
+      final glyphs =
+          tester.widgetList<TaskCheckboxGlyph>(find.byType(TaskCheckboxGlyph));
+      expect(glyphs.map((g) => g.checked).toList(), [false, true]);
     });
 
     testWidgets('mixing with nested + ordered lists keeps indentation',
@@ -175,8 +186,8 @@ void main() {
       await tester.pumpWidget(selectableBody(src, harden: true));
       final plain = await selectablePlain(tester);
 
-      expect(plain, contains('☐ 父任务'));
-      expect(plain, contains('\n    ☐ 子任务一'));
+      expect(plain, contains('\uFFFC 父任务'));
+      expect(plain, contains('\n    \uFFFC 子任务一'));
       expect(plain, contains('• 普通项'));
       expect(plain, contains('1. 有序一'));
     });
@@ -261,8 +272,8 @@ void main() {
       expect(blockText(tester), contains('[!note]'));
     });
 
-    testWidgets('selectable chain: colored label + quoted content lines',
-        (tester) async {
+    testWidgets('selectable chain: colored bar label + guttered content '
+        'lines', (tester) async {
       await tester.binding.setSurfaceSize(const Size(1280, 1600));
       const src = '''> [!WARNING]
 > 警告第一行
@@ -270,9 +281,10 @@ void main() {
       await tester.pumpWidget(selectableBody(src, harden: true));
       final plain = await selectablePlain(tester);
 
-      expect(plain, contains('WARNING'));
-      expect(plain, contains('│ 警告第一行'));
-      expect(plain, contains('│ 警告第二行'));
+      // v1.5.4: accent ▎ bar before the label and on every content line.
+      expect(plain, contains('▎WARNING'));
+      expect(plain, contains('▎ 警告第一行'));
+      expect(plain, contains('▎ 警告第二行'));
       expect(plain, isNot(contains('[!WARNING]')));
     });
 
