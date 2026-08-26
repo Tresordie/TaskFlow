@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-08-26 · 当前版本 **v1.5.3**（已发版：代码 + 测试 + 构建 + 提交双推 + 打包 35.9MB；实机目检由用户进行中）
+> 最后更新：2026-08-26 · 当前版本 **v1.5.4**（已发版：GFM 渲染打磨轮——可选链表格改真实 Table、checkbox 图标化、alerts 美化；代码 + 测试 + 构建 + 提交双推 + 打包完成）
 
 ---
 
@@ -147,6 +147,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | v1.5.1 | 块间距按上下文（标题紧贴/段-列表无空行） | 统一 `\n\n` 分隔导致"多余空行"，与标准 Markdown 预览观感不符 |
 | v1.5.2 | 字体升级 Manrope（可变）× MiSans；默认字体改内置栈；双 Provider 补中文回退 | 质感+体积（42→35.8MB）；离线首启不再闪系统字体；修复内容/输入链中文落系统字体的缺口 |
 | v1.5.3 | GFM 表格/任务清单/Alerts/LaTeX 两链补齐；alerts 在可选链降级为着色标签+槽线文本、公式降级为 WidgetSpan（不参与选区/复制丢失）；任务清单只读 ☐/☑ 无点击交互；仅禁 Mermaid，LaTeX 解禁（用户重提） | 表格字面 `\|` 根因是硬换行硬化破坏行结构；checkbox 需 hoist 才不被丢；builder 拿不到子节点故 alerts 靠 data-source 重渲染；flutter_math_fork 0.7.4 纯 Dart 无 WebView 路线验证可行 |
+| v1.5.4 | 可选链表格弃文本网格改 **WidgetSpan 嵌入真实 Table**（用户实机否决 ASCII 网格后拍板，给过两选项）；任务清单 checkbox 两链改 Material 图标（`Icons.check_box(_outline_blank)`，替代细弱字形）；alerts 容器加类型图标+全周发丝描边+左色条 ClipRRect，可选链槽线 `│ `→`▎ ` | 文本网格对齐在混排下不可靠（踩坑 8.24）；表格文字随之退出选区/复制流（与公式同级的已接受降级，Copy as Markdown 不受影响） |
 
 ---
 
@@ -177,6 +178,8 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | 8.21 | `<br>` 在 AppMarkdownBody 渲染为字面文本（历史已知局限，v1.5.3 解决） | 无 InlineHtmlSyntax（故意，防吞 `<font>`） | 窄义 `BrSyntax`（只匹配 `<br\s*/?>`）→ flutter_markdown 0.7.7 原生支持 `br` 元素渲染为 `\n` | 需单个 HTML 标签能力时写窄义 InlineSyntax，不引 InlineHtmlSyntax（禁忌 9.3） |
 | 8.22 | flutter_markdown 的自定义块容器（alerts）内容丢失 | builder 返回 widget 时默认子节点被丢弃，且 builder 拿不到已构建子节点 | 语法层把去 `>` 后的源文本存进 `data-source` 属性，builder 内嵌套 AppMarkdownBody 重渲染 | 给 flutter_markdown 写块容器类 builder 时，内容必须自带重建源，别指望访问子节点 |
 | 8.23 | 任务清单 ☐ 出现两次（bullet + 内联） | 提升到 `li.children[0]` 的 `<input>` 仍会被当内联节点访问，若注册 `'input'` builder 会与 `checkboxBuilder` 双重渲染 | 不注册 `'input'` builder（未知内联元素天然不输出） | 给 flutter_markdown 注册 builder 前先确认该元素是否已在别的路径（如列表项检查）被消费 |
+| 8.24 | 可选链表格 ASCII 文本网格中文列错位、观感如字符画（用户实机否决） | 等宽拉丁字体的 advance 与 CJK 字形 advance 不是精确 2:1（MiSans ≈1em vs Courier ≈0.6em），TextSpan 纯文本列对齐在混排下数学上就不可靠 | v1.5.4 弃文本网格，WidgetSpan 嵌真实 Table（IntrinsicColumnWidth 天然对齐） | 跨字体"按显示宽度补空格对齐"的方案在 CJK 混排下不可行，直接用真组件渲染 |
+| 8.25 | alerts 容器美化两连崩：`Border` 非统一色 + `borderRadius` 抛 "uniform colors" 断言；Row `CrossAxisAlignment.stretch` 在无界高度视口抛 "infinite height" | Flutter 规定各边颜色不一致的 Border 不能配圆角；stretch 需要有界高度约束 | 外层 Container 统一色发丝描边（可配圆角）+ 内层 ClipRRect 左色条；Row 外包 `IntrinsicHeight` 让色条取内容高 | 非 uniform 边框/圆角组合与无界高度下 stretch 是 Flutter 布局两大经典坑，容器类 UI 先想约束 |
 
 ---
 
@@ -202,21 +205,20 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
-- ✅ v1.5.3（代码+测试+构建完成）：GFM 四能力两链补齐——表格（原生 Table + 样式注入 / 可选链等宽对齐列，CJK 双宽）、任务清单（☐/☑ 替换项目符号，只读）、GFM Alerts（主题化容器/五色语义/可选链降级标签+槽线，普通引用不变）、LaTeX（严格定界防货币误判、多行 `$$` 展平、可选链 WidgetSpan、失败回退原文）；`<br>` 窄义支持；新增 `gfm_extensions.dart`/`table_support.dart`，report_service 表格归一委托共享实现；213 个测试全过（新增 23 项契约）；已升版 1.5.3 双处并构建成功（analyze 0 error）
+- ✅ v1.5.4（已发版）：GFM 渲染打磨——① 可选链表格改 WidgetSpan 真实 Table（主题色边框/表头加粗/表头淡底/IntrinsicColumnWidth，与 Reports 预览同观感；文本网格因 CJK 对齐失效被用户否决，`displayWidth/padCell` 已删）；② 任务清单 checkbox 两链改 Material 图标（未勾 `check_box_outline_blank` 45% 前景色 / 已勾 `check_box` 主题色，公共组件 `TaskCheckboxGlyph`）；③ alerts 容器美化（类型图标 info/lightbulb/priority_high/warning_amber/dangerous + 全周发丝描边 + ClipRRect 左色条，可选链槽线改 `▎ `）；213 测试全过（表格/checkbox 相关契约断言已迁移到 widget 断言）、双推 `5788652`、包体 35.9MB
+- ✅ v1.5.3：GFM 四能力两链补齐（表格/任务清单/alerts/LaTeX）+ `<br>` 窄义支持；新增 gfm_extensions.dart/table_support.dart；23 项契约测试
 - ✅ v1.5.2：字体升级 Manrope×MiSans（可变字体、包体 42→35.8MB、FontStack 混排链、双 Provider 补中文回退、授权随包）
 - ✅ v1.5.1：块间距修正（标题紧贴/段-列表无空行）
 - ✅ v1.5.0：扩展 Markdown（脚注/上下标/高亮样式修复，Mermaid 拍板不做）
-- ✅ v1.4.98：Latte 清晰度修复 + 删除 4 主题（13 主题）
-- ✅ v1.4.85-97：字体排版双 Provider、可调节图片预览、Drive 同步加固、内联编辑、版本号仅 About 显示、Catppuccin 主题体系、中英配对预设、HANDOFF 文档创建
-- 双远程同步至 `ceb470f`（v1.5.3）
+- 双远程同步至 `5788652`（v1.5.4）
 
 **进行中**：
-- 用户实机验证 v1.5.3 验证用例（表格对齐列 / ☐☑ 字形 / 五色 alerts / 公式渲染 / 普通引用不变；2–3 个主题含一个 Catppuccin 暗色目检 alerts 五色可读性）。应用已在运行（v1.5.3 exe）。
+- 用户实机验证 v1.5.4：编辑器 Preview/保存记录中粘贴验证用例，核对表格为真实边框表格、checkbox 图标、alerts 卡片观感；2–3 个主题含一个 Catppuccin 暗色目检五色。应用已在运行（v1.5.4 exe）。
 
 **待办/已知局限**：
 - **疑似 UI 缺陷（待排查）**：快速添加任务后列表偶发不刷新，重启后自愈（v1.5.2 验证时由 ComputerUse 发现，未复现定位）。
-- 可选链公式为 WidgetSpan：**不参与文字选区、复制时丢失**（已接受，测试用 toPlainText 断言时需预期占位符 `\uFFFC` 而非公式源文本）。
-- alerts 在可选链为降级形态（标签+槽线文本），与 AppMarkdownBody 的主题化容器存在形态差异——若用户报“预览与保存后不一致”，alerts/脚注/Reports 块边距是三个排查入口。
+- 可选链中**表格与公式均为 WidgetSpan**：不参与文字选区、Ctrl+C 复制时丢失（已接受；右键 Copy as Markdown 始终复制完整原始源码，测试用 toPlainText 断言时需预期占位符 `\uFFFC`）。
+- alerts 在可选链为降级形态（▎标签+槽线文本），与 AppMarkdownBody 的卡片容器存在形态差异——若用户报“预览与保存后不一致”，alerts/脚注/Reports 块边距是三个排查入口。
 - LaTeX 不解析 `\( \)`/`\[ \]`；货币边界规则下 `$x and $y` 这类文本仍会被当公式（规范所定，不可避）。
 - ComputerUse 验证遗留临时文件：`f:\gitee\voice_record_summary_ai` 下 `tf_shot.ps1`、`tf_editor1~3.png`（可删）。
 - `app_colors.dart` 底部遗留硬编码别名（lightBg/darkBorder 等）被部分代码以 `isDark ? darkX : lightX` 直接引用，不跟随当前主题色相——改浅色主题时需同步这些别名。
@@ -243,3 +245,4 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | 2026-08-26 | Qoder（本会话，v1.4.85→v1.5.2） | 待定 | 字体排版设置、可调节图片预览、编辑对话框粘图、Drive 同步加固（两阶段/占位文件/路径自愈合）、报告全量日志+清单版式、内联编辑流程、Catppuccin 主题体系、主题精简与 Latte 清晰度修复、中英字体配对四预设（含内置 MiSans）、扩展 Markdown（脚注/上下标/高亮样式修复）、v1.5.1 块间距修正（标题紧贴/段-列表无空行）、v1.5.2 字体升级 Manrope×MiSans（包体 42→35.8MB，FontStack 混排链，双 Provider 补中文回退） |
 | 2026-08-26 | Qoder（本会话，v1.5.2→v1.5.3 代码+构建） | 待定 | GFM 四能力两链补齐：表格（字面 `\|` 根因修复：prepare 管线 + 硬化豁免 + 样式注入 / 可选链 CJK 双宽对齐列）、任务清单（checkbox hoist + ☐/☑ 只读字形）、GFM Alerts（大小写敏感语法 + 主题化容器/五色集中定义 + 可选链降级标签槽线，普通引用零影响）、LaTeX 解禁落地（严格定界防货币误判、多行 `$$` 展平、可选链 WidgetSpan、错误回退原文、流式自动重渲染）、`<br>` 窄义支持、report_service 表格归一委托共享实现；新增 23 项契约测试（共 213）；**发版后半程未完成：实机验证（ComputerUse 两次中断）→ 提交 → 双推 → 打包 → 启动，接手续做，步骤见第 10 节进行中栏** |
 | 2026-08-26 | 接班模型（本会话，v1.5.3 发版闭环收尾） | 待定 | 验证 v1.5.3 实现完整性（analyze 0 error、213 测试全过）→ 提交 `ceb470f`（13 文件 +1218/-148）→ Gitee/GitHub 显式单 URL 双推均一次成功 → 打包 `TaskFlow-v1.5.3-windows-x64.zip`（35.9MB，基线 35.8MB +0.1MB 来自 KaTeX 字体）→ 启动 exe；实机用例目检留给用户 |
+| 2026-08-26 | 接班模型（本会话，v1.5.3→v1.5.4 渲染打磨轮） | 待定 | 用户实机反馈三问题：①可选链表格 ASCII 网格观感差且 CJK 列错位 → 经选项确认改 WidgetSpan 真实 Table（删 displayWidth/padCell，踩坑 8.24）；②checkbox 字形太弱 → 两链换 Material 图标公共组件 TaskCheckboxGlyph；③alerts 观感 → 类型图标+发丝描边+ClipRRect 左色条（踩坑 8.25：非 uniform Border 配圆角、无界高度 stretch 两连崩）、可选链槽线 `▎`。表格/checkbox 契约断言迁移为 widget 断言；analyze 0 error、213 测试全过；提交 `5788652` 双推一次成功；打包 v1.5.4 35.9MB；exe 已启动待用户目检 |
