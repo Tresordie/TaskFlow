@@ -153,6 +153,40 @@ class AppColors {
     primaryGhost: Color(0xFF2C3066),
   );
 
+  // ─── Nord Night (极夜蓝, v1.6.0) ───
+  // Official Nord palette (nordtheme.com): polar-night surfaces with the
+  // frost-blue accent. Cool, calm and low-contrast — a dark theme built
+  // for long engineering sessions rather than punchy vibrancy.
+  static const ThemePalette nordNight = ThemePalette(
+    bg: Color(0xFF242933),
+    surface: Color(0xFF2E3440),
+    card: Color(0xFF3B4252),
+    border: Color(0xFF434C5E),
+    textPrimary: Color(0xFFECEFF4),
+    textSecondary: Color(0xFFD8DEE9),
+    primary: Color(0xFF88C0D0),
+    primaryLight: Color(0xFF8FBCBB),
+    primaryDark: Color(0xFF5E81AC),
+    primaryGhost: Color(0xFF35404D),
+  );
+
+  // ─── Warm Sand (暖沙, v1.6.0) ───
+  // A warm paper-like light theme: soft sand canvas, deep umber text and a
+  // caramel accent. Reads like a well-lit notebook — gentler than the cool
+  // indigo default for users who prefer warm neutrals.
+  static const ThemePalette warmSand = ThemePalette(
+    bg: Color(0xFFFAF6F0),
+    surface: Color(0xFFFFFFFF),
+    card: Color(0xFFFDFAF5),
+    border: Color(0xFFE8DCC8),
+    textPrimary: Color(0xFF4A3F35),
+    textSecondary: Color(0xFF8A7A66),
+    primary: Color(0xFFA9713B),
+    primaryLight: Color(0xFFC99A6B),
+    primaryDark: Color(0xFF8A5A2B),
+    primaryGhost: Color(0xFFF5EBDD),
+  );
+
   // ═════════════ Catppuccin (v1.4.96) ═════════════
   // Official Catppuccin palette (github.com/catppuccin/catppuccin), four
   // flavours × two accent variants each. No pure black/white anywhere —

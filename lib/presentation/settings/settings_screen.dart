@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -948,6 +949,10 @@ class _AiConfigCardState extends ConsumerState<_AiConfigCard> {
   bool _obscureKey = true;
   bool _testing = false;
   bool _saving = false;
+  // v1.6.0: auto-save — every edit persists silently (debounced), so the
+  // configuration is always the last one used and reloads on the next
+  // app start without pressing anything.
+  Timer? _autosaveTimer;
 
   static const _presets = [
     ('DeepSeek', 'https://api.deepseek.com', 'deepseek-v4-pro'),
@@ -960,10 +965,33 @@ class _AiConfigCardState extends ConsumerState<_AiConfigCard> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    for (final c in [_baseUrlController, _apiKeyController, _modelController]) {
+      c.addListener(_scheduleAutosave);
+    }
+  }
+
+  void _scheduleAutosave() {
+    if (!_loaded) return; // ignore programmatic restore before first load
+    _autosaveTimer?.cancel();
+    _autosaveTimer = Timer(const Duration(milliseconds: 600), () {
+      if (!mounted) return;
+      ref.read(aiConfigProvider.notifier).save(AiConfig(
+            baseUrl: _baseUrlController.text.trim(),
+            apiKey: _apiKeyController.text.trim(),
+            model: _modelController.text.trim(),
+          ));
+    });
+  }
+
+  @override
   void dispose() {
-    _baseUrlController.dispose();
-    _apiKeyController.dispose();
-    _modelController.dispose();
+    _autosaveTimer?.cancel();
+    for (final c in [_baseUrlController, _apiKeyController, _modelController]) {
+      c.removeListener(_scheduleAutosave);
+      c.dispose();
+    }
     super.dispose();
   }
 

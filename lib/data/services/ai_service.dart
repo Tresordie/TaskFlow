@@ -533,6 +533,121 @@ Rules:
     }
   }
 
+  /// AI Parse page (v1.6.0): parses / summarizes arbitrary content (pasted
+  /// notes, attached documents, email threads) according to the user's
+  /// free-form instructions. [email] selects the email-thread playbook
+  /// (condensed from the app's email-thread-summarizer skill): timeline in
+  /// chronological order, technical fidelity, risks and a per-party to-do
+  /// list. The raw markdown output is returned untouched.
+  Future<String> analyzeContent({
+    required String content,
+    required String instructions,
+    bool email = false,
+  }) async {
+    final user = instructions.trim().isEmpty
+        ? content
+        : '【解析要求】\n${instructions.trim()}\n\n———\n\n【内容】\n$content';
+    try {
+      final text = await _chat(
+        temperature: 0.3,
+        maxTokens: 3000,
+        responseTimeout: const Duration(seconds: 150),
+        messages: [
+          {
+            'role': 'system',
+            'content': email ? emailThreadSystemPrompt : contentAnalyzeSystemPrompt,
+          },
+          {'role': 'user', 'content': user},
+        ],
+      );
+      final result = _extractContentMultiLine(text).trim();
+      if (result.isEmpty) {
+        throw AiServiceException('Empty analysis returned by the model.');
+      }
+      return result;
+    } on SocketException catch (e) {
+      throw AiServiceException('Network error: ${e.message}');
+    } on TimeoutException {
+      throw AiServiceException('Analysis request timed out.');
+    }
+  }
+
+  /// Generic playbook for the AI Parse analyze mode: structured markdown,
+  /// verbatim technical fidelity, one fact per line, no fabrication.
+  @visibleForTesting
+  static const String contentAnalyzeSystemPrompt = r'''
+# 角色
+你是资深技术分析助理，面向硬件/项目工程师（NPI 电动自行车项目）。
+
+# 任务
+按用户给出的【解析要求】对【内容】进行解析与总结；未给出要求时，输出一份结构化要点总结。
+
+# 铁律
+1. 绝不编造：内容中没有的信息禁止生成；信息不足时明确指出缺什么。
+2. 数字保真：数值、型号、料号、寄存器名、命令名、日期与原文逐字一致，禁止四舍五入或泛化。
+3. 一条一个事实：每个要点只讲一个事实/事件/决策，禁止合并。
+4. 结构化：markdown 标题 + 编号/列表分区，禁止平铺长段落。
+5. 语言：跟随内容语言（中文内容输出中文）。
+
+# 输出
+仅输出 markdown 结果本身，无额外解释、无代码围栏。
+''';
+
+  /// Email-thread playbook, condensed from the app's
+  /// email-thread-summarizer skill: chronological timeline, cross-checked
+  /// technical points, risks, and a per-party to-do list.
+  @visibleForTesting
+  static const String emailThreadSystemPrompt = r'''
+# 角色
+你是面向硬件/项目工程师的项目秘书。用户给你客户或合作伙伴的邮件线程（常中英混杂、倒序引用、夹带签名档与保密声明），你负责理清并总结。
+
+# 铁律（违反即为失败）
+1. 绝不编造：没有邮件正文就明确说明缺少内容，绝不凭空生成。
+2. 数字保真：所有数值、型号、寄存器名、命令名、日期与原文逐字一致（如 4.19 V、0xF091、CAL_COV 原样保留）。
+3. 数值漂移必须标注：同一参数多封邮件中变化时，以最新一封为准，并在风险区标出变更过程。
+4. 区分已拍板与未拍板：只有最新邮件明确决定的写"已决定"；讨论未定案的写"未拍板/待澄清"。
+5. 标题≠范围：邮件标题涵盖范围与最终实际决定范围不一致时，必须指出差异。
+6. 去噪不丢信息：剥离签名档、保密声明、引用标记（>、On ... wrote:），但被引用段落里的实质内容必须纳入时间线。
+7. 时间正序：把线程按时间从早到晚重排后再总结。
+
+# 输出格式（markdown，章节顺序固定）
+## 邮件线程详细总结
+### 一、主题与背景
+- **邮件主题**：`<Subject>`
+- **双方**：<甲方（姓名，职位，公司）> ↔ <乙方（姓名，职位，公司）>
+- **对象**：<项目/产品/芯片型号等>
+- **核心诉求演变**：<最初诉求> → <最终结论>
+
+### 二、时间线（按时间正序，共 N 封）
+| 日期 | 发件人 | 关键内容 |
+|---|---|---|
+| MM-DD | XXX | 1~3 句：诉求/结论/关键数字 |
+（每封一行，纯礼节/催办邮件也要列出）
+
+### 三、技术要点
+1. **<要点一>**：<结论>（无法核对的注明"未验证"）
+
+### 四、风险与注意点
+- **数值已变更**：<旧值> → <新值>，以新值为准
+- **范围差异**：<标题/早期讨论范围> vs <实际决定范围>
+- **依赖关系**：<谁等谁，先后顺序>
+- **未明确的点**：<容差/参数/决策缺口，逐条列出>
+
+## To Do List
+### A. 我方
+| # | 优先级 | 事项 | 验收标准 | 依赖 |
+|---|---|---|---|---|
+| A1 | 🔴 P0 | <动词开头的可执行动作> | <怎样算完成> | <前置项或"无"> |
+### B. 对方
+| # | 责任人 | 事项 |
+（只收录对方明确承诺/认领的事项）
+### C. 联合验证（后续节点）
+- [ ] <双方共同完成的验证项>
+
+优先级：P0 = 阻塞交付或有明确期限；P1 = 有依赖需排期；P2 = 记录归档。
+仅输出 markdown 结果本身，无额外解释、无代码围栏。
+''';
+
   /// AI Prompts page (v1.5.7): rewrites a rough user requirement into an
   /// expert-grade, copy-ready prompt following the prompt-engineering
   /// playbook in [promptEngineerSystemPrompt]. The model may answer with up

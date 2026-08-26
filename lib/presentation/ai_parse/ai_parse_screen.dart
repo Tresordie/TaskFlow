@@ -1,16 +1,22 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/markdown/html_sanitize.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../data/services/ai_service.dart';
+import '../../data/services/content_extractor.dart';
 import '../../providers/ai_provider.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/typography_provider.dart';
 import '../../providers/task_providers.dart';
+import '../shared/app_markdown_body.dart';
 import '../shared/markdown_input.dart';
 import '../shared/selectable_markdown_body.dart';
 
@@ -26,6 +32,10 @@ class AiParseScreen extends ConsumerStatefulWidget {
 class _AiParseScreenState extends ConsumerState<AiParseScreen> {
   final _notesController = TextEditingController();
   final _scrollController = ScrollController();
+  // v1.6.0: free-form parsing instructions + attached documents.
+  final _instructionsController = TextEditingController();
+  late final FocusNode _instructionsFocus =
+      markdownIndentFocusNode(_instructionsController);
   late final FocusNode _notesFocus;
 
   bool _parsing = false;
@@ -33,6 +43,15 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
   bool _previewMode = false;
   String? _error;
   List<ParsedTask> _results = [];
+  // v1.6.0: analyze/summarize mode output (markdown), shown when the user
+  // supplies parsing instructions and/or attaches documents.
+  String _summary = '';
+
+  /// Attached documents: (fileName, extractedText). Text is extracted at
+  /// attach time so failures surface immediately.
+  final List<({String name, String content})> _attachments = [];
+
+  static const _maxFileBytes = ContentExtractor.maxFileBytes;
 
   // Resizable notes input area height (logical pixels) — drag the grip
   // handle below the field, mirroring the Work Log input behavior.
@@ -49,14 +68,49 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
   @override
   void dispose() {
     _notesController.dispose();
-    _notesFocus.dispose();
+    _instructionsController.dispose();
+    _instructionsFocus.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
+  Future<void> _attachFiles() async {
+    final picked = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.custom,
+      allowedExtensions: ContentExtractor.supportedExtensions,
+    );
+    if (picked == null || picked.files.isEmpty) return;
+    for (final f in picked.files) {
+      final path = f.path;
+      if (path == null) continue;
+      try {
+        final file = File(path);
+        if (await file.length() > _maxFileBytes) {
+          throw const FormatException('文件超过 150 MB 上限');
+        }
+        final text = await ContentExtractor.extract(file);
+        setState(() {
+          _attachments.add((name: f.name, content: text));
+          _error = null;
+        });
+      } catch (e) {
+        setState(() => _error = '${f.name}: ${e.toString().replaceFirst('FormatException: ', '')}');
+      }
+    }
+  }
+
+  bool _looksLikeEmail(String text) {
+    final lower = text.toLowerCase();
+    return lower.contains('from:') && lower.contains('subject:') ||
+        text.contains('发件人') && text.contains('主题') ||
+        lower.contains('on ') && lower.contains('wrote:');
+  }
+
   Future<void> _parse() async {
     final notes = _notesController.text.trim();
-    if (notes.isEmpty) return;
+    final instructions = _instructionsController.text.trim();
+    if (notes.isEmpty && _attachments.isEmpty) return;
 
     final config = ref.read(aiConfigProvider);
     if (!config.isConfigured) {
@@ -68,6 +122,7 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
     setState(() {
       _parsing = true;
       _error = null;
+      _summary = '';
     });
 
     try {
@@ -76,6 +131,34 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
         apiKey: config.apiKey,
         model: config.model,
       );
+
+      // v1.6.0: instructions and/or attachments switch to the ANALYZE mode
+      // (free-form markdown summary); the plain no-prompt flow keeps the
+      // original structured task extraction.
+      if (instructions.isNotEmpty || _attachments.isNotEmpty) {
+        final buf = StringBuffer();
+        for (final a in _attachments) {
+          buf.writeln('【附件：${a.name}】');
+          buf.writeln(a.content);
+          buf.writeln();
+        }
+        if (notes.isNotEmpty) buf.writeln(notes);
+        final content = buf.toString().trim();
+        final email = _attachments.any((a) => a.name.toLowerCase().endsWith('.eml')) ||
+            _looksLikeEmail('$instructions\n$content');
+        final result = await service.analyzeContent(
+          content: content,
+          instructions: instructions,
+          email: email,
+        );
+        setState(() {
+          _summary = result;
+          _results = [];
+          _parsing = false;
+        });
+        return;
+      }
+
       final tasks = await service.parseNotes(notes);
       setState(() {
         _results = tasks;
@@ -168,12 +251,80 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Paste raw notes — meeting minutes, test logs, chat excerpts — and let AI turn them into structured tasks.',
+            'Paste raw notes or attach documents — AI turns them into structured tasks, or follows your prompt to parse & summarize.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.55),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
+          // ── v1.6.0: parsing instructions + file attachments ──────
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _instructionsController,
+                  focusNode: _instructionsFocus,
+                  minLines: 1,
+                  maxLines: 3,
+                  style: applyInputTypography(
+                    context,
+                    const TextStyle(fontSize: 12.5, height: 1.45),
+                  ),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText:
+                        '解析提示词（可选）：如"总结成周报要点" / "提取所有测试数据" / "按邮件线程整理待办"…',
+                    hintStyle: TextStyle(
+                      fontSize: 12.5,
+                      color: theme.colorScheme.onSurface.withOpacity(0.35),
+                    ),
+                    prefixIcon: Icon(Icons.tune,
+                        size: 16, color: theme.colorScheme.primary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Attach documents (txt/md/html/docx/xlsx/pptx/pdf/eml…).
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: OutlinedButton.icon(
+                  onPressed: _parsing ? null : _attachFiles,
+                  icon: const Icon(Icons.attach_file, size: 16),
+                  label: const Text('附件'),
+                ),
+              ),
+            ],
+          ),
+          if (_attachments.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  for (var i = 0; i < _attachments.length; i++)
+                    InputChip(
+                      avatar: Icon(Icons.description_outlined,
+                          size: 15, color: theme.colorScheme.primary),
+                      label: Text(
+                        _attachments[i].name,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      onDeleted: _parsing
+                          ? null
+                          : () => setState(() => _attachments.removeAt(i)),
+                    ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 10),
 
           // Notes input with Write / Preview tabs
           Container(
@@ -338,9 +489,30 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.auto_awesome, size: 16),
-                label: Text(_parsing ? 'Parsing…' : 'Parse with AI'),
+                label: Text(_parsing
+                    ? 'Parsing…'
+                    : (_instructionsController.text.trim().isNotEmpty ||
+                            _attachments.isNotEmpty)
+                        ? 'Analyze with AI'
+                        : 'Parse with AI'),
               ),
               const SizedBox(width: 12),
+              // v1.6.0: copy the analyze-mode summary.
+              if (_summary.isNotEmpty) ...[
+                TextButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: _summary));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Summary copied to clipboard'),
+                          behavior: SnackBarBehavior.floating),
+                    );
+                  },
+                  icon: const Icon(Icons.copy, size: 16),
+                  label: const Text('Copy'),
+                ),
+                const SizedBox(width: 12),
+              ],
               if (_results.isNotEmpty) ...[
                 TextButton(
                   onPressed: () => setState(() {
@@ -409,8 +581,35 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
 
           const SizedBox(height: 16),
 
-          // Results
-          if (_results.isNotEmpty) ...[
+          // Results — v1.6.0: analyze-mode markdown summary first, then the
+          // structured task cards from the classic extraction flow.
+          if (_summary.isNotEmpty) ...[
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: theme.colorScheme.outline.withOpacity(0.25),
+                  ),
+                ),
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  child: AppMarkdownBody(
+                    data: _summary,
+                    styleSheet: applyContentTypography(
+                      context,
+                      MarkdownStyleSheet.fromTheme(theme).copyWith(
+                        p: const TextStyle(fontSize: 13, height: 1.5),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ] else if (_results.isNotEmpty) ...[
             Text(
               'Extracted ${_results.length} task${_results.length == 1 ? '' : 's'} — review and uncheck what you don\'t need:',
               style: theme.textTheme.bodyMedium?.copyWith(

@@ -86,6 +86,23 @@ class AppFonts {
       isGoogleFont: true,
       cjkFamily: 'LXGW WenKai TC',
     ),
+    // v1.6.0: two more tasteful pairings (Google-hosted, zero bundle cost).
+    FontOption(
+      id: 'pairPlexNoto',
+      labelZh: 'IBM Plex Sans × 思源黑体（工程理性）',
+      labelEn: 'IBM Plex Sans + Noto Sans SC',
+      fontFamily: 'IBM Plex Sans',
+      isGoogleFont: true,
+      cjkFamily: 'Noto Sans SC',
+    ),
+    FontOption(
+      id: 'pairOutfitMiSans',
+      labelZh: 'Outfit × MiSans（现代几何）',
+      labelEn: 'Outfit + MiSans',
+      fontFamily: 'Outfit',
+      isGoogleFont: true,
+      cjkFamily: 'MiSans',
+    ),
   ];
 
   /// Common system fonts available on Windows / macOS

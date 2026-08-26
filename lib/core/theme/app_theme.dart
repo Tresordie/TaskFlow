@@ -7,7 +7,9 @@ enum AppThemeMode {
   freshGreen,
   sunsetOrange,
   lavenderPurple,
+  warmSand,
   dark,
+  nordNight,
   // v1.4.96: Catppuccin — four flavours × two accents.
   catLatteLavender,
   catLatteMauve,
@@ -28,8 +30,12 @@ enum AppThemeMode {
         return 'Sunset Orange';
       case AppThemeMode.lavenderPurple:
         return 'Lavender Purple';
+      case AppThemeMode.warmSand:
+        return 'Warm Sand';
       case AppThemeMode.dark:
         return 'Dark';
+      case AppThemeMode.nordNight:
+        return 'Nord Night';
       case AppThemeMode.catLatteLavender:
         return 'Catppuccin Latte · Lavender';
       case AppThemeMode.catLatteMauve:
@@ -59,8 +65,12 @@ enum AppThemeMode {
         return '日落橙';
       case AppThemeMode.lavenderPurple:
         return '薰衣草紫';
+      case AppThemeMode.warmSand:
+        return '暖沙';
       case AppThemeMode.dark:
         return '暗夜模式';
+      case AppThemeMode.nordNight:
+        return '极夜蓝';
       case AppThemeMode.catLatteLavender:
         return '拿铁 · 薰衣草';
       case AppThemeMode.catLatteMauve:
@@ -90,8 +100,12 @@ enum AppThemeMode {
         return AppColors.sunsetOrange;
       case AppThemeMode.lavenderPurple:
         return AppColors.lavenderPurple;
+      case AppThemeMode.warmSand:
+        return AppColors.warmSand;
       case AppThemeMode.dark:
         return AppColors.dark;
+      case AppThemeMode.nordNight:
+        return AppColors.nordNight;
       case AppThemeMode.catLatteLavender:
         return AppColors.catLatteLavender;
       case AppThemeMode.catLatteMauve:
@@ -117,10 +131,12 @@ enum AppThemeMode {
       case AppThemeMode.freshGreen:
       case AppThemeMode.sunsetOrange:
       case AppThemeMode.lavenderPurple:
+      case AppThemeMode.warmSand:
       case AppThemeMode.catLatteLavender:
       case AppThemeMode.catLatteMauve:
         return Brightness.light;
       case AppThemeMode.dark:
+      case AppThemeMode.nordNight:
       case AppThemeMode.catFrappeMauve:
       case AppThemeMode.catFrappeSapphire:
       case AppThemeMode.catMacchiatoMauve:

@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../providers/date_nav_providers.dart';
 import '../../providers/task_providers.dart';
+import '../shared/app_date_picker.dart';
 import '../shared/task_date_meta.dart';
 import '../shared/task_tag_project_meta.dart';
 import '../shared/wheel_forward.dart';
@@ -181,7 +182,7 @@ class TimelineScreen extends ConsumerWidget {
 
   Future<void> _pickRange(
       BuildContext context, WidgetRef ref, DateNavState nav) async {
-    final picked = await showDateRangePicker(
+    final picked = await showAppDateRangePicker(
       context: context,
       firstDate: DateTime(2024),
       lastDate: DateTime.now().add(const Duration(days: 365)),

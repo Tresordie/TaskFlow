@@ -26,12 +26,26 @@ class DateNavState {
   }
 }
 
+/// The default view range: the LAST 7 DAYS ending today (v1.6.0 — Timeline
+/// and Calendar open on the recent week instead of a single day).
+DateTimeRange defaultWeekRange() {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  return DateTimeRange(start: today.subtract(const Duration(days: 6)), end: today);
+}
+
 /// Timeline page date navigation (persists across page switches).
 final timelineDateNavProvider = StateProvider<DateNavState>(
-  (ref) => DateNavState(selectedDate: DateTime.now()),
+  (ref) => DateNavState(
+    selectedDate: DateTime.now(),
+    dateRange: defaultWeekRange(),
+  ),
 );
 
 /// Calendar page date navigation (persists across page switches).
 final calendarDateNavProvider = StateProvider<DateNavState>(
-  (ref) => DateNavState(selectedDate: DateTime.now()),
+  (ref) => DateNavState(
+    selectedDate: DateTime.now(),
+    dateRange: defaultWeekRange(),
+  ),
 );

@@ -15,6 +15,7 @@ import '../../providers/ai_provider.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
 import '../../providers/typography_provider.dart';
+import '../shared/app_date_picker.dart';
 import '../shared/app_markdown_body.dart';
 import '../shared/markdown_input.dart';
 
@@ -499,7 +500,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   Future<void> _pickRange() async {
     final notifier = ref.read(reportControllerProvider.notifier);
     final now = DateTime.now();
-    final picked = await showDateRangePicker(
+    final picked = await showAppDateRangePicker(
       context: context,
       initialDateRange: ref.read(reportControllerProvider).customRange ??
           DateTimeRange(
