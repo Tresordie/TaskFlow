@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 
 import '../../data/services/ai_service.dart';
 import '../../providers/ai_provider.dart';
+import '../../providers/typography_provider.dart';
+import '../../core/theme/font_stack.dart';
 import '../shared/app_markdown_body.dart';
+import '../shared/markdown_editor_field.dart';
 
 /// AI Prompts (v1.5.7) — paste a rough requirement, get an expert-grade,
 /// copy-ready prompt rewritten by the configured LLM following the
@@ -15,6 +19,12 @@ import '../shared/app_markdown_body.dart';
 /// questions when key info is missing. The full output renders as Markdown;
 /// "Copy prompt" grabs the first fenced code block (the prompt body proper).
 /// Nothing is persisted — the page is a scratchpad by design.
+///
+/// v1.5.8 polish: the input is a full MarkdownEditorField (Write/Preview,
+/// markdown toolbar parity with every other input area), resizable via the
+/// drag grip below it, and both the input text and the rendered output
+/// follow the font family / size configured in Settings (input typography
+/// for the field, content typography for the output card).
 class AiPromptsScreen extends ConsumerStatefulWidget {
   const AiPromptsScreen({super.key});
 
@@ -24,15 +34,23 @@ class AiPromptsScreen extends ConsumerStatefulWidget {
 
 class _AiPromptsScreenState extends ConsumerState<AiPromptsScreen> {
   final _inputController = TextEditingController();
+  final _inputFocus = FocusNode();
   final _scrollController = ScrollController();
 
   bool _generating = false;
   String? _error;
   String _result = '';
 
+  // Resizable input area height (logical pixels) — drag the grip handle
+  // below the field, mirroring the Work Log / AI Parse input behavior.
+  double _inputHeight = 180;
+  static const double _minInputHeight = 120;
+  static const double _maxInputHeight = 420;
+
   @override
   void dispose() {
     _inputController.dispose();
+    _inputFocus.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -80,9 +98,47 @@ class _AiPromptsScreenState extends ConsumerState<AiPromptsScreen> {
     );
   }
 
+  /// Preview / output style sheet — the SAME content typography for both,
+  /// so what you see while composing matches the generated-prompt card.
+  /// The fenced code block (the prompt body proper) gets a quiet tinted
+  /// panel so the copy target reads as the artifact it is.
+  MarkdownStyleSheet _previewSheet(ThemeData theme) {
+    final sheet = MarkdownStyleSheet(
+      p: TextStyle(
+          fontSize: 13,
+          height: 1.5,
+          color: theme.colorScheme.onSurface.withOpacity(0.88)),
+      listIndent: 26,
+      code: TextStyle(
+        fontSize: 12.5,
+        height: 1.5,
+        fontFamily: 'Consolas',
+        fontFamilyFallback: const ['Courier New', ...FontStack.fallback],
+        color: theme.colorScheme.onSurface.withOpacity(0.92),
+      ),
+      codeblockDecoration: BoxDecoration(
+        color: theme.colorScheme.onSurface.withOpacity(0.045),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      codeblockPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      horizontalRuleDecoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
+      ),
+    );
+    return applyContentTypography(context, sheet);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // The input field follows Settings → Fonts (input area): family + size.
+    final inputStyle = applyInputTypography(
+      context,
+      const TextStyle(fontSize: 13.5, height: 1.55),
+    );
 
     return Scaffold(
       body: SafeArea(
@@ -118,20 +174,48 @@ class _AiPromptsScreenState extends ConsumerState<AiPromptsScreen> {
               ),
             ),
 
-            // ── Input ───────────────────────────────────────────────
+            // ── Input (markdown editor, resizable) ──────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: TextField(
+              child: MarkdownEditorField(
                 controller: _inputController,
+                focusNode: _inputFocus,
+                height: _inputHeight,
                 minLines: 4,
-                maxLines: 8,
-                style: theme.textTheme.bodyMedium,
-                decoration: InputDecoration(
-                  hintText:
-                      'e.g. 写一个周报总结工具 / 帮我分析这份销售数据 / 写一篇产品发布文案…',
-                  border: const OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding: const EdgeInsets.all(12),
+                maxLines: 24,
+                style: inputStyle,
+                hintText:
+                    'Describe what you need, in any form…\n\ne.g.\n- 写一个周报总结工具\n- 帮我分析这份销售数据\n- 写一篇产品发布文案（面向开发者社区）',
+                hardenLineBreaks: true,
+                styleSheet: _previewSheet(theme),
+              ),
+            ),
+
+            // Resize grip handle at the bottom edge of the textarea —
+            // drag up/down to resize, matching Work Log / AI Parse.
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onVerticalDragUpdate: (details) {
+                setState(() {
+                  _inputHeight = (_inputHeight + details.delta.dy)
+                      .clamp(_minInputHeight, _maxInputHeight);
+                });
+              },
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeRow,
+                child: SizedBox(
+                  height: 12,
+                  width: double.infinity,
+                  child: Center(
+                    child: Container(
+                      width: 40,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.outline.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -141,7 +225,7 @@ class _AiPromptsScreenState extends ConsumerState<AiPromptsScreen> {
             // enabled state must react to typing (a plain TextField change
             // never rebuilds this widget on its own).
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
               child: AnimatedBuilder(
                 animation: _inputController,
                 builder: (context, _) {
@@ -220,34 +304,56 @@ class _AiPromptsScreenState extends ConsumerState<AiPromptsScreen> {
                   : SingleChildScrollView(
                       controller: _scrollController,
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                      child: Card(
-                        elevation: 0,
-                        margin: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          side: BorderSide(
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
                             color: theme.colorScheme.outlineVariant,
                           ),
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: _generating
-                              ? Row(
-                                  children: [
-                                    const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      'Rewriting your requirement into an expert prompt…',
-                                      style: theme.textTheme.bodySmall,
-                                    ),
-                                  ],
-                                )
-                              : AppMarkdownBody(data: _result),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.verified_outlined,
+                                    size: 15,
+                                    color: theme.colorScheme.primary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _generating ? 'GENERATING' : 'RESULT',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            _generating
+                                ? Row(
+                                    children: [
+                                      const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        'Rewriting your requirement into an expert prompt…',
+                                        style: theme.textTheme.bodySmall,
+                                      ),
+                                    ],
+                                  )
+                                : AppMarkdownBody(
+                                    data: _result,
+                                    styleSheet: _previewSheet(theme),
+                                  ),
+                          ],
                         ),
                       ),
                     ),

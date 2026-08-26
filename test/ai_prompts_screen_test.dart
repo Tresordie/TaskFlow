@@ -49,6 +49,11 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
+      // v1.5.8: the input is a full MarkdownEditorField — Write/Preview
+      // toggle present.
+      expect(find.text('Write'), findsOneWidget);
+      expect(find.text('Preview'), findsOneWidget);
+
       final button = tester.widget<FilledButton>(
         find.ancestor(
           of: find.text('Generate'),
