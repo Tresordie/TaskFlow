@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-08-26 · 当前版本 **v1.5.6**（已发版：报告生成打磨——仪表盘 Headline 列表化、执行摘要去 sub-steps、执行日志 10 天近因聚焦；代码 + 测试 + 构建 + 提交双推 + 打包完成）
+> 最后更新：2026-08-26 · 当前版本 **v1.5.7**（已发版：新增 AI Prompts 页面——粗糙需求一键改写为专家级提示词；代码 + 测试 + 构建 + 提交双推 + 打包完成）
 
 ---
 
@@ -150,6 +150,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | v1.5.4 | 可选链表格弃文本网格改 **WidgetSpan 嵌入真实 Table**（用户实机否决 ASCII 网格后拍板，给过两选项）；任务清单 checkbox 两链改 Material 图标（`Icons.check_box(_outline_blank)`，替代细弱字形）；alerts 容器加类型图标+全周发丝描边+左色条 ClipRRect，可选链槽线 `│ `→`▎ ` | 文本网格对齐在混排下不可靠（踩坑 8.24）；表格文字随之退出选区/复制流（与公式同级的已接受降级，Copy as Markdown 不受影响） |
 | v1.5.5 | alerts 按用户提供的 GitHub 参考截图重构：**纯淡色圆角卡（无左色条无边框）+ 首字母大写标签**（"Important" 非 "IMPORTANT"）+ GitHub 系图标（tip=火焰/important=report 八角标/warning=三角/caution=八角叉）；LaTeX 公式 fontSize 显式乘 `MediaQuery.textScalerOf`（flutter_math_fork 自绘不响应全局 80–140% 缩放，>100% 时公式相对正文变小） | 用户截图对标 GitHub 2023 改版样式；公式缩放失配是"排版不美观"的根因 |
 | v1.5.6 | 报告生成四项打磨（用户需求）：① 状态仪表盘 Headline 格改 **`<br>` 分隔的至多 3 条任务要点列表**（AI 提示词 + toMarkdown/toHtml 确定性渲染同步，应用内 BrSyntax/导出 HTML 原生渲染换行）；② 执行摘要要点行**去掉 sub-step 比例**（只留加粗标题）；③ 进度明细 **10 天近因聚焦**——formatTaskData 以报告期结束日为基准，近 10 天日志完整投喂、更早的标注 "(older than 10 days — context only)"（12000 字符上限保留），提示词要求旧日志压缩为至多一句"早期背景："置于任务要点末尾（计入 5 条上限）；④ 导出 HTML 本就由 Markdown 源渲染（markdownToStyledHtml/EmailHtml），MD 改动自动带动 HTML 一致 | 用户要求报告更聚焦近期、版式更整洁；Headline 单行信息量不足 |
+| v1.5.7 | 新增 **AI Prompts 页面**（侧边栏 AI Parse 下方，`/prompts`）：输入粗糙需求 → `AiService.generatePrompt`（system=用户提供的提示词工程专家 playbook 常量 `promptEngineerSystemPrompt`，user=`# 用户需求\n{输入}`）→ AppMarkdownBody 渲染 📋提示词/⚠假设/💡使用建议 三段输出 + **Copy prompt**（`extractPromptBody` 抓首个代码块）/Copy all；不落盘纯草稿页；未配置 AI 时提示去 Settings | 用户给定完整 playbook 文本原样入库；顺带修复 Generate 按钮不随输入启用（TextField 不触发 rebuild，接 AnimatedBuilder）与侧边栏 "AI Prompts" 标签 7px 溢出（8.7 同款，Flexible+ellipsis） |
 
 ---
 
@@ -207,15 +208,15 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
-- ✅ v1.5.6（已发版）：报告生成打磨——仪表盘 Headline 格改 `<br>` 分隔的至多 3 条要点列表（提示词+双渲染器同步）；执行摘要要点行去掉 sub-step 比例；进度明细 10 天近因聚焦（formatTaskData 分档标注 + 双语提示词"早期背景："一句规则）；导出 HTML 由 MD 源渲染天然一致；217 测试全过（+4 契约）、双推 `2acf634`、包体 35.9MB
-- ✅ v1.5.5：alerts 按用户参考截图重构为 GitHub 风格（纯淡色圆角卡、首字母大写标签、火焰/报告标/三角/八角叉图标；两链标签同步 title case）；LaTeX 公式接入 TextScaler（修复 80–140% 字号缩放下公式不跟随的失配，两链均显式乘 `textScalerOf(context)`）
-- ✅ v1.5.4：GFM 渲染打磨——① 可选链表格改 WidgetSpan 真实 Table；② 任务清单 checkbox 两链改 Material 图标（公共组件 `TaskCheckboxGlyph`）；③ alerts 美化与可选链槽线 `▎ `
-- ✅ v1.5.3：GFM 四能力两链补齐（表格/任务清单/alerts/LaTeX）+ `<br>` 窄义支持；新增 gfm_extensions.dart/table_support.dart；23 项契约测试
-- ✅ v1.5.2：字体升级 Manrope×MiSans；✅ v1.5.1：块间距修正；✅ v1.5.0：扩展 Markdown
-- 双远程同步至 `2acf634`（v1.5.6）
+- ✅ v1.5.7（已发版）：新增 AI Prompts 页面（`/prompts`，侧边栏 AI Parse 下方）——粗糙需求改写为专家级提示词；`AiService.generatePrompt` + `promptEngineerSystemPrompt` 常量 + `extractPromptBody` 复制提取；顺带修复 Generate 按钮输入响应与侧边栏标签溢出；222 测试全过（+5 契约）、双推 `84deae2`、包体 35.9MB
+- ✅ v1.5.6：报告生成打磨——仪表盘 Headline `<br>` 列表（≤3 条）、执行摘要去 sub-step 比例、进度明细 10 天近因聚焦（旧日志一句"早期背景："）
+- ✅ v1.5.5：alerts GitHub 风格重构（参考截图）+ LaTeX 接入 TextScaler
+- ✅ v1.5.4：可选链表格 WidgetSpan 真实 Table + checkbox Material 图标 + alerts 美化
+- ✅ v1.5.3：GFM 四能力两链补齐；✅ v1.5.2：字体升级；✅ v1.5.1：块间距；✅ v1.5.0：扩展 Markdown
+- 双远程同步至 `84deae2`（v1.5.7）
 
 **进行中**：
-- 用户实机验证 v1.5.6：生成一份报告核对仪表盘 Headline 列表、摘要无 sub-step 比例、明细聚焦近 10 天日志、导出 HTML 与 MD 排版一致。应用已在运行（v1.5.6 exe）。
+- 用户实机验证 v1.5.7：AI Prompts 页面生成与复制流程（需已在 Settings 配好 AI）。应用已在运行（v1.5.7 exe）。
 
 **待办/已知局限**：
 - **疑似 UI 缺陷（待排查）**：快速添加任务后列表偶发不刷新，重启后自愈（v1.5.2 验证时由 ComputerUse 发现，未复现定位）。
@@ -250,3 +251,4 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | 2026-08-26 | 接班模型（本会话，v1.5.3→v1.5.4 渲染打磨轮） | 待定 | 用户实机反馈三问题：①可选链表格 ASCII 网格观感差且 CJK 列错位 → 经选项确认改 WidgetSpan 真实 Table（删 displayWidth/padCell，踩坑 8.24）；②checkbox 字形太弱 → 两链换 Material 图标公共组件 TaskCheckboxGlyph；③alerts 观感 → 类型图标+发丝描边+ClipRRect 左色条（踩坑 8.25：非 uniform Border 配圆角、无界高度 stretch 两连崩）、可选链槽线 `▎`。表格/checkbox 契约断言迁移为 widget 断言；analyze 0 error、213 测试全过；提交 `5788652` 双推一次成功；打包 v1.5.4 35.9MB；exe 已启动待用户目检 |
 | 2026-08-26 | 接班模型（本会话，v1.5.4→v1.5.5 参考图对齐轮） | 待定 | 用户提供 GitHub 参考截图：alerts 重构为纯淡色圆角卡（去掉 v1.5.4 的左色条+描边）+ 首字母大写标签 + GitHub 系图标（火焰/报告标），两链标签同步 title case（测试断言同步，注意测试源码须保持大写 `[!NOTE]`）；LaTeX 排版根因定位为 flutter_math_fork 自绘不响应 TextScaler → 两链显式乘 `textScalerOf(context)`。213 测试全过；提交 `6f3e7ef` 双推一次成功；打包 v1.5.5 35.9MB；exe 已启动 |
 | 2026-08-26 | 接班模型（本会话，v1.5.5→v1.5.6 报告打磨轮） | 待定 | 用户四需求：①仪表盘 Headline 列表化（`_groupHeadline`→`_groupHeadlines` ≤3 条 `<br>` 连接，提示词模板+规则+自检三处同步）；②执行摘要去 sub-step 比例（MD/HTML/双语提示词）；③进度明细 10 天近因聚焦（formatTaskData 以期终为基准分档，旧日志标 context-only，提示词要求压成"早期背景："一句计入 5 条上限）；④HTML 导出由 MD 源渲染天然一致（确认 toHtml 仅测试用，做 lockstep 更新）。新增 4 项契约测试（共 217）；提交 `2acf634` 双推一次成功；打包 v1.5.6 35.9MB；exe 已启动 |
+| 2026-08-26 | 接班模型（本会话，v1.5.6→v1.5.7 AI Prompts 页） | 待定 | 新增 AI Prompts 页面：`ai_prompts_screen.dart`（输入→生成→MD 渲染→Copy prompt 抓代码块）+ 路由 `/prompts` + 侧边栏项；`AiService.generatePrompt`（system=用户提供的 playbook 原文常量，user=`# 用户需求`+输入，temp 0.5/maxTokens 2000/响应超时 120s×3 推理模型）；顺带修复 Generate 按钮不随输入启用的真实缺陷（AnimatedBuilder）与侧边栏 "AI Prompts" 标签溢出（Flexible+ellipsis，8.7 模式）；5 项契约测试（共 222）；提交 `84deae2` 双推一次成功；打包 v1.5.7 35.9MB；exe 已启动 |
