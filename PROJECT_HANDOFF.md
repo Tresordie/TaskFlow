@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-08-26 · 当前版本 **v1.6.1**（已发版：AI Parse 会话级持续总结 + MD/HTML 下载、Tab 光标处插入 2 空格、Timeline/Calendar 默认近一月、日期范围选择器紧凑化；15 主题 / 237 测试 / 35.7MB）
+> 最后更新：2026-08-26 · 当前版本 **v1.6.1**（已发版：AI Parse 会话级持续总结 + MD/HTML 下载、Tab 光标处插入 2 空格、Timeline/Calendar 默认近一月、日期范围选择器紧凑化；15 主题 / 238 测试 / 35.7MB）
 
 ---
 
@@ -214,7 +214,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
-- ✅ v1.6.1（已发版）：AI Parse 总结会话级（跨页不打断/新结果落地才替换旧总结/输入附件结果全量跨页保持）+ Copy Markdown + Save .md/.html 下载；Tab 改光标处插入 2 空格（多行选区/反缩进不变）；Timeline/Calendar 默认近 30 天；日期范围选择器全屏根因修复（紧凑 MediaQuery 覆写，踩坑 8.26）；237 测试全过（+4）、双推 `db44245`、包体 35.7MB
+- ✅ v1.6.1（已发版）：AI Parse 总结会话级（跨页不打断/新结果落地才替换旧总结/输入附件结果全量跨页保持）+ Copy Markdown + Save .md/.html 下载；Tab 改光标处插入 2 空格（多行选区/反缩进不变）；Timeline/Calendar 默认近 30 天；日期范围选择器全屏根因修复（紧凑 MediaQuery 覆写，踩坑 8.26）；238 测试全过（+4）、双推 `db44245`、包体 35.7MB
 - ✅ v1.6.0（已发版）：七项需求——Nord Night/Warm Sand 两新主题（共 15）+ IBM Plex Sans/Outfit 字体配对；AI 配置防抖自动保存；Timeline/Calendar 默认近一周；`showAppDateRangePicker` 三处接入；AI Parse 提示词框+文件解析（docx/xlsx/pptx/pdf/eml 等，150MB 上限）+ 邮件 playbook 总结模式；Tab 整行缩进 6 项回归锁定；233 测试全过（+6）、双推 `6befd97`、包体 36.1MB
 - ✅ v1.5.10：全页面 Tab 缩进收口（AI Prompts 编辑器换 indent focusNode）
 - ✅ v1.5.9：AI Prompts 草稿跨页保持 + MarkdownToolbar；报告去 Overall、摘要结构化、HTML `~` 转义
