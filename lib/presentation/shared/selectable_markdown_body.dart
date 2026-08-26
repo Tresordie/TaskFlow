@@ -4,9 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
 
+import '../../core/markdown/gfm_extensions.dart';
 import '../../core/markdown/latex_support.dart';
-import '../../core/markdown/line_breaks.dart';
 import '../../core/markdown/rich_markdown.dart';
+import '../../core/markdown/table_support.dart' as table_support;
+import '../../core/theme/app_colors.dart';
 
 /// A whole-Note selectable Markdown renderer.
 ///
@@ -53,7 +55,7 @@ class SelectableMarkdownBody extends StatelessWidget {
         Theme.of(context).textTheme.bodyLarge;
     final span = _buildSpan(
       context,
-      hardenLineBreaks ? hardenMarkdownLineBreaks(data) : data,
+      GfmExtensions.prepare(data, hardenLineBreaks: hardenLineBreaks),
       style,
     );
     return SelectableText.rich(
@@ -84,21 +86,14 @@ class SelectableMarkdownBody extends StatelessWidget {
   TextSpan _buildSpan(BuildContext context, String markdown, TextStyle? style) {
     final document = md.Document(
       extensionSet: md.ExtensionSet.none,
-      blockSyntaxes: const [
-        md.FencedCodeBlockSyntax(),
-        md.TableSyntax(),
-        md.UnorderedListWithCheckboxSyntax(),
-        md.OrderedListWithCheckboxSyntax(),
-        // v1.5.0: footnotes (definitions appendix; references become sup
-        // markers via the link syntax automatically).
-        md.FootnoteDefSyntax(),
-      ],
+      blockSyntaxes: GfmExtensions.blockSyntaxes,
       inlineSyntaxes: [
         // v1.5.0: custom rich syntaxes MUST precede StrikethroughSyntax —
         // the package's strikethrough greedily consumes single-tilde runs
         // and would otherwise eat `~subscript~` before our syntax sees it.
         ...RichMarkdown.syntaxes(),
         ...LatexMarkdown.syntaxes(),
+        ...GfmExtensions.inlineSyntaxes(),
         md.StrikethroughSyntax(),
         md.AutolinkExtensionSyntax(),
       ],
@@ -179,9 +174,13 @@ class SelectableMarkdownBody extends StatelessWidget {
           )
         ];
       case 'div':
-        // v1.5.0: the footnotes appendix emitted by FootnoteDefSyntax —
-        // flatten it to numbered note lines so the definitions stay
-        // selectable instead of being dropped.
+        // v1.5.3: GFM alerts (`div.markdown-alert-*`) flatten to a colored
+        // type label + gutter lines; everything else is still the v1.5.0
+        // footnotes appendix (`div.footnotes`).
+        final alertType = alertTypeOf(el);
+        if (alertType != null) {
+          return _alertSpans(el, alertType, style, context);
+        }
         return _footnoteDivSpans(el, style);
       default:
         return _inlineSpans(el, style, context);
@@ -220,6 +219,62 @@ class SelectableMarkdownBody extends StatelessWidget {
     return out;
   }
 
+  /// Renders a GFM alert (`> [!NOTE]` …) in its flattened, fully selectable
+  /// form: the first line is the colored TYPE label, then every content
+  /// block keeps the quote gutter — tinted with the alert's accent color so
+  /// the semantic survives the single-TextSpan architecture (no WidgetSpan
+  /// containers, v1.5.3). Known, accepted downgrade vs. the block renderer.
+  List<InlineSpan> _alertSpans(
+    md.Element el,
+    String type,
+    TextStyle? style,
+    BuildContext context,
+  ) {
+    final brightness = Theme.of(context).brightness;
+    final accent = AppColors.alertAccent(type, brightness);
+    final labelStyle = (style ?? const TextStyle()).copyWith(
+      color: accent,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.5,
+    );
+    final gutterStyle = (style ?? const TextStyle()).copyWith(
+      color: accent.withOpacity(0.85),
+    );
+    final out = <InlineSpan>[TextSpan(text: type.toUpperCase(), style: labelStyle)];
+    for (final child in el.children ?? <md.Node>[]) {
+      out.add(TextSpan(text: '\n', style: style));
+      _appendGuttered(out, child, style, gutterStyle, context, '│ ');
+    }
+    return out;
+  }
+
+  /// Appends one alert child block to [out], prefixing its first line and
+  /// every following line (hard breaks, nested list items …) with the
+  /// [gutter] so the whole alert body stays visually quoted.
+  void _appendGuttered(
+    List<InlineSpan> out,
+    md.Node child,
+    TextStyle? style,
+    TextStyle gutterStyle,
+    BuildContext context,
+    String gutter,
+  ) {
+    if (child is md.Element && (child.tag == 'ul' || child.tag == 'ol')) {
+      // Lists handle per-line gutters themselves (every item line gets one).
+      out.add(TextSpan(text: gutter, style: gutterStyle));
+      out.addAll(_listSpans(child, style, context, 0, gutter: gutter));
+      return;
+    }
+    out.add(TextSpan(text: gutter, style: gutterStyle));
+    for (final s in _nodeSpan(child, style, context)) {
+      out.add(s);
+      // A hard break inside the alert starts a new quoted line.
+      if (s is TextSpan && s.text != null && s.text!.endsWith('\n')) {
+        out.add(TextSpan(text: gutter, style: gutterStyle));
+      }
+    }
+  }
+
   /// Renders a list (`ul`/`ol`) with every item on its own line, indented by
   /// [depth] and prefixed with a bullet / ordinal marker. Nested lists are
   /// rendered recursively one level deeper instead of being glued inline —
@@ -229,31 +284,75 @@ class SelectableMarkdownBody extends StatelessWidget {
     md.Element el,
     TextStyle? style,
     BuildContext context,
-    int depth,
-  ) {
+    int depth, {
+    String gutter = '',
+  }) {
     final out = <InlineSpan>[];
     final isOrdered = el.tag == 'ol';
     var idx = 0;
     for (final item in el.children ?? <md.Node>[]) {
       if (item is! md.Element) continue;
       idx++;
-      if (out.isNotEmpty) out.add(TextSpan(text: '\n', style: style));
-      final marker = isOrdered ? '$idx. ' : '• ';
-      out.add(TextSpan(text: '${'    ' * depth}$marker', style: style));
+      if (out.isNotEmpty) {
+        out.add(TextSpan(text: '\n$gutter', style: style));
+      }
+      // v1.5.3: task-list items carry their checkbox as the marker — the
+      // ☐ / ☑ glyph REPLACES the bullet instead of following it. Read-only;
+      // there is deliberately no tap-to-toggle interaction.
+      final taskState = _taskState(item);
+      final marker = taskState != null
+          ? (taskState ? '☑ ' : '☐ ')
+          : (isOrdered ? '$idx. ' : '• ');
+      final markerStyle = taskState != null && taskState
+          ? (style ?? const TextStyle())
+              .copyWith(color: Theme.of(context).colorScheme.primary)
+          : style;
+      out.add(TextSpan(text: '${'    ' * depth}', style: style));
+      out.add(TextSpan(text: marker, style: markerStyle));
       // A <li>'s children are its inline content plus, for nested lists,
       // further <ul>/<ol> blocks — render those on new lines, indented one
       // level deeper, rather than inline.
       for (final child in item.children ?? <md.Node>[]) {
+        if (child is md.Element && child.tag == 'input') {
+          continue; // already shown as the ☐ / ☑ marker
+        }
         if (child is md.Element &&
             (child.tag == 'ul' || child.tag == 'ol')) {
-          out.add(TextSpan(text: '\n', style: style));
-          out.addAll(_listSpans(child, style, context, depth + 1));
+          out.add(TextSpan(text: '\n$gutter', style: style));
+          out.addAll(
+            _listSpans(child, style, context, depth + 1, gutter: gutter),
+          );
         } else {
           out.addAll(_nodeSpan(child, style, context));
         }
       }
     }
     return out;
+  }
+
+  /// The checkbox state of a task-list item (☑ true / ☐ false), or null for
+  /// a regular item. The checkbox `<input>` sits either directly under the
+  /// `<li>` (hoisted) or inside its first `<p>`.
+  bool? _taskState(md.Element item) {
+    bool? inputState(md.Element? input) {
+      if (input == null || input.tag != 'input') return null;
+      return input.attributes.containsKey('checked');
+    }
+
+    for (final child in item.children ?? <md.Node>[]) {
+      if (child is md.Element) {
+        final direct = inputState(child);
+        if (direct != null) return direct;
+        if (child.tag == 'p' && (child.children ?? const <md.Node>[]).isNotEmpty) {
+          final first = child.children!.first;
+          if (first is md.Element) {
+            final nested = inputState(first);
+            if (nested != null) return nested;
+          }
+        }
+      }
+    }
+    return null;
   }
 
   /// Renders a blockquote, prefixing each of its child blocks with a `│ `
@@ -319,38 +418,19 @@ class SelectableMarkdownBody extends StatelessWidget {
     final rowTexts = rows.map(cellTexts).toList();
     if (rowTexts.isEmpty) return const [];
 
-    // Column widths in display units (CJK ≈ 2 columns).
-    int displayWidth(String t) {
-      var w = 0;
-      for (final r in t.runes) {
-        w += (r >= 0x1100 &&
-                (r <= 0x115F ||
-                    (r >= 0x2E80 && r <= 0xA4CF) ||
-                    (r >= 0xAC00 && r <= 0xD7A3) ||
-                    (r >= 0xF900 && r <= 0xFAFF) ||
-                    (r >= 0xFE30 && r <= 0xFE4F) ||
-                    (r >= 0xFF00 && r <= 0xFF60) ||
-                    (r >= 0xFFE0 && r <= 0xFFE6)))
-            ? 2
-            : 1;
-      }
-      return w;
-    }
-
-    String pad(String t, int width) =>
-        t + ' ' * (width - displayWidth(t)).clamp(0, 60);
-
+    // Column widths in display units (CJK ≈ 2 columns) — shared with the
+    // export/contract helpers in table_support.dart (v1.5.3).
     final colCount =
         rowTexts.map((r) => r.length).reduce((a, b) => a > b ? a : b);
     final widths = List<int>.generate(
       colCount,
       (c) => rowTexts
-          .map((r) => c < r.length ? displayWidth(r[c]) : 0)
+          .map((r) => c < r.length ? table_support.displayWidth(r[c]) : 0)
           .reduce((a, b) => a > b ? a : b),
     );
 
     String fmtRow(List<String> cells) =>
-        '| ${List.generate(colCount, (c) => pad(c < cells.length ? cells[c] : '', widths[c])).join(' | ')} |';
+        '| ${List.generate(colCount, (c) => table_support.padCell(c < cells.length ? cells[c] : '', widths[c])).join(' | ')} |';
     final rule =
         '+-${widths.map((w) => '-' * w).join('-+-')}-+';
 
@@ -434,10 +514,19 @@ class SelectableMarkdownBody extends StatelessWidget {
         s = s.copyWith(color: color, fontSize: size);
         return [TextSpan(style: s, children: _inlineSpans(el, s, context))];
       case 'input':
-        // Task-list checkbox (from UnorderedListWithCheckboxSyntax): show a
-        // textual [ ] / [x] so the state is not silently dropped.
+        // Task-list checkbox (from the hoist syntaxes). Normally consumed
+        // by _listSpans as the ☐ / ☑ marker; this is the safety net for a
+        // checkbox reached through another path (never literal brackets).
         final checked = el.attributes.containsKey('checked');
-        return [TextSpan(text: checked ? '[x] ' : '[ ] ', style: style)];
+        return [
+          TextSpan(
+            text: checked ? '☑ ' : '☐ ',
+            style: checked
+                ? (style ?? const TextStyle())
+                    .copyWith(color: Theme.of(context).colorScheme.primary)
+                : style,
+          )
+        ];
       case 'sup':
         // v1.5.0: footnote reference — keep the marker visible and
         // selectable as a bracketed, slightly smaller number.
@@ -475,17 +564,28 @@ class SelectableMarkdownBody extends StatelessWidget {
             .copyWith(fontSize: (style?.fontSize ?? 14.0) * 0.7);
         return [TextSpan(style: s, children: _inlineSpans(el, s, context))];
       case 'latexInline':
+        // v1.5.3: formulas render for real via flutter_math_fork, embedded
+        // as a WidgetSpan. Known, accepted downgrade: a WidgetSpan takes no
+        // part in the text selection — the formula cannot be drag-selected
+        // and is absent from the copied text. Invalid TeX falls back to the
+        // raw source (buildMathWidget), so nothing is ever lost.
+        return [
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: buildMathWidget(el.textContent, display: false, style: style),
+          ),
+        ];
       case 'latexBlock':
-        // The flattened renderer cannot draw math glyphs; keep the TeX
-        // source visible in a monospace tint so nothing is silently
-        // dropped (lossless contract). True math rendering happens in
-        // AppMarkdownBody (flutter_math_fork).
-        final s = styleSheet?.code ??
-            (style ?? const TextStyle()).copyWith(
-              fontFamily: 'monospace',
-              backgroundColor: Colors.black.withOpacity(0.05),
-            );
-        return [TextSpan(text: el.textContent, style: s)];
+        // Display math (v1.5.3). Rendered display-style but embedded the
+        // same way as inline math: the paragraph/block separators already
+        // provide the blank lines, so no extra line breaks are added here
+        // (v1.5.1 spacing contract).
+        return [
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: buildMathWidget(el.textContent, display: true, style: style),
+          ),
+        ];
       case 'ul':
       case 'ol':
         // A list reached from an inline context: render it as an indented
@@ -494,6 +594,10 @@ class SelectableMarkdownBody extends StatelessWidget {
           TextSpan(text: '\n', style: style),
           ..._listSpans(el, style, context, 1),
         ];
+      case 'th':
+      case 'td':
+        // Reached only via unusual nesting — keep the cell text.
+        return _inlineSpans(el, style, context);
       default:
         // Unknown inline/block tag: recurse into children to keep text.
         return _inlineSpans(el, style, context);

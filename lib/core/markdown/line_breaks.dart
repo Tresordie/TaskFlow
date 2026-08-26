@@ -44,6 +44,13 @@ final _leadSpaceRe = RegExp(r'^( +)(\S.*)$');
 /// `+`, `1.`, `2)`…), the space after the marker, and the item text.
 final _listLineRe = RegExp(r'^( *)([-*+]|\d+[.)])( )(.*)$');
 
+/// GFM alert opener (`> [!NOTE]` …) — case-sensitive, matching GitHub's
+/// spec. Alert openers and table rows are exempt from hard-break padding
+/// (v1.5.3): trailing spaces on a table row break TableSyntax's delimiter
+/// detection, and alert lines carry their own structure.
+final gfmAlertLineRe =
+    RegExp(r'^\s{0,3}>\s{0,3}\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$');
+
 /// Normalizes user-style "indent nesting" that strict CommonMark would
 /// reject, so TaskFlow previews nested lists exactly like workreport.html.
 ///
@@ -124,6 +131,14 @@ String hardenMarkdownLineBreaks(String markdown) {
       inFence = !inFence;
       out.add(line);
     } else if (inFence || trimmed.isEmpty || _listItemRe.hasMatch(line)) {
+      out.add(line);
+    } else if (trimmed.startsWith('|') ||
+        trimmed.startsWith('\$\$') ||
+        gfmAlertLineRe.hasMatch(line)) {
+      // v1.5.3: structural lines keep their exact shape — a hard-break
+      // suffix on a pipe-table row stops TableSyntax from matching (the
+      // row collapses into literal `|` text), and alert openers / display
+      // math carry their own block structure.
       out.add(line);
     } else {
       // Preserve user indentation (Tab): turn leading spaces into NBSP so

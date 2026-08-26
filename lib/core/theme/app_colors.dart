@@ -45,6 +45,34 @@ class AppColors {
   static const Color error = Color(0xFFEF4444);
   static const Color info = Color(0xFF3B82F6);
 
+  // ─── GFM alert semantic colors (v1.5.3) ───
+  // The five `> [!TYPE]` alert accents, defined centrally (never hardcoded
+  // at call sites) with light/dark variants tuned for readable contrast on
+  // all 13 themes — the pale surfaces of the light variants and the deep
+  // Catppuccin dark bases alike. NOTE blue / TIP green / IMPORTANT purple /
+  // WARNING amber / CAUTION red, following GitHub's semantics.
+  static const Map<String, (Color, Color)> _alertAccents = {
+    'note': (Color(0xFF2563EB), Color(0xFF79B8FF)),
+    'tip': (Color(0xFF16A34A), Color(0xFF56D364)),
+    'important': (Color(0xFF8250DF), Color(0xFFA371F7)),
+    'warning': (Color(0xFFB45309), Color(0xFFD29922)),
+    'caution': (Color(0xFFDC2626), Color(0xFFF85149)),
+  };
+
+  /// Accent color of a GFM alert [type] ('note' | 'tip' | 'important' |
+  /// 'warning' | 'caution') for the given theme [brightness]. Unknown types
+  /// fall back to the NOTE accent.
+  static Color alertAccent(String type, Brightness brightness) {
+    final pair = _alertAccents[type.toLowerCase()] ?? _alertAccents['note']!;
+    return brightness == Brightness.dark ? pair.$2 : pair.$1;
+  }
+
+  /// Tinted container background for a GFM alert — the accent at low
+  /// opacity, so it stays readable in both light and dark themes.
+  static Color alertBackground(String type, Brightness brightness) =>
+      alertAccent(type, brightness)
+          .withOpacity(brightness == Brightness.dark ? 0.14 : 0.08);
+
   // ─── Default (Indigo) Light ───
   // v1.4.39: textPrimary softened from near-black (1A2233) to a deep blue-
   // slate (273350) and the background lifted a touch — the old near-black

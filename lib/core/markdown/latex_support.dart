@@ -4,11 +4,24 @@ import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:markdown/markdown.dart' as md;
 
 /// Inline Markdown syntax that recognises LaTeX delimited by `$...$`
-/// (inline math) and `$$...$$` (single-line display math).
+/// (inline math) and `$$...$$` (display math on a single line — use
+/// [flattenDisplayMath] first so multi-line `$$` blocks are joined).
 ///
-/// Multi-line display math is not matched — keep `$$...$$` on one line.
+/// Boundary rules (v1.5.3) prevent money text from being misparsed:
+///  * the opening `$` must not be followed by whitespace or another `$`;
+///  * the closing `$` must not be preceded by whitespace and must not be
+///    followed by another `$`;
+///  * the content must be non-empty.
+///
+/// So `$100 and $5` stays literal, while `$E=mc^2$` renders. `\(...\)` /
+/// `\[...\]` are deliberately NOT recognised.
 class LatexInlineSyntax extends md.InlineSyntax {
-  LatexInlineSyntax() : super(r'\$\$([^$]+)\$\$|\$([^$\n]+)\$');
+  LatexInlineSyntax()
+      : super(
+          r'\$\$([^$\n]+)\$\$|(?<!\$)\$(?!\$)'
+          r'([^\s$](?:[^$\n]*[^\s$])?)'
+          r'\$(?!\$)',
+        );
 
   @override
   bool onMatch(md.InlineParser parser, Match match) {
@@ -18,6 +31,86 @@ class LatexInlineSyntax extends md.InlineSyntax {
     final tag = display != null ? 'latexBlock' : 'latexInline';
     parser.addNode(md.Element.text(tag, tex));
     return true;
+  }
+}
+
+/// Joins multi-line display-math blocks into single `$$ tex $$` lines so
+/// the inline [LatexInlineSyntax] can match them. A block opens with a
+/// line that is exactly `$$` (≤3 leading spaces) and closes at the next
+/// `$$` line; everything in between is joined with single spaces. An
+/// unclosed block is left untouched (renders as literal text).
+///
+/// Fenced code blocks and inline (single-line) `$$` are not touched.
+String flattenDisplayMath(String markdown) {
+  final lines = markdown.replaceAll('\r\n', '\n').split('\n');
+  final out = <String>[];
+  final bareRe = RegExp(r'^\s{0,3}\$\$\s*$');
+  var inFence = false;
+  var i = 0;
+  while (i < lines.length) {
+    final line = lines[i];
+    final trimmed = line.trim();
+    if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
+      inFence = !inFence;
+      out.add(line);
+      i++;
+      continue;
+    }
+    if (!inFence && bareRe.hasMatch(line)) {
+      // Opening `$$` — look for the closing `$$` line.
+      final buf = StringBuffer();
+      var j = i + 1;
+      var closed = false;
+      while (j < lines.length) {
+        if (bareRe.hasMatch(lines[j])) {
+          closed = true;
+          break;
+        }
+        final content = lines[j].trim();
+        if (content.isNotEmpty) {
+          if (buf.isNotEmpty) buf.write(' ');
+          buf.write(content);
+        }
+        j++;
+      }
+      if (closed) {
+        out.add('\$\$${buf.toString().trim()}\$\$');
+        i = j + 1;
+        continue;
+      }
+      // Unclosed: fall through and emit the line unchanged.
+    }
+    out.add(line);
+    i++;
+  }
+  return out.join('\n');
+}
+
+/// Builds the widget that renders one TeX expression. [Math.tex] parses
+/// eagerly and throws on invalid TeX, so invalid input degrades to the raw
+/// source (italic, dimmed) instead of crashing the view. During AI
+/// streaming an incomplete formula simply does not match the syntax, and
+/// once the stream finishes the re-parse renders it — no special handling
+/// needed here.
+Widget buildMathWidget(
+  String tex, {
+  required bool display,
+  TextStyle? style,
+}) {
+  try {
+    return Math.tex(
+      tex,
+      mathStyle: display ? MathStyle.display : MathStyle.text,
+      textStyle: style,
+    );
+  } catch (_) {
+    return Text(
+      tex,
+      style: (style ?? const TextStyle()).copyWith(
+        color: Colors.redAccent,
+        fontStyle: FontStyle.italic,
+      ),
+    );
   }
 }
 
@@ -35,25 +128,7 @@ class LatexBuilder extends MarkdownElementBuilder {
     final isBlock = element.tag == 'latexBlock';
     final style = baseStyle ?? preferredStyle;
 
-    // Math.tex parses eagerly and throws on invalid TeX, so guard it and
-    // fall back to the raw source instead of crashing the log view.
-    Widget math;
-    try {
-      math = Math.tex(
-        tex,
-        mathStyle: isBlock ? MathStyle.display : MathStyle.text,
-        textStyle: style,
-      );
-    } catch (_) {
-      math = Text(
-        tex,
-        style: style?.copyWith(
-          color: Colors.redAccent,
-          fontStyle: FontStyle.italic,
-        ),
-      );
-    }
-
+    final math = buildMathWidget(tex, display: isBlock, style: style);
     if (isBlock) {
       return Container(
         width: double.infinity,

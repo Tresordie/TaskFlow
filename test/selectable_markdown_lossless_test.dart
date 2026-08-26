@@ -107,9 +107,12 @@ Vout < 5V and temp -> stable, A & B pass.
     expect(plain, contains('1. first'));
     expect(plain, contains('2. second'));
 
-    // ── Checkboxes render as [ ] / [x]. ──
-    expect(plain, contains('[ ] open task'));
-    expect(plain, contains('[x] done task'));
+    // ── Checkboxes render as ☐ / ☑ glyphs (v1.5.3; previously literal
+    //    [ ] / [x] brackets). ──
+    expect(plain, contains('☐ open task'));
+    expect(plain, contains('☑ done task'));
+    expect(plain, isNot(contains('[ ] open task')));
+    expect(plain, isNot(contains('[x] done task')));
 
     // ── Table renders as an aligned, boxed monospace grid. ──
     expect(plain, contains('| Col A'));

@@ -6,6 +6,7 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/markdown/table_support.dart' as table_support;
 import '../models/task.dart';
 import '../repositories/task_repository.dart';
 import 'ai_service.dart';
@@ -1732,33 +1733,12 @@ $body
   /// with empty cells in the exported HTML. Merge those continuation lines
   /// into the previous cell separated by `<br>` — restoring the classic
   /// single-row-per-task export layout.
-  static String _normalizeMultilineTableRows(String markdown) {
-    final lines = markdown.split('\n');
-    final out = <String>[];
-    var i = 0;
-    while (i < lines.length) {
-      final t = lines[i].trimRight();
-      if (t.startsWith('|') && !t.endsWith('|')) {
-        final buf = StringBuffer(t);
-        i++;
-        while (i < lines.length) {
-          final next = lines[i].trimRight();
-          final nextTrimmed = next.trimLeft();
-          // Blank line or a fresh row ends the merge.
-          if (nextTrimmed.isEmpty || nextTrimmed.startsWith('|')) break;
-          buf.write('<br>');
-          buf.write(nextTrimmed);
-          i++;
-          if (nextTrimmed.endsWith('|')) break;
-        }
-        out.add(buf.toString());
-        continue;
-      }
-      out.add(lines[i]);
-      i++;
-    }
-    return out.join('\n');
-  }
+  ///
+  /// v1.5.3: delegates to the shared implementation in table_support.dart
+  /// that the in-app renderers use too (single source of truth, pitfall
+  /// 8.10).
+  static String _normalizeMultilineTableRows(String markdown) =>
+      table_support.normalizeMultilineTableRows(markdown, separator: '<br>');
 
   /// Injects a fixed-width <colgroup> (Item 25% / Status 8% / Details 67%)
   /// into every 3-column table — these are the Progress Details tables, whose
