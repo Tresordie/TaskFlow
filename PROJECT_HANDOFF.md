@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-08-25 · 当前版本 **v1.4.98**
+> 最后更新：2026-08-26 · 当前版本 **v1.5.2**
 
 ---
 
@@ -10,8 +10,8 @@
 - **项目**：TaskFlow —— Flutter Windows 桌面任务管理应用，面向硬件测试工程师（NPI 电动自行车项目）的个人任务/日志/周报工具。
 - **位置**：`outputs/taskflow/`（工作区根 = `c:\Users\Administrator\.qoderworkcn\workspace\mrtw67znp8zrkqp4`）。
 - **跑起来**：`cd outputs/taskflow && flutter run -d windows`（或 `flutter build windows --release` 后运行 `build\windows\x64\runner\Release\taskflow.exe`）。
-- **发版闭环（每次变更必做）**：升版本（`pubspec.yaml` + `lib/core/version.dart` 的 `kAppVersion` **必须同步**）→ `flutter test`（166 个）→ 构建 → `git commit` → **显式单 URL 双推** GitHub + Gitee → `Compress-Archive` 打包 zip 到 `outputs/` → 启动 exe 验证。
-- **最高危三条**：① Isar 嵌入对象字段冻结（见禁忌 9.1）；② 禁用全局 SelectionArea（9.2）；③ 杀进程后立即构建会"拒绝访问"，等 15–25 秒重试（8.1）。
+- **发版闭环（每次变更必做）**：升版本（`pubspec.yaml` + `lib/core/version.dart` 的 `kAppVersion` **必须同步**）→ `flutter test`（190 个）→ 构建 → `git commit` → **显式单 URL 双推** GitHub + Gitee → `Compress-Archive` 打包 zip 到 `outputs/` → 启动 exe 验证。
+- **最高危四条**：① Isar 嵌入对象字段冻结（见禁忌 9.1）；② 禁用全局 SelectionArea（9.2）；③ 杀进程后立即构建会"拒绝访问"，等 15–25 秒重试（8.1）；④ 可能出现中文的 TextStyle 禁只设 `fontFamily`，必须带 `FontStack` 回退链（9.11）。
 
 ---
 
@@ -36,7 +36,7 @@
 | 路由 | go_router |
 | 持久化设置 | shared_preferences |
 | AI | OpenAI 兼容 API（用户在 Settings 配置 baseUrl/apiKey/model；支持推理模型流式） |
-| 字体 | assets/fonts/ 内置 Inter + HarmonyOS Sans SC（约 25MB，发布包 ~32MB） |
+| 字体 | assets/fonts/ 内置：Manrope 可变字体（拉丁，0.16MB）+ MiSans R/M/SB（中文，22.5MB）+ HarmonyOS Sans SC Regular（中文兜底）；授权声明随包 `assets/fonts/FONT_LICENSES.md`；字体合计 30.5MB，发布包 35.8MB |
 | 同步 | Google Drive for Desktop 文件夹镜像（无 API，纯文件复制） |
 
 环境：Windows 22H2 + PowerShell 7。密钥（AI API Key、Google Drive 路径）均存 shared_preferences，代码库无明文密钥。
@@ -53,7 +53,8 @@ outputs/taskflow/
 │   ├── core/
 │   │   ├── theme/app_colors.dart # ThemePalette 定义（13 个主题调色板）+ 遗留硬编码别名
 │   │   ├── theme/app_theme.dart  # AppThemeMode 枚举（label/labelZh/palette/brightness）+ buildTheme
-│   │   ├── markdown/             # html_sanitize（HTML混入清洗）、line_breaks、rich_markdown、latex
+│   │   ├── theme/font_stack.dart # 中英混排链单一事实源（v1.5.2，拉丁/中文/回退链常量）
+│   │   ├── markdown/             # html_sanitize（HTML混入清洗）、line_breaks、rich_markdown（含上下标语法）、latex
 │   │   └── version.dart          # kAppVersion 常量（仅 Settings About 显示）
 │   ├── data/
 │   │   ├── models/task.dart      # Task + 嵌入对象 SubStep/ExecutionEntry/Attachment/SubStepOrigin
@@ -66,11 +67,11 @@ outputs/taskflow/
 │       ├── task_detail/          # task_detail_screen、execution_log_widget（内联编辑）
 │       ├── reports/              # reports_screen（分栏编辑器 + AI 生成）
 │       ├── work_log/ calendar/ heatmap/ ai_parse/ settings/
-├── test/                         # 15 个测试文件，166 个测试
-└── pubspec.yaml                  # version 字段与 kAppVersion 必须同步
+├── test/                         # 18 个测试文件，190 个测试（含 extended_markdown/selectable_spacing/font_upgrade 契约）
+└── pubspec.yaml                  # version 字段与 kAppVersion 必须同步；fonts + FONT_LICENSES.md 声明
 ```
 
-发布包与源码同级：`outputs/TaskFlow-vX.Y.Z-windows-x64.zip`（v1.0.0 → v1.4.98 全保留）。
+发布包与源码同级：`outputs/TaskFlow-vX.Y.Z-windows-x64.zip`（v1.0.0 → v1.5.2 全保留）。
 
 ---
 
@@ -78,9 +79,9 @@ outputs/taskflow/
 
 ```powershell
 cd outputs\taskflow
-flutter test                                    # 166 个，约 15–20 秒
-dart analyze lib                                # 要求 0 error
-flutter build windows --release                 # 约 60–100 秒
+flutter test                                    # 190 个，约 20–25 秒
+dart analyze lib                                # 要求 0 error（task.g.dart 的 experimental 警告为既有）
+flutter build windows --release                 # 约 60–110 秒
 
 # 发布（PowerShell，逐条执行；&& 链式可用但变量赋值不要混入）
 git add -A; git commit -m "v1.4.X: <英文摘要>"
@@ -91,7 +92,7 @@ Compress-Archive -Path "taskflow\build\windows\x64\runner\Release\*" -Destinatio
 Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe" -WorkingDirectory "taskflow\build\windows\x64\runner\Release"
 ```
 
-**版本纪律**：每次发版同时改 `pubspec.yaml` 的 `version: 1.4.X+1` 和 `lib/core/version.dart` 的 `kAppVersion = '1.4.X'`（v1.4.63 曾落后 29 个版本的事故）。
+**版本纪律**：每次发版同时改 `pubspec.yaml` 的 `version: 1.5.X+1` 和 `lib/core/version.dart` 的 `kAppVersion = '1.5.X'`（v1.4.63 曾落后 29 个版本的事故）。
 
 ---
 
@@ -105,7 +106,9 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
   - 输入区 → `MarkdownEditorField`（Write/Preview 切换，预览样式与保存后渲染一致，WYSIWYG）。
 - **报告生成**：`report_service.dart` —— `formatTaskData` 把任务描述（截断 2000 字）+ **全部执行日志**（期内条目为主体，期前条目标注 `(earlier context)`，期前文本每任务上限 12000 字符）喂给 AI；推理模型走流式 `_chatStream`（180 秒块间隔超时，不限总时长）；AI 失败回退确定性模板。输出 5 章节，Progress Details 为"加粗任务标题 + `- ` 清单一行一条"。
 - **同步**：`sync_service.dart` —— Google Drive 文件夹镜像。`Sync Now` 两阶段：PHASE 1 Pull（快照合并 + 拉取缺失附件）→ PHASE 2 Push（本地快照 + 附件推回）。附件复制并行 4 路、失败即 `attrib +P` 钉住触发 Drive 下载、轮内 3 秒后重试。启动时路径自愈合（盘符变化自动重定位）。
-- **扩展 Markdown（v1.5.0）**：两侧渲染器支持脚注（`[^1]`+定义附录）、上标 `^x^`/下标 `~x~`（0.7× 小字号，保整篇可选）；SelectableMarkdownBody 的 `==高亮==`/`++下划线++`/`<font>` 样式不再丢失。**关键顺序**：自定义 rich 语法必须排在 `StrikethroughSyntax` 之前（包的删除线会贪婪吞单 `~`）。Mermaid 与 LaTeX 扩展经用户拍板不做（维持现状）。
+- **扩展 Markdown（v1.5.0）**：两侧渲染器支持脚注（`[^1]`+定义附录）、上标 `^x^`/下标 `~x~`（0.7× 小字号，保整篇可选）；SelectableMarkdownBody 的 `==高亮==`/`++下划线++`/`<font>` 样式不再丢失。**关键顺序**：自定义 rich 语法必须排在 `StrikethroughSyntax` 之前（包的删除线会贪婪吞单 `~`，见 8.14）。Mermaid 与 LaTeX 扩展经用户拍板不做（维持现状，见 9.12）。
+- **块间距契约（v1.5.1）**：SelectableMarkdownBody 顶层块分隔符按上下文决定——标题紧贴后续块（单 `\n`）、段落直接引出列表不留空行、真实段落保留一个空行；禁止连续多空行。契约测试 `selectable_spacing_test.dart`（4 项）。旧的统一 `\n\n` 会产生"多余空行"观感。
+- **字体栈（v1.5.2）**：混排链单一事实源 `lib/core/theme/font_stack.dart`（FontStack：latin='Manrope', cjk='MiSans', fallback 链含 Segoe UI Emoji）。接入点：app_theme.dart（默认栈）、app.dart `_applyFont`（google 下载分支 + 内置配对分支）、typography_provider 双链路（family 覆盖必同步写回退链）。默认字体 = system 预设（内置栈，离线优先）；配对预设 id 保留迁移，持久化键 `settings.fontId`，未知 id 安全回退。
 - **附件**：新附件存相对文件名；`AttachmentService.resolvePathSync` 三级解析（原路径→相对→basename）；剪贴板粘图经 PowerShell 5.1 `Clipboard.GetImage()`。
 
 ---
@@ -118,8 +121,10 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 4. **报告**：AI 总结必须基于描述+全部日志；技术要点（料号/固件版本/参数/测量值/测试条件/结果/根因）绝不过度压缩，照抄原文；5 章节齐备不可省。
 5. **编辑记录**：Execution Log 记录编辑为**输入区内联模式**（v1.4.90）：点编辑 → 内容/类型/附件载入底部输入区，记录高亮 + "Editing" 徽标 → Update 原位更新（保留 uid+时间戳）/ Cancel 取消。编辑对话框已删除。按钮布局：Cancel（描边）左 + Update（主题色）右（v1.4.95 等高等圆角）。
 6. **导出同源**：Export.md / Export.html / Email.html 均来自 `s.markdown`；Email 版适配 Gmail（表格布局+内联样式+无 `<style>` 块）。
-7. **命名/注释**：代码注释英文为主，版本相关改动注释带 `// v1.4.X:` 前缀。
+7. **命名/注释**：代码注释英文为主，版本相关改动注释带 `// v1.X.Y:` 前缀。
 8. **测试契约**：渲染/格式相关的测试断言是"契约"，改架构必须同步更新断言而不是删测试。
+9. **中英混排铁律（v1.5.2）**：任何可能出现中文的 TextStyle 禁止只设 `fontFamily`，必须携带 `FontStack.fallback`/`pairingFallback()` 回退链；新增字体接入必须走现有双 Provider + Settings 自动 UI，禁另起炉灶；嵌入字体必须可再分发（OFL 或厂商免费商用），授权声明进 `FONT_LICENSES.md` 随包。
+10. **预设删除/替换安全模式**：字体/主题按 id/name 字符串持久化；删选项靠"未知值回退默认"保安全；替换选项保留原 id 使存量选择无缝迁移。
 
 ---
 
@@ -135,6 +140,10 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | v1.4.90-91 | 编辑对话框 → 输入区内联编辑 + 显式 Update 按钮 | 用户要同一编辑环境；纯快捷键入口不可发现 |
 | v1.4.96 | Catppuccin 四风味八主题 | 用户指定色彩体系，官方色值 + WCAG 映射 |
 | v1.4.98 | Latte 表面层级反转修正（card>surface>bg）；删 4 主题 | 官方 base/mantle 映射在 light 下发灰；用户精简主题 |
+| v1.5.0 | 扩展 Markdown：脚注/上下标/高亮样式修复；**Mermaid 与 LaTeX 明确不做** | 填充 GFM 空白；用户拍板剔除重依赖能力（无 WebView 前提下 Mermaid 无高性价比路线） |
+| v1.5.0 | 自定义 rich 语法注册在 StrikethroughSyntax 之前 | 包的删除线贪婪吞单 `~`，下标语法在其后永远不匹配 |
+| v1.5.1 | 块间距按上下文（标题紧贴/段-列表无空行） | 统一 `\n\n` 分隔导致"多余空行"，与标准 Markdown 预览观感不符 |
+| v1.5.2 | 字体升级 Manrope（可变）× MiSans；默认字体改内置栈；双 Provider 补中文回退 | 质感+体积（42→35.8MB）；离线首启不再闪系统字体；修复内容/输入链中文落系统字体的缺口 |
 
 ---
 
@@ -155,6 +164,11 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | 8.11 | 报告内 `<br>` 显示为字面文本 | AppMarkdownBody 无 InlineHtmlSyntax（故意，防止吞 `<font>`） | 内容版式避免依赖 `<br>`（Progress Details 改清单） | 不要为表格换行重新引入 InlineHtmlSyntax |
 | 8.12 | PowerShell `&&` 链中变量赋值报错 | sandbox 包装层解析差异 | 分号分步执行，或纯 `&&` 无赋值 | 复杂流程分多条命令 |
 | 8.13 | DeleteFile 工具在 Windows 偶发静默失效 | 工具已知问题 | 用 `Remove-Item -Recurse -Force` 并验证结果 | 删除后 `Get-ChildItem` 复核 |
+| 8.14 | 下标 `~x~` 语法不生效，'2' 被渲染成删除线 | markdown 包 `StrikethroughSyntax` 贪婪匹配单 `~` | 自定义 rich 语法移到内联语法列表最前（先于 StrikethroughSyntax） | 新增内联语法时检查与包内置语法的匹配优先级，用契约测试守护 |
+| 8.15 | 展示区"多余空行" | SelectableMarkdownBody 顶层块间统一插 `\n\n` | 按上下文分隔：标题后/段-列表衔接用单 `\n`（v1.5.1） | 扁平化渲染器的空白策略必须有契约测试（selectable_spacing_test） |
+| 8.16 | 小米 CDN 字体包下载报 "Authentication failed"/TLS 错 | CDN 临时抖动 | 延迟 30 秒重试；Invoke-WebRequest + Start-BitsTransfer 双通道 | 外部 CDN 大文件下载必有重试+备用通道，失败不阻塞时先继续其他步骤 |
+| 8.17 | StateNotifier 持久化恢复测试失败（mock 值正确但 state 未变） | 测试用错持久化键名（字体是 `settings.fontId` 不是 `settings.themeMode`）；且 `Duration.zero` 不足以排空异步微任务 | 核对真实键名；等待用 `Future.delayed(50ms)` | 测持久化恢复前先读源码确认 _storageKey；StateNotifier 异步恢复测试统一 50ms |
+| 8.18 | 内容/输入字体选纯英文后中文变系统字体 | `applyContentTypography`/`applyInputTypography` 只设 `fontFamily` 无回退链 | v1.5.2 强制同步写 `FontStack.fallback` | 见禁忌 9.11；font_upgrade_test 守护 |
 
 ---
 
@@ -170,24 +184,28 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 8. **禁静默吞保存错误**——所有持久化失败必须 snackbar 告知用户。
 9. **禁依赖 Ctrl+Enter 等快捷键作为唯一操作入口**——用户曾找不到保存按钮（v1.4.91 教训：显式按钮必须可见）。
 10. **禁删测试代替改测试**——断言是契约，架构变更时更新断言。
+11. **禁在可能出现中文的 TextStyle 上只设 `fontFamily`**——必须携带 `FontStack` 回退链，否则中文落系统字体破坏混排灰度（v1.5.2 教训）。
+12. **禁擅自添加 Mermaid / LaTeX 扩展支持**——用户已拍板不做（v1.5.0）；如用户重提，先重审无 WebView 前提下的路线再确认。
 
 ---
 
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
+- ✅ v1.5.2：字体升级 Manrope×MiSans（可变字体、包体 42→35.8MB、FontStack 混排链、双 Provider 补中文回退、授权随包）
+- ✅ v1.5.1：块间距修正（标题紧贴/段-列表无空行）
+- ✅ v1.5.0：扩展 Markdown（脚注/上下标/高亮样式修复，Mermaid+LaTeX 拍板不做）
 - ✅ v1.4.98：Latte 清晰度修复 + 删除 4 主题（13 主题）
-- ✅ v1.4.96-97：Catppuccin 四风味八主题体系（官方色值 + WCAG 映射）
-- ✅ v1.4.94-95：编辑态 Update/Cancel 按钮美化
-- ✅ v1.4.90-93：Execution Log 内联编辑、版本号仅 About 显示
-- ✅ v1.4.88-89：报告全量日志输入 + Progress Details 清单版式 + 期前上限 12000 字
-- ✅ v1.4.85-87：字体排版双 Provider、可调节图片预览、Drive 路径自愈合 + 附件钉住下载
-- ✅ 双远程均已同步至 `4d401ed`（v1.4.98）
+- ✅ v1.4.94-97：编辑按钮美化、Catppuccin 主题体系、主题精简、中英配对预设、HANDOFF 文档创建
+- ✅ v1.4.85-93：字体排版双 Provider、可调节图片预览、Drive 同步加固、内联编辑、版本号仅 About 显示
+- ✅ 双远程均已同步至 `137dcd4`（v1.5.2 + 文档）
 
 **进行中**：无（等待用户新需求）
 
 **待办/已知局限**：
+- **疑似 UI 缺陷（待排查）**：快速添加任务后列表偶发不刷新，重启后自愈（v1.5.2 验证时由 ComputerUse 发现，未复现定位）。
 - `app_colors.dart` 底部遗留硬编码别名（lightBg/darkBorder 等）被部分代码以 `isDark ? darkX : lightX` 直接引用，不跟随当前主题色相——改浅色主题时需同步这些别名。
+- 预览与展示的两条渲染链仍有已知形态差异：脚注在预览端为上标+附录块、展示端为 `[1]`+编号行；Reports 预览（AppMarkdownBody）的块边距与展示端紧凑间距不同——如用户再报"预览与保存后不一致"，从这两处查起。
 - GitHub 推送偶发超时（环境问题，重试即可）。
 - Google Drive 同步无文件冲突合并策略（附件为不可变 uuid 文件天然无冲突；快照为 merge-by-uid）。
 
@@ -198,7 +216,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 1. **先读后动**：顺序 = 本文档 → `lib/core/theme/` → `lib/presentation/shared/`（渲染三件套）→ `lib/data/services/`。
 2. **每轮交付完整闭环**：改码 → analyze → test → 双处升版 → 构建（记得杀进程后等 20 秒）→ 提交 → 双推 → 打包 → 启动。用户期待一轮完成。
 3. **用户对视觉细节敏感**：按钮排布、亮度、清晰度、留白都可能被点名；改动前先想"桌面端惯例"（主操作居右、等高对称、显式入口）。
-4. **测试是安全网**：166 个测试覆盖渲染契约与报告格式，改前先跑，改后必过。
+4. **测试是安全网**：190 个测试覆盖渲染契约、报告格式与字体迁移，改前先跑，改后必过。
 5. **长期记忆系统里有大量项目约定**（主题、报告规范、推送纪律等），接手时先查。
 6. **不要主动创建文档文件**（包括本文件的更新除外）——用户未要求时不写 README。
 
