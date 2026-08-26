@@ -92,21 +92,33 @@ String flattenDisplayMath(String markdown) {
 /// streaming an incomplete formula simply does not match the syntax, and
 /// once the stream finishes the re-parse renders it — no special handling
 /// needed here.
+///
+/// flutter_math_fork paints glyphs itself and does NOT respond to the
+/// ambient [TextScaler], so at font scales above 100% formulas would shrink
+/// relative to the surrounding text. Callers pass the context's scaler
+/// (`MediaQuery.textScalerOf(context)`) and the base font size is scaled
+/// explicitly (v1.5.5).
 Widget buildMathWidget(
   String tex, {
   required bool display,
   TextStyle? style,
+  TextScaler textScaler = TextScaler.noScaling,
 }) {
+  final base = style ?? const TextStyle();
+  final scaled = base.copyWith(
+    fontSize:
+        textScaler.scale(base.fontSize ?? 14.0),
+  );
   try {
     return Math.tex(
       tex,
       mathStyle: display ? MathStyle.display : MathStyle.text,
-      textStyle: style,
+      textStyle: scaled,
     );
   } catch (_) {
     return Text(
       tex,
-      style: (style ?? const TextStyle()).copyWith(
+      style: scaled.copyWith(
         color: Colors.redAccent,
         fontStyle: FontStyle.italic,
       ),
@@ -116,23 +128,35 @@ Widget buildMathWidget(
 
 /// Builds a [Math] widget for the elements emitted by [LatexInlineSyntax].
 /// Invalid TeX degrades to the raw source in an italic red style instead of
-/// crashing the log view.
+/// crashing the log view. Uses [visitElementAfterWithContext] so the formula
+/// follows the ambient font scale (v1.5.5).
 class LatexBuilder extends MarkdownElementBuilder {
   final TextStyle? baseStyle;
 
   LatexBuilder({this.baseStyle});
 
   @override
-  Widget visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+  Widget visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
     final tex = element.textContent;
     final isBlock = element.tag == 'latexBlock';
     final style = baseStyle ?? preferredStyle;
+    final scaler = MediaQuery.textScalerOf(context);
 
-    final math = buildMathWidget(tex, display: isBlock, style: style);
+    final math = buildMathWidget(
+      tex,
+      display: isBlock,
+      style: style,
+      textScaler: scaler,
+    );
     if (isBlock) {
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         alignment: Alignment.center,
         child: math,
       );

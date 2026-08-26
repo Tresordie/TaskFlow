@@ -8,7 +8,7 @@ import '../../core/markdown/gfm_extensions.dart';
 import '../../core/markdown/latex_support.dart';
 import '../../core/markdown/rich_markdown.dart';
 import '../../core/theme/app_colors.dart';
-import 'app_markdown_body.dart' show TaskCheckboxGlyph;
+import 'app_markdown_body.dart' show TaskCheckboxGlyph, alertLabel;
 
 /// A whole-Note selectable Markdown renderer.
 ///
@@ -235,15 +235,15 @@ class SelectableMarkdownBody extends StatelessWidget {
     final accent = AppColors.alertAccent(type, brightness);
     final labelStyle = (style ?? const TextStyle()).copyWith(
       color: accent,
-      fontWeight: FontWeight.w800,
-      letterSpacing: 0.6,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.2,
     );
     final gutterStyle = (style ?? const TextStyle()).copyWith(
       color: accent.withOpacity(0.85),
     );
     final out = <InlineSpan>[
       TextSpan(text: '▎', style: labelStyle),
-      TextSpan(text: type.toUpperCase(), style: labelStyle),
+      TextSpan(text: alertLabel(type), style: labelStyle),
     ];
     for (final child in el.children ?? <md.Node>[]) {
       out.add(TextSpan(text: '\n', style: style));
@@ -611,11 +611,19 @@ class SelectableMarkdownBody extends StatelessWidget {
         // as a WidgetSpan. Known, accepted downgrade: a WidgetSpan takes no
         // part in the text selection — the formula cannot be drag-selected
         // and is absent from the copied text. Invalid TeX falls back to the
-        // raw source (buildMathWidget), so nothing is ever lost.
+        // raw source (buildMathWidget), so nothing is ever lost. The
+        // ambient text scaler is applied explicitly — flutter_math_fork
+        // paints glyphs itself and would otherwise ignore the global font
+        // scale (v1.5.5).
         return [
           WidgetSpan(
             alignment: PlaceholderAlignment.middle,
-            child: buildMathWidget(el.textContent, display: false, style: style),
+            child: buildMathWidget(
+              el.textContent,
+              display: false,
+              style: style,
+              textScaler: MediaQuery.textScalerOf(context),
+            ),
           ),
         ];
       case 'latexBlock':
@@ -626,7 +634,12 @@ class SelectableMarkdownBody extends StatelessWidget {
         return [
           WidgetSpan(
             alignment: PlaceholderAlignment.middle,
-            child: buildMathWidget(el.textContent, display: true, style: style),
+            child: buildMathWidget(
+              el.textContent,
+              display: true,
+              style: style,
+              textScaler: MediaQuery.textScalerOf(context),
+            ),
           ),
         ];
       case 'ul':

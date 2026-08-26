@@ -144,17 +144,25 @@ class TaskCheckboxGlyph extends StatelessWidget {
   }
 }
 
-/// Per-type icon for GFM alert containers (v1.5.4 polish). Vector material
-/// glyphs — info / lightbulb / priority-high / warning-triangle / danger —
-/// mirroring GitHub's octicon semantics; colors stay centralized in
-/// [AppColors.alertAccent] (prohibition 9.13).
+/// Per-type icon for GFM alert cards (v1.5.5, mirroring GitHub's octicon
+/// semantics): info circle / flame / report mark / alert triangle / octagon
+/// stop. Colors stay centralized in [AppColors.alertAccent]
+/// (prohibition 9.13).
 IconData alertIcon(String type) => switch (type.toLowerCase()) {
-      'tip' => Icons.lightbulb_outline,
-      'important' => Icons.priority_high,
+      'tip' => Icons.local_fire_department_outlined,
+      'important' => Icons.report_outlined,
       'warning' => Icons.warning_amber_rounded,
       'caution' => Icons.dangerous,
       _ => Icons.info_outline,
     };
+
+/// GitHub-style label: title case ("Important"), not the shouty all-caps
+/// form (v1.5.5, per user's reference screenshot).
+String alertLabel(String type) {
+  final t = type.toLowerCase();
+  if (t.isEmpty) return t;
+  return t[0].toUpperCase() + t.substring(1);
+}
 
 /// Handles every `div` element: GFM alerts (`div.markdown-alert-*`,
 /// v1.5.3) get a themed container; anything else (the footnotes appendix
@@ -186,78 +194,53 @@ class _DivDispatchBuilder extends MarkdownElementBuilder {
     final accent = AppColors.alertAccent(type, theme.brightness);
     final source = element.attributes['data-source'] ?? '';
 
-    // v1.5.4 polish: GitHub-style accent LEFT BAR (drawn as a stretched
-    // colored lane inside a ClipRRect — Flutter forbids non-uniform
-    // Border colors together with a borderRadius), a hairline all-around
-    // outline in the same accent (uniform color, so the radius is legal)
-    // so the card reads on pale Latte surfaces too, a per-type icon next
-    // to the label, and roomier padding.
+    // v1.5.5, matching the user's GitHub reference screenshot: a plain
+    // rounded card in the pale accent tint — NO left bar, NO border — with
+    // the type icon and a title-case label on the first row and the body
+    // starting flush with the card padding below.
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 11),
       decoration: BoxDecoration(
+        color: AppColors.alertBackground(type, theme.brightness),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: accent.withOpacity(0.18)),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(7),
-        // IntrinsicHeight lets the stretched accent lane adopt exactly the
-        // content's height (the surrounding viewport gives the Row an
-        // UNBOUNDED height, where CrossAxisAlignment.stretch would crash).
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              ColoredBox(color: accent, child: const SizedBox(width: 4)),
-              Expanded(
-                child: ColoredBox(
-                  color: AppColors.alertBackground(type, theme.brightness),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 11),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Icon(alertIcon(type), size: 16, color: accent),
-                            const SizedBox(width: 6),
-                            Text(
-                              type.toUpperCase(),
-                              style: (theme.textTheme.bodyLarge ??
-                                      const TextStyle())
-                                  .copyWith(
-                                color: accent,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 12.5,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (source.trim().isNotEmpty)
-                          // Re-render the alert body with the SAME extension set so rich
-                          // content (bold, lists, math, links) renders exactly like the
-                          // surrounding document. The inner body keeps harden parity with
-                          // the outer one (free-form vs. AI content).
-                          Padding(
-                            padding: const EdgeInsets.only(top: 5),
-                            child: AppMarkdownBody(
-                              data: source,
-                              hardenLineBreaks: hardenLineBreaks,
-                              styleSheet: styleSheet,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
+              Icon(alertIcon(type), size: 16, color: accent),
+              const SizedBox(width: 6),
+              Text(
+                alertLabel(type),
+                style: (theme.textTheme.bodyLarge ?? const TextStyle())
+                    .copyWith(
+                  color: accent,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
                 ),
               ),
             ],
           ),
-        ),
+          if (source.trim().isNotEmpty)
+            // Re-render the alert body with the SAME extension set so rich
+            // content (bold, lists, math, links) renders exactly like the
+            // surrounding document. The inner body keeps harden parity with
+            // the outer one (free-form vs. AI content).
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: AppMarkdownBody(
+                data: source,
+                hardenLineBreaks: hardenLineBreaks,
+                styleSheet: styleSheet,
+              ),
+            ),
+        ],
       ),
     );
   }

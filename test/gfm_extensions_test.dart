@@ -200,13 +200,15 @@ void main() {
     testWidgets('all five types render a themed label in the block chain',
         (tester) async {
       for (final type in const [
-        'NOTE',
-        'TIP',
-        'IMPORTANT',
-        'WARNING',
-        'CAUTION',
+        'Note',
+        'Tip',
+        'Important',
+        'Warning',
+        'Caution',
       ]) {
-        await tester.pumpWidget(appBody('> [!$type]\n> 内容行'));
+        // The SOURCE must be uppercase (GFM spec); the rendered label is
+        // title case (v1.5.5, GitHub style).
+        await tester.pumpWidget(appBody('> [!${type.toUpperCase()}]\n> 内容行'));
         await tester.pumpAndSettle();
         expect(find.text(type), findsOneWidget,
             reason: 'alert label for $type');
@@ -254,11 +256,11 @@ void main() {
       final text = blockText(tester);
       expect(text, contains('普通引用必须保持原样渲染'));
       for (final label in const [
-        'NOTE',
-        'TIP',
-        'IMPORTANT',
-        'WARNING',
-        'CAUTION',
+        'Note',
+        'Tip',
+        'Important',
+        'Warning',
+        'Caution',
       ]) {
         expect(find.text(label), findsNothing);
       }
@@ -268,7 +270,7 @@ void main() {
         (tester) async {
       await tester.pumpWidget(appBody('> [!note]\n> 小写不算'));
       await tester.pumpAndSettle();
-      expect(find.text('NOTE'), findsNothing);
+      expect(find.text('Note'), findsNothing);
       expect(blockText(tester), contains('[!note]'));
     });
 
@@ -281,8 +283,9 @@ void main() {
       await tester.pumpWidget(selectableBody(src, harden: true));
       final plain = await selectablePlain(tester);
 
-      // v1.5.4: accent ▎ bar before the label and on every content line.
-      expect(plain, contains('▎WARNING'));
+      // v1.5.5: accent ▎ bar before the title-case label and on every
+      // content line.
+      expect(plain, contains('▎Warning'));
       expect(plain, contains('▎ 警告第一行'));
       expect(plain, contains('▎ 警告第二行'));
       expect(plain, isNot(contains('[!WARNING]')));
