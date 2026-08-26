@@ -42,7 +42,10 @@ class AiPromptsScreen extends ConsumerStatefulWidget {
 
 class _AiPromptsScreenState extends ConsumerState<AiPromptsScreen> {
   final _inputController = TextEditingController();
-  final _inputFocus = FocusNode();
+  // v1.5.10: Tab/Shift+Tab indent the current line / selection inside the
+  // requirement editor — the same markdownIndentFocusNode every other
+  // input area uses (plain FocusNode let Tab move focus instead).
+  late final FocusNode _inputFocus = markdownIndentFocusNode(_inputController);
   final _scrollController = ScrollController();
 
   bool _generating = false;

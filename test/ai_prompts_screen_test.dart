@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:taskflow/data/services/ai_service.dart';
@@ -118,6 +119,37 @@ void main() {
 
       final field = tester.widget<TextField>(find.byType(TextField));
       expect(field.controller?.text, '跨页面保留的草稿');
+    });
+
+    testWidgets('Tab indents the current line inside the requirement editor '
+        '(v1.5.10)', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1280, 900));
+      await tester.pumpWidget(const ProviderScope(
+        child: MaterialApp(home: AiPromptsScreen()),
+      ));
+      await tester.pumpAndSettle();
+
+      final field = find.byType(TextField);
+      await tester.enterText(field, '第一行\n第二行');
+      await tester.pump();
+
+      // Place the caret at the very start of the text → Tab must insert
+      // the two-space indent on line 1 instead of moving focus out.
+      final controllerBefore =
+          tester.widget<TextField>(field).controller!;
+      controllerBefore.selection =
+          const TextSelection.collapsed(offset: 0);
+      await tester.pump();
+
+      tester.widget<TextField>(field).focusNode!.requestFocus();
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+
+      final controllerAfter =
+          tester.widget<TextField>(field).controller!;
+      expect(controllerAfter.text, startsWith('  第一行'));
     });
   });
 }
