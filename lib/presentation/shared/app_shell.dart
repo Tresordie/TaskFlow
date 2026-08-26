@@ -191,6 +191,13 @@ class _Sidebar extends StatelessWidget {
               onTap: () => context.go('/ai'),
             ),
             _NavItem(
+              icon: Icons.auto_fix_high_outlined,
+              activeIcon: Icons.auto_fix_high,
+              label: 'AI Prompts',
+              isActive: currentLocation == '/prompts',
+              onTap: () => context.go('/prompts'),
+            ),
+            _NavItem(
               icon: Icons.summarize_outlined,
               activeIcon: Icons.summarize,
               label: 'Reports',
@@ -298,14 +305,22 @@ class _NavItemState extends State<_NavItem> {
                       : theme.colorScheme.onSurface.withOpacity(0.7),
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                    color: isActive
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurface.withOpacity(0.85),
+                // Flexible + ellipsis: longer labels ("AI Prompts") must
+                // never overflow the fixed-width sidebar in narrow windows
+                // (pitfall 8.7).
+                Flexible(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight:
+                          isActive ? FontWeight.w700 : FontWeight.w500,
+                      color: isActive
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurface.withOpacity(0.85),
+                    ),
                   ),
                 ),
               ],

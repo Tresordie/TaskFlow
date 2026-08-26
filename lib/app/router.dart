@@ -8,6 +8,7 @@ import '../presentation/timeline/timeline_screen.dart';
 import '../presentation/calendar/calendar_screen.dart';
 import '../presentation/heatmap/heatmap_screen.dart';
 import '../presentation/ai_parse/ai_parse_screen.dart';
+import '../presentation/ai_prompts/ai_prompts_screen.dart';
 import '../presentation/reports/reports_screen.dart';
 import '../presentation/settings/settings_screen.dart';
 import '../presentation/work_log/work_log_screen.dart';
@@ -52,6 +53,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'aiParse',
             pageBuilder: (context, state) => const NoTransitionPage(
               child: AiParseScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/prompts',
+            name: 'aiPrompts',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: AiPromptsScreen(),
             ),
           ),
           GoRoute(

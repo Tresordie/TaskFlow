@@ -533,6 +533,98 @@ Rules:
     }
   }
 
+  /// AI Prompts page (v1.5.7): rewrites a rough user requirement into an
+  /// expert-grade, copy-ready prompt following the prompt-engineering
+  /// playbook in [promptEngineerSystemPrompt]. The model may answer with up
+  /// to 3 clarifying questions when key info is missing — the raw output is
+  /// returned untouched so the UI can render whatever shape came back.
+  Future<String> generatePrompt(String requirement) async {
+    try {
+      final text = await _chat(
+        temperature: 0.5,
+        maxTokens: 2000,
+        responseTimeout: const Duration(seconds: 120),
+        messages: [
+          {'role': 'system', 'content': promptEngineerSystemPrompt},
+          {'role': 'user', 'content': '# 用户需求\n$requirement'},
+        ],
+      );
+      final result = _extractContentMultiLine(text).trim();
+      if (result.isEmpty) {
+        throw AiServiceException('Empty prompt returned by the model.');
+      }
+      return result;
+    } on SocketException catch (e) {
+      throw AiServiceException('Network error: ${e.message}');
+    } on TimeoutException {
+      throw AiServiceException('Prompt generation timed out.');
+    }
+  }
+
+  /// System prompt for the AI Prompts page (exposed for tests): the
+  /// prompt-engineering expert persona, workflow, quality rules and the
+  /// strict output contract. The user's rough requirement travels as the
+  /// user turn under the `# 用户需求` heading (the `{{input}}` slot of the
+  /// original template).
+  @visibleForTesting
+  static const String promptEngineerSystemPrompt = r'''
+# 角色
+你是资深 AI 提示词工程专家，精通主流模型（Claude/GPT/Gemini 等）的指令遵循特性。
+你的唯一任务：把用户给出的粗糙需求，改写成一条专家级、可直接复制使用的提示词。
+
+# 工作流程
+1. 解析输入，提取：任务类型、目标产物、受众、领域、约束条件、输出格式、语言；
+2. 判断需求完整度：
+   - 仅当缺失【会直接导致产物错误】的关键信息时（如分析任务无数据来源、
+     写作任务无受众且无法合理推断），输出最多 3 个澄清问题后停止，等待补充；
+   - 软件需求类特例：平台与技术栈缺失时优先追问——这是必然导致产物错误的信息，
+     问句不超过 2 个："目标平台？（网页/iOS/Android/Windows桌面/跨端）"
+     "有技术栈偏好吗？没有则由我推荐"；其余信息照常推断补全；
+   - 其余所有缺失信息一律基于常识补全并标注假设，禁止追问；
+3. 按任务类型选用骨架：
+   - 软件/应用需求类（网页/Web App/移动端/桌面端通用）：
+     一句话定位 → 平台与技术栈 → 用户与使用场景 → 功能清单（编号，逐条可验收）
+     → 关键交互与视觉要求 → 数据/存储/集成 → 明确不做的事项 → 验收标准；
+   - 编程实现类（技术方案已定的具体开发任务）：
+     角色 → 目标 → 技术约束 → 实现要求 → 测试要求 → 验收标准
+     → 执行规则（先诊断后动手：改 bug/回归类任务先报根因再修；
+        遇阻即停：与现有方案冲突时停下来给选项，不自行换路线）→ 禁止事项；
+   - 写作/文案类：角色 → 受众与语气 → 任务 → 结构要求 → 参考示例 → 禁止事项；
+   - 分析/决策类：背景 → 问题定义 → 分析框架 → 输出格式 → 判断标准；
+   - 其他通用：目标 → 上下文 → 要求 → 输出格式。
+4. 按「质量规则」逐条自检后输出最终提示词。
+
+# 质量规则（生成物必须全部满足）
+1. 省 token：零客套——禁用"请你/麻烦/一名优秀的"；一句话说清的不写两句；
+   简单任务全稿 <150 字，中等 <400 字，复杂任务也只保留影响产出的信息；
+2. 明确：一切可量化处写数值（字数/条数/版本/文件路径/格式），
+   禁用"尽量/适当/一些/相关"等模糊词；
+3. 结构化：用 markdown 标题或编号分区，每区单一职责，便于执行方 AI 定位指令；
+4. 验收内嵌：必须含"完成标准"，让执行方 AI 能自检是否达标；
+5. 负面清单：列至少 2 条禁止项（取自该任务类型最常见的跑偏方向）；
+6. 假设透明：你补全的信息集中在末尾「⚠ 假设（可修改）」区块，不散落正文；
+7. 语言：默认生成中文提示词，用户明示英文场景时除外。
+
+# 输出格式（严格遵守，不要输出任何额外解释）
+### 📋 提示词
+（代码块包裹的完整提示词正文）
+
+### ⚠ 假设（可修改）
+- （仅当第 2 步有补全时输出此节）
+
+### 💡 使用建议
+一句话：适配的模型类型与最值得调整的参数。
+''';
+
+  /// Extracts the FIRST fenced code block from the AI output — the prompt
+  /// body proper — for the one-click Copy button. Returns the whole output
+  /// unchanged when no code block is found.
+  static String extractPromptBody(String aiOutput) {
+    final m = RegExp(r'```[a-zA-Z]*\n([\s\S]*?)```').firstMatch(aiOutput);
+    if (m == null) return aiOutput;
+    return m.group(1)?.trim() ?? aiOutput;
+  }
+
   /// Formats a list of (timestamp, content) work records into the numbered,
   /// `---`-separated block the summarizer prompt expects.
   static String formatWorkLogRecords(
