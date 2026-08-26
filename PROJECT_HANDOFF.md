@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-08-26 · 当前版本 **v1.5.4**（已发版：GFM 渲染打磨轮——可选链表格改真实 Table、checkbox 图标化、alerts 美化；代码 + 测试 + 构建 + 提交双推 + 打包完成）
+> 最后更新：2026-08-26 · 当前版本 **v1.5.5**（已发版：alerts 按 GitHub 参考图重构 + LaTeX 公式接入字体缩放；代码 + 测试 + 构建 + 提交双推 + 打包完成）
 
 ---
 
@@ -148,6 +148,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | v1.5.2 | 字体升级 Manrope（可变）× MiSans；默认字体改内置栈；双 Provider 补中文回退 | 质感+体积（42→35.8MB）；离线首启不再闪系统字体；修复内容/输入链中文落系统字体的缺口 |
 | v1.5.3 | GFM 表格/任务清单/Alerts/LaTeX 两链补齐；alerts 在可选链降级为着色标签+槽线文本、公式降级为 WidgetSpan（不参与选区/复制丢失）；任务清单只读 ☐/☑ 无点击交互；仅禁 Mermaid，LaTeX 解禁（用户重提） | 表格字面 `\|` 根因是硬换行硬化破坏行结构；checkbox 需 hoist 才不被丢；builder 拿不到子节点故 alerts 靠 data-source 重渲染；flutter_math_fork 0.7.4 纯 Dart 无 WebView 路线验证可行 |
 | v1.5.4 | 可选链表格弃文本网格改 **WidgetSpan 嵌入真实 Table**（用户实机否决 ASCII 网格后拍板，给过两选项）；任务清单 checkbox 两链改 Material 图标（`Icons.check_box(_outline_blank)`，替代细弱字形）；alerts 容器加类型图标+全周发丝描边+左色条 ClipRRect，可选链槽线 `│ `→`▎ ` | 文本网格对齐在混排下不可靠（踩坑 8.24）；表格文字随之退出选区/复制流（与公式同级的已接受降级，Copy as Markdown 不受影响） |
+| v1.5.5 | alerts 按用户提供的 GitHub 参考截图重构：**纯淡色圆角卡（无左色条无边框）+ 首字母大写标签**（"Important" 非 "IMPORTANT"）+ GitHub 系图标（tip=火焰/important=report 八角标/warning=三角/caution=八角叉）；LaTeX 公式 fontSize 显式乘 `MediaQuery.textScalerOf`（flutter_math_fork 自绘不响应全局 80–140% 缩放，>100% 时公式相对正文变小） | 用户截图对标 GitHub 2023 改版样式；公式缩放失配是"排版不美观"的根因 |
 
 ---
 
@@ -205,15 +206,16 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
-- ✅ v1.5.4（已发版）：GFM 渲染打磨——① 可选链表格改 WidgetSpan 真实 Table（主题色边框/表头加粗/表头淡底/IntrinsicColumnWidth，与 Reports 预览同观感；文本网格因 CJK 对齐失效被用户否决，`displayWidth/padCell` 已删）；② 任务清单 checkbox 两链改 Material 图标（未勾 `check_box_outline_blank` 45% 前景色 / 已勾 `check_box` 主题色，公共组件 `TaskCheckboxGlyph`）；③ alerts 容器美化（类型图标 info/lightbulb/priority_high/warning_amber/dangerous + 全周发丝描边 + ClipRRect 左色条，可选链槽线改 `▎ `）；213 测试全过（表格/checkbox 相关契约断言已迁移到 widget 断言）、双推 `5788652`、包体 35.9MB
+- ✅ v1.5.5（已发版）：alerts 按用户参考截图重构为 GitHub 风格（纯淡色圆角卡、首字母大写标签、火焰/报告标/三角/八角叉图标；两链标签同步 title case）；LaTeX 公式接入 TextScaler（修复 80–140% 字号缩放下公式不跟随的失配，两链均显式乘 `textScalerOf(context)`）；213 测试全过、双推 `6f3e7ef`、包体 35.9MB
+- ✅ v1.5.4：GFM 渲染打磨——① 可选链表格改 WidgetSpan 真实 Table（主题色边框/表头加粗/表头淡底/IntrinsicColumnWidth，与 Reports 预览同观感；文本网格因 CJK 对齐失效被用户否决，`displayWidth/padCell` 已删）；② 任务清单 checkbox 两链改 Material 图标（未勾 `check_box_outline_blank` 45% 前景色 / 已勾 `check_box` 主题色，公共组件 `TaskCheckboxGlyph`）；③ alerts 容器美化与可选链槽线改 `▎ `（v1.5.5 进一步按参考图重构）
 - ✅ v1.5.3：GFM 四能力两链补齐（表格/任务清单/alerts/LaTeX）+ `<br>` 窄义支持；新增 gfm_extensions.dart/table_support.dart；23 项契约测试
 - ✅ v1.5.2：字体升级 Manrope×MiSans（可变字体、包体 42→35.8MB、FontStack 混排链、双 Provider 补中文回退、授权随包）
 - ✅ v1.5.1：块间距修正（标题紧贴/段-列表无空行）
 - ✅ v1.5.0：扩展 Markdown（脚注/上下标/高亮样式修复，Mermaid 拍板不做）
-- 双远程同步至 `5788652`（v1.5.4）
+- 双远程同步至 `6f3e7ef`（v1.5.5）
 
 **进行中**：
-- 用户实机验证 v1.5.4：编辑器 Preview/保存记录中粘贴验证用例，核对表格为真实边框表格、checkbox 图标、alerts 卡片观感；2–3 个主题含一个 Catppuccin 暗色目检五色。应用已在运行（v1.5.4 exe）。
+- 用户实机验证 v1.5.5：alerts 卡片对照参考截图、公式在字号缩放下的相对大小。应用已在运行（v1.5.5 exe）。
 
 **待办/已知局限**：
 - **疑似 UI 缺陷（待排查）**：快速添加任务后列表偶发不刷新，重启后自愈（v1.5.2 验证时由 ComputerUse 发现，未复现定位）。
@@ -246,3 +248,4 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | 2026-08-26 | Qoder（本会话，v1.5.2→v1.5.3 代码+构建） | 待定 | GFM 四能力两链补齐：表格（字面 `\|` 根因修复：prepare 管线 + 硬化豁免 + 样式注入 / 可选链 CJK 双宽对齐列）、任务清单（checkbox hoist + ☐/☑ 只读字形）、GFM Alerts（大小写敏感语法 + 主题化容器/五色集中定义 + 可选链降级标签槽线，普通引用零影响）、LaTeX 解禁落地（严格定界防货币误判、多行 `$$` 展平、可选链 WidgetSpan、错误回退原文、流式自动重渲染）、`<br>` 窄义支持、report_service 表格归一委托共享实现；新增 23 项契约测试（共 213）；**发版后半程未完成：实机验证（ComputerUse 两次中断）→ 提交 → 双推 → 打包 → 启动，接手续做，步骤见第 10 节进行中栏** |
 | 2026-08-26 | 接班模型（本会话，v1.5.3 发版闭环收尾） | 待定 | 验证 v1.5.3 实现完整性（analyze 0 error、213 测试全过）→ 提交 `ceb470f`（13 文件 +1218/-148）→ Gitee/GitHub 显式单 URL 双推均一次成功 → 打包 `TaskFlow-v1.5.3-windows-x64.zip`（35.9MB，基线 35.8MB +0.1MB 来自 KaTeX 字体）→ 启动 exe；实机用例目检留给用户 |
 | 2026-08-26 | 接班模型（本会话，v1.5.3→v1.5.4 渲染打磨轮） | 待定 | 用户实机反馈三问题：①可选链表格 ASCII 网格观感差且 CJK 列错位 → 经选项确认改 WidgetSpan 真实 Table（删 displayWidth/padCell，踩坑 8.24）；②checkbox 字形太弱 → 两链换 Material 图标公共组件 TaskCheckboxGlyph；③alerts 观感 → 类型图标+发丝描边+ClipRRect 左色条（踩坑 8.25：非 uniform Border 配圆角、无界高度 stretch 两连崩）、可选链槽线 `▎`。表格/checkbox 契约断言迁移为 widget 断言；analyze 0 error、213 测试全过；提交 `5788652` 双推一次成功；打包 v1.5.4 35.9MB；exe 已启动待用户目检 |
+| 2026-08-26 | 接班模型（本会话，v1.5.4→v1.5.5 参考图对齐轮） | 待定 | 用户提供 GitHub 参考截图：alerts 重构为纯淡色圆角卡（去掉 v1.5.4 的左色条+描边）+ 首字母大写标签 + GitHub 系图标（火焰/报告标），两链标签同步 title case（测试断言同步，注意测试源码须保持大写 `[!NOTE]`）；LaTeX 排版根因定位为 flutter_math_fork 自绘不响应 TextScaler → 两链显式乘 `textScalerOf(context)`。213 测试全过；提交 `6f3e7ef` 双推一次成功；打包 v1.5.5 35.9MB；exe 已启动 |
