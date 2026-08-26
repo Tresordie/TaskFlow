@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-08-26 · 当前版本 **v1.5.3**（代码完成 + 测试通过 + 已构建；**尚未提交推送/打包/实机验证**，见第 10 节）
+> 最后更新：2026-08-26 · 当前版本 **v1.5.3**（已发版：代码 + 测试 + 构建 + 提交双推 + 打包 35.9MB；实机目检由用户进行中）
 
 ---
 
@@ -208,11 +208,10 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 - ✅ v1.5.0：扩展 Markdown（脚注/上下标/高亮样式修复，Mermaid 拍板不做）
 - ✅ v1.4.98：Latte 清晰度修复 + 删除 4 主题（13 主题）
 - ✅ v1.4.85-97：字体排版双 Provider、可调节图片预览、Drive 同步加固、内联编辑、版本号仅 About 显示、Catppuccin 主题体系、中英配对预设、HANDOFF 文档创建
-- 双远程同步至 `137dcd4`（v1.5.2 + 文档）
+- 双远程同步至 `ceb470f`（v1.5.3）
 
 **进行中**：
-- v1.5.3 发版闭环后半程（**接手续做**）：① 实机验证（ComputerUse 两次中断未完成：保存后渲染逐项核对 A–E + Preview 一致性 + 2–3 个主题含一个 Catppuccin 暗色下 alerts 五色可读性；重点目检 ☐/☑ 字形无豆腐块）；② `git add -A; git commit -m "v1.5.3: GFM tables, task lists, alerts and LaTeX formulas in both renderers"`；③ 显式单 URL 双推 Gitee + GitHub；④ `Compress-Archive` 打包 `TaskFlow-v1.5.3-windows-x64.zip` 到 `outputs/`（基线 35.8MB，报告体积变化）；⑤ 启动 exe 确认。
-- 应用当前正在运行（已构建的 v1.5.3 exe），用户可自行手动验证。
+- 用户实机验证 v1.5.3 验证用例（表格对齐列 / ☐☑ 字形 / 五色 alerts / 公式渲染 / 普通引用不变；2–3 个主题含一个 Catppuccin 暗色目检 alerts 五色可读性）。应用已在运行（v1.5.3 exe）。
 
 **待办/已知局限**：
 - **疑似 UI 缺陷（待排查）**：快速添加任务后列表偶发不刷新，重启后自愈（v1.5.2 验证时由 ComputerUse 发现，未复现定位）。
@@ -243,3 +242,4 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 |---|---|---|---|
 | 2026-08-26 | Qoder（本会话，v1.4.85→v1.5.2） | 待定 | 字体排版设置、可调节图片预览、编辑对话框粘图、Drive 同步加固（两阶段/占位文件/路径自愈合）、报告全量日志+清单版式、内联编辑流程、Catppuccin 主题体系、主题精简与 Latte 清晰度修复、中英字体配对四预设（含内置 MiSans）、扩展 Markdown（脚注/上下标/高亮样式修复）、v1.5.1 块间距修正（标题紧贴/段-列表无空行）、v1.5.2 字体升级 Manrope×MiSans（包体 42→35.8MB，FontStack 混排链，双 Provider 补中文回退） |
 | 2026-08-26 | Qoder（本会话，v1.5.2→v1.5.3 代码+构建） | 待定 | GFM 四能力两链补齐：表格（字面 `\|` 根因修复：prepare 管线 + 硬化豁免 + 样式注入 / 可选链 CJK 双宽对齐列）、任务清单（checkbox hoist + ☐/☑ 只读字形）、GFM Alerts（大小写敏感语法 + 主题化容器/五色集中定义 + 可选链降级标签槽线，普通引用零影响）、LaTeX 解禁落地（严格定界防货币误判、多行 `$$` 展平、可选链 WidgetSpan、错误回退原文、流式自动重渲染）、`<br>` 窄义支持、report_service 表格归一委托共享实现；新增 23 项契约测试（共 213）；**发版后半程未完成：实机验证（ComputerUse 两次中断）→ 提交 → 双推 → 打包 → 启动，接手续做，步骤见第 10 节进行中栏** |
+| 2026-08-26 | 接班模型（本会话，v1.5.3 发版闭环收尾） | 待定 | 验证 v1.5.3 实现完整性（analyze 0 error、213 测试全过）→ 提交 `ceb470f`（13 文件 +1218/-148）→ Gitee/GitHub 显式单 URL 双推均一次成功 → 打包 `TaskFlow-v1.5.3-windows-x64.zip`（35.9MB，基线 35.8MB +0.1MB 来自 KaTeX 字体）→ 启动 exe；实机用例目检留给用户 |
