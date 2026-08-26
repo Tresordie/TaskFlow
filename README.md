@@ -120,7 +120,7 @@ test/
 - Archived tasks render like Completed (green check + strikethrough) with status label under title
 - Robust Markdown rendering for pasted content: normalizes CRLF line endings and invisible Unicode spaces (non-breaking / full-width) so lists copied from browsers or other apps render correctly
 - Desktop-only chrome guarded for iOS/Android (custom title bar & window_manager skipped on mobile)
-- Custom date-range picker (Timeline / Calendar / Reports): the same compact single-date popup as the Daily/Weekly modes, driven as a two-step start→end flow
+- Custom date-range picker (Timeline / Calendar / Reports): ONE dialog with the same calendar grid as the Daily/Weekly popup — tap the start day, tap the end day, confirm
 - Unit + widget test suite (`flutter test`): report period math, AI config, LaTeX rendering, title bar
 
 ### Phase 7 — Unified rich-text input & record display

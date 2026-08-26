@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-08-26 · 当前版本 **v1.6.4**（已发版：Custom 日期范围改用 Daily/Weekly 同款单日期弹窗——两步先选开始再选结束，告别 Material 范围选择器；15 主题 / 241 测试 / 35.6MB）
+> 最后更新：2026-08-26 · 当前版本 **v1.6.5**（已发版：Custom 日期范围单弹窗选择——Daily/Weekly 同款日历网格，点开始日→点结束日→OK，不再两次弹窗；15 主题 / 242 测试 / 35.6MB）
 
 ---
 
@@ -154,6 +154,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | v1.5.8 | AI Prompts 四项打磨（用户需求）：① 输入框**拖拽调高**（grip 柄 120–420px，Work Log/AI Parse 同款）；② 输入改 **MarkdownEditorField**（Write/Preview 切换，与其他输入区工具链一致）；③ 字体联动 Settings——输入走 `applyInputTypography`（Settings→Fonts 输入区 family/size），预览与输出走 `applyContentTypography`（内容区设置）；④ 质感——输出卡片 surface 底+圆角 12+RESULT 头条、代码块淡底面板+边框（提示词正文即复制目标的视觉强化）、预览与输出共用同一 styleSheet（WYSIWYG） | 输入框是页面主体，可调大小+markdown 支持是工具页刚需；字体双链路复用既有 Provider 体系不另起炉灶（禁忌 9.11 回退链由 apply*Typography 内建） |
 | v1.5.9 | 五项优化（用户需求）：① AI Prompts 输入/结果**跨页面保持**——`aiPromptsInputProvider`/`aiPromptsResultProvider` 会话级 StateProvider（ShellRoute 每次导航销毁页面 widget，草稿必须放 provider）；② 输入区加 **MarkdownToolbar**（标题/粗斜体/清单/缩进等与全应用一致）；③ 报告**移除 Overall 总结行**（MD/HTML/双语提示词/`_overallRag`/样式全链清除）；④ 执行摘要**结构化**——`_firstSummary`→`_summaryLines`，AI 摘要每行独立缩进要点（MD/HTML/双语提示词同步）；⑤ 导出 HTML **`_escapeTildesForHtml`**——markdown 包删除线语法连单 `~` 都匹配，"Vout ~ 5V … temp ~ stable" 两波浪号间全成删除线；报告不用删除线、`~` 即约等号，全量转 `&#126;`（StyledHtml+EmailHtml 两路径） | ShellRoute 生命周期决定状态必须外置；单波浪号误判删除线是 markdown 包 StrikethroughSyntax 的 `~~?` 贪婪匹配所致 |
 | v1.5.10 | 全页面输入框 Tab 缩进审计收口：全应用 Markdown 输入区统一 `markdownIndentFocusNode`（Tab 缩进当前行/选区、Shift+Tab 反缩进）——Work Log（`_onInputKey` 自处理）、执行日志（内联 onKeyEvent）、AI Parse/Reports/建任务/编辑任务对话框、MarkdownEditorField 默认节点本已支持；唯一缺口 **AI Prompts 编辑器用裸 `FocusNode`**（Tab 移焦点不缩进）→ 换 `markdownIndentFocusNode(_inputController)`。单行字段（搜索/配置项）保持 Tab=焦点导航不改动 | 用户要求"所有页面输入框支持 Tab 缩进"；审计先行，只修真缺口（外科手术式改动） |
+| v1.6.5 | Custom 日期范围单弹窗（用户需求）：v1.6.4 两步两次弹窗被反馈“希望一页选完”→ 新建自定义 `_RangePickerDialog`：**复用 Daily/Weekly 同款 `CalendarDatePicker` 日历网格**（观感已被用户认可），交互=点一天→开始日、再点→结束日（早于开始日则原地重开；两端已齐再点则全新重选；同日点两次=单日范围），OK 在两端齐后启用，Cancel 返回 null；头部主色淡染+范围实时读出头条+Start/End 状态 chip（短日期格式 formatShortDate，标题 FittedBox 自适应、chips 用 Wrap 防窄布局溢出——踩坑：测试环境 Ahem 字体每字 1em 宽，Row 硬排会溢出，改用 Wrap 后两全）；API 签名不变三处零改动；文案全 MaterialLocalizations；5 项契约测试（单弹窗主流程/早于开始日重开/同日双击单日/Cancel/预填直接 OK，共 242） | 自绘选择器时横向状态条用 Wrap 不用 Row；日期格式选短格式（formatShortDate）不选带星期的 medium 格式 |
 | v1.6.4 | Custom 日期范围弹窗最终方案（用户需求）：v1.6.1–1.6.3 三连调 Material `showDateRangePicker` 的尺寸/样式后用户仍觉得“难看”→ **改用 Reports Daily/Weekly 同款 `showDatePicker` 单日期弹窗**（紧凑对话框、自动继承应用 ColorScheme、观感已被用户认可）：`showAppDateRangePicker` 重写为**两步流**——① 先选开始日期（helpText=Start Date，默认上次范围起点或今天-7 天）；② 再选结束日期（firstDate=已选开始日，只能选不早于开始；默认上次范围终点或开始日）；任一步 Cancel 则整体返回 null。API 签名不变（Timeline/Calendar/Reports 三处调用零改动）；文案全走 MaterialLocalizations；测试重写为 4 项契约（两步流产物、首步取消、末步取消、结束日下限）。注意 M3 单日期弹窗选日后需按 OK 确认才关闭（测试要点选日→点 OK） | 用户对控件观感不满意且多轮微调无效时，停止调样式，改用用户已经认可的现成控件 |
 | v1.6.3 | 日期范围选择器定稿（用户按规格要求）：① 倍率 1.5× 降至 **1.1×**——布局取 SDK 竖版网格宽度上限 **480×500**（零留白，不加大 MediaQuery），FittedBox 1.1× → 视觉 **528×550**（宽 500–560 达标、6 行网格月 484px 完整可见不滚动）；② “布局≈视觉+≤1.1×”评估**可行并直接采用**——1.1× 下描边/字重近乎原生（今天圈 1.4→1.54px），不再保留 1.5×；③ rangePicker*/普通槽位全部对齐共享卡片配方（背景 `cardTheme.color`=palette.card、边框 outline 80%、圆角 18、阴影 primary 10% 暗色无，15 主题自动生效）；④ 按钮统一（取消=描边、确定=主题色填充、等高圆角）+ 文案去硬编码全走 MaterialLocalizations（当前英文与全应用 UI 一致，locale 自动跟随）；⑤ 契约测试迁移为 480×500 布局 + 528×550 视觉双断言，并新增 3 档字号（100/125/140%）× 2 档 DPR（1.0/2.0）共 6 组合无溢出错位回归 | 三连迭代教训：倍率 >1.2 显粗糙、<500 宽显小，最终“网格上限布局+低倍率”是甜点位；Material 文案一律 localizations 取值 |
 | v1.6.2 | 日期范围选择器尺寸回执（用户需求）：v1.6.1 的 420×520 太小 → **FittedBox 1.5× 等比放大**——picker 以 440×460 布局（SDK 月份网格宽上限 384/480 决定布局尺寸上限），FittedBox.contain 等比放大至视觉 **660×690**（长宽比完全匹配故内部零留白），日历格子/字体/表头全部同比放大，点击与拖拽滚动命中由 RenderFittedBox 正确变换；契约测试从 420×520 迁移为双尺寸断言（440×460 布局 + 660×690 视觉） | 想要大弹窗又无留白：直接加大 MediaQuery 会撞 SDK 宽度上限产生内部留白，等比放大是唯一路线 |
@@ -217,6 +218,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
+- ✅ v1.6.5（已发版）：Custom 日期范围单弹窗选择（Daily/Weekly 同款日历网格，点开始日→点结束日→OK，同日双击=单日范围）；242 测试全过（+5 契约）、双推 `63a97b4`、包体 35.6MB
 - ✅ v1.6.4（已发版）：Custom 日期范围改用 Daily/Weekly 同款单日期弹窗（两步 start→end，任一步取消整体中止，API 不变三处零改动）；241 测试全过（+4 契约）、双推 `b1836be`、包体 35.6MB
 - ✅ v1.6.3（已发版）：日期范围选择器定稿——480×500 布局 ×1.1 → 528×550 近原生弹窗（倍率 1.5×→1.1×、卡片对齐铬层、按钮统一、文案全 i18n）；239 测试全过（+1 组合回归）、双推 `23a9036`、包体 35.7MB
 - ✅ v1.6.2（已发版）：日期范围选择器放大 1.5×（FittedBox 等比放大，视觉 660×690，紧凑无留白）；238 测试全过、双推 `a1c6d06`、包体 35.7MB
@@ -230,7 +232,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 - 双远程同步至 `6befd97`（v1.6.0）
 
 **进行中**：
-- 用户实机验证 v1.6.4：Timeline/Calendar/Reports 的 Custom 选范围——两步单日期弹窗观感与流程（先 Start Date 后 End Date、Cancel 中止、结束日不早于开始日）。应用已在运行（v1.6.4 exe）。
+- 用户实机验证 v1.6.5：Timeline/Calendar/Reports 的 Custom 单弹窗范围选择（点开始→点结束→OK、chips 状态提示、同日双击单日范围）。应用已在运行（v1.6.5 exe）。
 
 **待办/已知局限**：
 - **疑似 UI 缺陷（待排查）**：快速添加任务后列表偶发不刷新，重启后自愈（v1.5.2 验证时由 ComputerUse 发现，未复现定位）。
@@ -269,4 +271,4 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | 2026-08-26 | 接班模型（本会话，v1.5.7→v1.5.8 AI Prompts 打磨轮） | 待定 | 用户四需求：①输入框拖拽调高（grip 120–420px）；②输入改 MarkdownEditorField（Write/Preview + 预览 sheet）；③字体接 Settings 双链路（输入 applyInputTypography、预览/输出 applyContentTypography，复用既有 Provider 不另起炉灶）；④质感（输出卡片 surface+圆角 12+RESULT 头、代码块淡底面板+边框、预览输出同 sheet WYSIWYG）。测试加 Write/Preview 存在断言（共 222）；提交 `56a2ce5` 双推一次成功；打包 v1.5.8 35.9MB；exe 已启动 |
 | 2026-08-26 | 接班模型（本会话，v1.5.8→v1.5.9 五项优化轮） | 待定 | ①AI Prompts 草稿跨页保持（ShellRoute 销毁 widget → 输入/结果入会话级 StateProvider，initState 恢复 + listener 持久化）；②输入区加 MarkdownToolbar；③报告移除 Overall（MD/HTML/双语提示词/_overallRag/overallS/`l.overall` 全链清除）；④执行摘要结构化（_firstSummary→_summaryLines，每行摘要独立 `  - ` 要点，MD/HTML/提示词同步）；⑤导出 HTML `_escapeTildesForHtml`（markdown 包 StrikethroughSyntax 连单 `~` 都匹配致误判删除线，全量转 `&#126;`，StyledHtml+EmailHtml 两路径）。4 项契约测试（共 226）；提交 `cc8c322` 双推一次成功；打包 v1.5.9 35.9MB；exe 已启动 |
 | 2026-08-26 | 接班模型（本会话，v1.5.9→v1.5.10 Tab 缩进收口） | 待定 | 用户要求所有页面输入框支持 Tab 缩进。全量审计：Work Log（_onInputKey）/执行日志（内联 onKeyEvent）/AI Parse/Reports/建任务/编辑任务对话框/MarkdownEditorField 默认节点均已支持；唯一缺口 AI Prompts 编辑器（裸 FocusNode）→ 换 `markdownIndentFocusNode(_inputController)`；单行字段（搜索/配置）保持 Tab=焦点导航。1 项 Tab 契约测试（共 227，注意 enterText 光标在文末，断言前须显式置 caret）；提交 `b83b60a` 双推一次成功；打包 v1.5.10 35.9MB；exe 已启动 |
-| 2026-08-26 | 接班模型（本会话，v1.6.3→v1.6.4 选择器换弹窗轮） | 待定 | Material 范围选择器三连调后用户仍不满意 → 按用户要求改用 Reports Daily/Weekly 同款 `showDatePicker` 单日期弹窗：两步流（Start Date→End Date，firstDate=开始日、Cancel 任一步中止、API 不变三处零改动）、文案 MaterialLocalizations、踩坑 8.26 更新为“弃用终局”；测试重写 4 项契约（含 M3 选日后需 OK 确认的交互细节，共 241）；提交 `b1836be` 双推一次成功；打包 v1.6.4 35.6MB；exe 已启动 |
+| 2026-08-26 | 接班模型（本会话，v1.6.4→v1.6.5 单弹窗范围选择轮） | 待定 | 用户反馈两步两次弹窗 → 自定义单弹窗 `_RangePickerDialog`（复用 Daily/Weekly 同款 CalendarDatePicker 网格：点开始→点结束→OK，同日双击=单日范围，早于开始日原地重开，Cancel 中止，预填范围直接可 OK）；头部主色淡染+实时范围头条+Start/End 状态 chips（短日期格式；标题 FittedBox、chips Wrap 防溢出——测试环境 Ahem 字体踩坑）；5 项契约测试（共 242）；提交 `63a97b4` 双推一次成功；打包 v1.6.5 35.6MB；exe 已启动 |
