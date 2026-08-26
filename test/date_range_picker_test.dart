@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:taskflow/presentation/shared/app_date_picker.dart';
 
-/// v1.6.4 contract: the Custom range selection uses the SAME compact
-/// single-date `showDatePicker` popup as the Reports Daily/Weekly mode
-/// (the user rejected the Material range-picker dialog as ugly), driven as
-/// a two-step flow: pick the START date, then the END date. Cancelling
-/// either step aborts the whole selection.
+/// v1.6.5 contract: the Custom range selection is ONE dialog using the
+/// same calendar grid as the Daily/Weekly popup ([CalendarDatePicker]):
+/// tap a day → START, tap again → END (tapping a day before the start
+/// restarts the range there; tapping after both ends exist starts over),
+/// OK confirms only once both ends exist, Cancel returns null.
 void main() {
   late DateTimeRange? result;
 
@@ -39,35 +39,41 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  final initialRange = DateTimeRange(
+    start: DateTime(2026, 6, 1),
+    end: DateTime(2026, 6, 10),
+  );
+
+  FilledButton okButton(WidgetTester tester) =>
+      tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'OK'));
+
   setUp(() => result = null);
 
-  testWidgets('two-step flow picks start then end via the single-date dialog',
+  testWidgets('one dialog: tap start, tap end, OK returns the range',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1600, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await openPicker(
-      tester,
-      initialDateRange: DateTimeRange(
-        start: DateTime(2026, 6, 1),
-        end: DateTime(2026, 6, 10),
-      ),
-    );
+    await openPicker(tester, initialDateRange: initialRange);
 
-    // Step 1: the compact single-date dialog, not the range picker.
-    expect(find.byType(DatePickerDialog), findsOneWidget);
-    expect(find.text('Start Date'), findsOneWidget);
+    // A single dialog with the Daily/Weekly-style calendar grid. The
+    // June 1–10 range is pre-filled, so OK starts enabled.
+    expect(find.byType(CalendarDatePicker), findsOneWidget);
+    expect(find.text('Select range'), findsOneWidget);
+    expect(okButton(tester).onPressed, isNotNull);
+
+    // Tapping with both ends set starts a FRESH selection at that day.
     await tester.tap(find.text('15'));
     await tester.pumpAndSettle();
-    // The M3 dialog selects the day and waits for OK to confirm.
-    await tester.tap(find.text('OK'));
-    await tester.pumpAndSettle();
+    // Start chip reflects the picked day; OK still disabled (no end).
+    expect(find.textContaining('Start Date · Jun 15, 2026'), findsOneWidget);
+    expect(okButton(tester).onPressed, isNull);
 
-    // Step 2: end date — same dialog, constrained from the start onward.
-    expect(find.byType(DatePickerDialog), findsOneWidget);
-    expect(find.text('End Date'), findsOneWidget);
     await tester.tap(find.text('20'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('OK'));
+    expect(find.textContaining('End Date · Jun 20, 2026'), findsOneWidget);
+    expect(okButton(tester).onPressed, isNotNull);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'OK'));
     await tester.pumpAndSettle();
     await tester.pump();
 
@@ -77,68 +83,85 @@ void main() {
     ));
   });
 
-  testWidgets('cancelling the START step aborts the whole selection',
+  testWidgets('tapping a day BEFORE the start restarts the range there',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1600, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await openPicker(tester);
-
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
-    await tester.pump();
-
-    expect(result, isNull);
-    expect(find.byType(DatePickerDialog), findsNothing);
-  });
-
-  testWidgets('cancelling the END step aborts the whole selection',
-      (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1600, 1000));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await openPicker(tester);
-
-    await tester.tap(find.text('15'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('OK'));
-    await tester.pumpAndSettle();
-    expect(find.text('End Date'), findsOneWidget);
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
-    await tester.pump();
-
-    expect(result, isNull);
-    expect(find.byType(DatePickerDialog), findsNothing);
-  });
-
-  testWidgets('end step cannot select a date before the chosen start',
-      (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1600, 1000));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await openPicker(
-      tester,
-      initialDateRange: DateTimeRange(
-        start: DateTime(2026, 6, 1),
-        end: DateTime(2026, 6, 10),
-      ),
-    );
+    await openPicker(tester, initialDateRange: initialRange);
 
     await tester.tap(find.text('20'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('OK'));
+    await tester.tap(find.text('10'));
     await tester.pumpAndSettle();
 
-    // The end step opened on the chosen start (June 20): dates before it
-    // are disabled — selecting a later day must still produce the range
-    // anchored at the 20th.
-    await tester.tap(find.text('25'));
+    // The range restarted at the 10th, end cleared, OK disabled again.
+    expect(find.textContaining('Start Date · Jun 10, 2026'), findsOneWidget);
+    expect(find.text('End Date'), findsOneWidget);
+    expect(okButton(tester).onPressed, isNull);
+
+    await tester.tap(find.text('12'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('OK'));
+    await tester.tap(find.widgetWithText(FilledButton, 'OK'));
     await tester.pumpAndSettle();
     await tester.pump();
 
     expect(result, DateTimeRange(
-      start: DateTime(2026, 6, 20),
-      end: DateTime(2026, 6, 25),
+      start: DateTime(2026, 6, 10),
+      end: DateTime(2026, 6, 12),
     ));
+  });
+
+  testWidgets('tapping the same day twice yields a single-day range',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await openPicker(tester, initialDateRange: initialRange);
+
+    await tester.tap(find.text('15'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('15'));
+    await tester.pumpAndSettle();
+    expect(okButton(tester).onPressed, isNotNull);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'OK'));
+    await tester.pumpAndSettle();
+    await tester.pump();
+
+    expect(result, DateTimeRange(
+      start: DateTime(2026, 6, 15),
+      end: DateTime(2026, 6, 15),
+    ));
+  });
+
+  testWidgets('Cancel aborts and returns null', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await openPicker(tester, initialDateRange: initialRange);
+
+    await tester.tap(find.text('15'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Cancel'));
+    await tester.pumpAndSettle();
+    await tester.pump();
+
+    expect(result, isNull);
+    expect(find.byType(CalendarDatePicker), findsNothing);
+  });
+
+  testWidgets('the existing range is pre-filled and immediately confirmable',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await openPicker(tester, initialDateRange: initialRange);
+
+    // June 1–10 pre-filled → chips show it and OK is already enabled.
+    expect(find.textContaining('Start Date · Jun 1, 2026'), findsOneWidget);
+    expect(find.textContaining('End Date · Jun 10, 2026'), findsOneWidget);
+    expect(okButton(tester).onPressed, isNotNull);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'OK'));
+    await tester.pumpAndSettle();
+    await tester.pump();
+    expect(result, initialRange);
   });
 }
