@@ -92,6 +92,7 @@ test/
 ### Phase 2 — AI note parsing
 - Configure any OpenAI-compatible endpoint (DeepSeek / OpenAI / Qwen / Ollama…) in Settings → AI Assistant, with connection test
 - Paste raw notes (meeting minutes, test logs, chat excerpts) → LLM extracts structured tasks (title, description, priority, tags, sub-steps)
+- Optional parsing prompt + file attachments (txt/md/pdf/docx/xlsx/pptx…) → AI summarizes in Markdown; the summary survives page switches, is copyable as Markdown and downloadable as `.md` / `.html`
 - Review parsed tasks with checkboxes, then create them all in one click
 
 ### Phase 3 — Report generation
@@ -124,7 +125,7 @@ test/
 ### Phase 7 — Unified rich-text input & record display
 - **Every input area** (Work Log, execution log + edit dialog, task description create/edit dialogs, AI Parse notes, Report editor) supports Markdown + rich text with instant **Write/Preview toggle** — the preview uses the SAME style sheet as the saved content (true WYSIWYG "input-as-preview")
 - Formatting toolbar: H1–H3, bold / italic / strikethrough, `++underline++`, `==highlight==`, `<font color>` & `<font size>`, quote, hyperlink, task list, bullet/numbered lists, inline code, fenced code block, indent / outdent
-- **Tab / Shift+Tab**: Tab indents the current line at its start (always visible); with a multi-line selection the whole block is (de)indented and stays selected for repeated presses; list items nest one level per Tab
+- **Tab / Shift+Tab**: Tab inserts two spaces AT the caret (only the content after the cursor shifts right); with a multi-line selection the whole block is (de)indented and stays selected for repeated presses; Shift+Tab removes the line's leading indentation
 - Preview fidelity with `workreport.html`: paragraph leading indentation is preserved in rendering (NBSP hardening), and under-indented sub-items are normalized to nest under their parent list item (indent-based nesting semantics)
 - **All saved records** (work-log entries, AI summaries, execution-log notes, task descriptions, parsed-task descriptions, report preview, summary history) render as Markdown preview, are **mouse drag-selectable as a whole document**, and offer right-click **“Copy as Markdown”** to grab the original Markdown source
 
