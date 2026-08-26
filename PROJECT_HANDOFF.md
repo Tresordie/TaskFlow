@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-08-26 · 当前版本 **v1.5.9**（已发版：AI Prompts 草稿跨页保持+Markdown 工具栏；报告去 Overall、执行摘要结构化、HTML 导出 ~ 转义；代码 + 测试 + 构建 + 提交双推 + 打包完成）
+> 最后更新：2026-08-26 · 当前版本 **v1.5.10**（已发版：全部 Markdown 输入区 Tab/Shift+Tab 缩进——补齐 AI Prompts 编辑器最后一个缺口；代码 + 测试 + 构建 + 提交双推 + 打包完成）
 
 ---
 
@@ -153,6 +153,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | v1.5.7 | 新增 **AI Prompts 页面**（侧边栏 AI Parse 下方，`/prompts`）：输入粗糙需求 → `AiService.generatePrompt`（system=用户提供的提示词工程专家 playbook 常量 `promptEngineerSystemPrompt`，user=`# 用户需求\n{输入}`）→ AppMarkdownBody 渲染 📋提示词/⚠假设/💡使用建议 三段输出 + **Copy prompt**（`extractPromptBody` 抓首个代码块）/Copy all；不落盘纯草稿页；未配置 AI 时提示去 Settings | 用户给定完整 playbook 文本原样入库；顺带修复 Generate 按钮不随输入启用（TextField 不触发 rebuild，接 AnimatedBuilder）与侧边栏 "AI Prompts" 标签 7px 溢出（8.7 同款，Flexible+ellipsis） |
 | v1.5.8 | AI Prompts 四项打磨（用户需求）：① 输入框**拖拽调高**（grip 柄 120–420px，Work Log/AI Parse 同款）；② 输入改 **MarkdownEditorField**（Write/Preview 切换，与其他输入区工具链一致）；③ 字体联动 Settings——输入走 `applyInputTypography`（Settings→Fonts 输入区 family/size），预览与输出走 `applyContentTypography`（内容区设置）；④ 质感——输出卡片 surface 底+圆角 12+RESULT 头条、代码块淡底面板+边框（提示词正文即复制目标的视觉强化）、预览与输出共用同一 styleSheet（WYSIWYG） | 输入框是页面主体，可调大小+markdown 支持是工具页刚需；字体双链路复用既有 Provider 体系不另起炉灶（禁忌 9.11 回退链由 apply*Typography 内建） |
 | v1.5.9 | 五项优化（用户需求）：① AI Prompts 输入/结果**跨页面保持**——`aiPromptsInputProvider`/`aiPromptsResultProvider` 会话级 StateProvider（ShellRoute 每次导航销毁页面 widget，草稿必须放 provider）；② 输入区加 **MarkdownToolbar**（标题/粗斜体/清单/缩进等与全应用一致）；③ 报告**移除 Overall 总结行**（MD/HTML/双语提示词/`_overallRag`/样式全链清除）；④ 执行摘要**结构化**——`_firstSummary`→`_summaryLines`，AI 摘要每行独立缩进要点（MD/HTML/双语提示词同步）；⑤ 导出 HTML **`_escapeTildesForHtml`**——markdown 包删除线语法连单 `~` 都匹配，"Vout ~ 5V … temp ~ stable" 两波浪号间全成删除线；报告不用删除线、`~` 即约等号，全量转 `&#126;`（StyledHtml+EmailHtml 两路径） | ShellRoute 生命周期决定状态必须外置；单波浪号误判删除线是 markdown 包 StrikethroughSyntax 的 `~~?` 贪婪匹配所致 |
+| v1.5.10 | 全页面输入框 Tab 缩进审计收口：全应用 Markdown 输入区统一 `markdownIndentFocusNode`（Tab 缩进当前行/选区、Shift+Tab 反缩进）——Work Log（`_onInputKey` 自处理）、执行日志（内联 onKeyEvent）、AI Parse/Reports/建任务/编辑任务对话框、MarkdownEditorField 默认节点本已支持；唯一缺口 **AI Prompts 编辑器用裸 `FocusNode`**（Tab 移焦点不缩进）→ 换 `markdownIndentFocusNode(_inputController)`。单行字段（搜索/配置项）保持 Tab=焦点导航不改动 | 用户要求"所有页面输入框支持 Tab 缩进"；审计先行，只修真缺口（外科手术式改动） |
 
 ---
 
@@ -210,16 +211,17 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
-- ✅ v1.5.9（已发版）：AI Prompts 草稿跨页保持（StateProvider）+ MarkdownToolbar；报告移除 Overall 行（全链）、执行摘要结构化（每行摘要独立要点）、导出 HTML 转义 `~` 防误判删除线；226 测试全过（+4 契约）、双推 `cc8c322`、包体 35.9MB
+- ✅ v1.5.10（已发版）：全页面 Tab 缩进收口——AI Prompts 编辑器换 `markdownIndentFocusNode`（最后一个裸 FocusNode 缺口），全应用 Markdown 输入区统一 Tab/Shift+Tab 缩进；227 测试全过（+1 Tab 契约）、双推 `b83b60a`、包体 35.9MB
+- ✅ v1.5.9：AI Prompts 草稿跨页保持（StateProvider）+ MarkdownToolbar；报告移除 Overall 行（全链）、执行摘要结构化（每行摘要独立要点）、导出 HTML 转义 `~` 防误判删除线
 - ✅ v1.5.8：AI Prompts 打磨——可调大小 MarkdownEditorField + Settings 字体双链路 + 输出卡片质感
 - ✅ v1.5.7：新增 AI Prompts 页面（`/prompts`）
 - ✅ v1.5.6：报告生成打磨——Headline `<br>` 列表、摘要去 sub-step 比例、10 天近因聚焦
 - ✅ v1.5.5：alerts GitHub 风格 + LaTeX TextScaler；✅ v1.5.4：表格 WidgetSpan/checkbox 图标/alerts 美化
 - ✅ v1.5.3：GFM 四能力；✅ v1.5.2：字体升级；✅ v1.5.1：块间距；✅ v1.5.0：扩展 Markdown
-- 双远程同步至 `cc8c322`（v1.5.9）
+- 双远程同步至 `b83b60a`（v1.5.10）
 
 **进行中**：
-- 用户实机验证 v1.5.9：AI Prompts 切页草稿保持 + 工具栏；报告无 Overall、摘要结构化要点、导出 HTML 中 `~` 正常显示。应用已在运行（v1.5.9 exe）。
+- 用户实机验证 v1.5.10：各页面 Markdown 输入区（Work Log/执行日志/AI Parse/AI Prompts/Reports 编辑器/任务描述对话框）Tab 缩进、Shift+Tab 反缩进。应用已在运行（v1.5.10 exe）。
 
 **待办/已知局限**：
 - **疑似 UI 缺陷（待排查）**：快速添加任务后列表偶发不刷新，重启后自愈（v1.5.2 验证时由 ComputerUse 发现，未复现定位）。
@@ -257,3 +259,4 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | 2026-08-26 | 接班模型（本会话，v1.5.6→v1.5.7 AI Prompts 页） | 待定 | 新增 AI Prompts 页面：`ai_prompts_screen.dart`（输入→生成→MD 渲染→Copy prompt 抓代码块）+ 路由 `/prompts` + 侧边栏项；`AiService.generatePrompt`（system=用户提供的 playbook 原文常量，user=`# 用户需求`+输入，temp 0.5/maxTokens 2000/响应超时 120s×3 推理模型）；顺带修复 Generate 按钮不随输入启用的真实缺陷（AnimatedBuilder）与侧边栏 "AI Prompts" 标签溢出（Flexible+ellipsis，8.7 模式）；5 项契约测试（共 222）；提交 `84deae2` 双推一次成功；打包 v1.5.7 35.9MB；exe 已启动 |
 | 2026-08-26 | 接班模型（本会话，v1.5.7→v1.5.8 AI Prompts 打磨轮） | 待定 | 用户四需求：①输入框拖拽调高（grip 120–420px）；②输入改 MarkdownEditorField（Write/Preview + 预览 sheet）；③字体接 Settings 双链路（输入 applyInputTypography、预览/输出 applyContentTypography，复用既有 Provider 不另起炉灶）；④质感（输出卡片 surface+圆角 12+RESULT 头、代码块淡底面板+边框、预览输出同 sheet WYSIWYG）。测试加 Write/Preview 存在断言（共 222）；提交 `56a2ce5` 双推一次成功；打包 v1.5.8 35.9MB；exe 已启动 |
 | 2026-08-26 | 接班模型（本会话，v1.5.8→v1.5.9 五项优化轮） | 待定 | ①AI Prompts 草稿跨页保持（ShellRoute 销毁 widget → 输入/结果入会话级 StateProvider，initState 恢复 + listener 持久化）；②输入区加 MarkdownToolbar；③报告移除 Overall（MD/HTML/双语提示词/_overallRag/overallS/`l.overall` 全链清除）；④执行摘要结构化（_firstSummary→_summaryLines，每行摘要独立 `  - ` 要点，MD/HTML/提示词同步）；⑤导出 HTML `_escapeTildesForHtml`（markdown 包 StrikethroughSyntax 连单 `~` 都匹配致误判删除线，全量转 `&#126;`，StyledHtml+EmailHtml 两路径）。4 项契约测试（共 226）；提交 `cc8c322` 双推一次成功；打包 v1.5.9 35.9MB；exe 已启动 |
+| 2026-08-26 | 接班模型（本会话，v1.5.9→v1.5.10 Tab 缩进收口） | 待定 | 用户要求所有页面输入框支持 Tab 缩进。全量审计：Work Log（_onInputKey）/执行日志（内联 onKeyEvent）/AI Parse/Reports/建任务/编辑任务对话框/MarkdownEditorField 默认节点均已支持；唯一缺口 AI Prompts 编辑器（裸 FocusNode）→ 换 `markdownIndentFocusNode(_inputController)`；单行字段（搜索/配置）保持 Tab=焦点导航。1 项 Tab 契约测试（共 227，注意 enterText 光标在文末，断言前须显式置 caret）；提交 `b83b60a` 双推一次成功；打包 v1.5.10 35.9MB；exe 已启动 |
