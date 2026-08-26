@@ -8,8 +8,13 @@ import 'package:flutter/material.dart';
 /// v1.6.1: Material's range picker sizes its dialog to
 /// `MediaQuery.sizeOf` — the FULL WINDOW — with zero insets, so on desktop
 /// the calendar floated in the middle of a fullscreen sheet with huge
-/// blank margins on both sides (user report). The builder now feeds the
-/// picker a COMPACT size override so the dialog hugs the calendar grid.
+/// blank margins on both sides (user report). The builder feeds the picker
+/// a compact size override instead.
+///
+/// v1.6.2: the 420×520 dialog felt too small (user report) — the picker is
+/// now rendered at a 440×460 layout size and scaled up 1.5× via
+/// [FittedBox], so the WHOLE popup (calendar cells, fonts, header) is
+/// visually 660×690 with zero blank side margins.
 Future<DateTimeRange?> showAppDateRangePicker({
   required BuildContext context,
   required DateTime firstDate,
@@ -20,10 +25,13 @@ Future<DateTimeRange?> showAppDateRangePicker({
   final isDark = theme.brightness == Brightness.dark;
   final scheme = theme.colorScheme;
 
-  // Compact content size for the picker (portrait month layout: a single
-  // month grid is at most 480 logical px wide, so 420 fits it with almost
-  // no side gutter).
-  const pickerSize = Size(420, 520);
+  // Layout size fed to the picker (portrait month layout: a single month
+  // grid is at most 480 logical px wide, so 440 fits it with no side
+  // gutter) and the visual scale-up factor — the aspect ratios match so
+  // FittedBox.contain scales exactly 1.5× and fills the outer box.
+  const pickerSize = Size(440, 460);
+  const pickerScale = 1.5;
+  const pickerVisualSize = Size(660, 690);
 
   return showDateRangePicker(
     context: context,
@@ -133,11 +141,20 @@ Future<DateTimeRange?> showAppDateRangePicker({
           child: Theme(
             data: pickerTheme,
             // v1.6.1: the range picker takes its dialog size from the
-            // closest MediaQuery — override it to a compact, calendar-hugging
-            // size so no fullscreen blank margins appear on desktop.
-            child: MediaQuery(
-              data: MediaQuery.of(context).copyWith(size: pickerSize),
-              child: child ?? const SizedBox.shrink(),
+            // closest MediaQuery — override it to a calendar-hugging size
+            // so no fullscreen blank margins appear on desktop.
+            // v1.6.2: FittedBox scales the whole picker up 1.5× inside the
+            // enlarged box — bigger calendar cells and text, zero margins.
+            child: SizedBox(
+              width: pickerVisualSize.width,
+              height: pickerVisualSize.height,
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: MediaQuery(
+                  data: MediaQuery.of(context).copyWith(size: pickerSize),
+                  child: child ?? const SizedBox.shrink(),
+                ),
+              ),
             ),
           ),
         ),
