@@ -8,17 +8,20 @@ import 'package:taskflow/presentation/shared/app_date_picker.dart';
 ///   the calendar floated in the middle of a fullscreen sheet with huge
 ///   blank side margins (user report). The wrapper must feed it a compact
 ///   size so the dialog hugs the calendar grid.
-/// - v1.6.2: that 420×520 dialog felt too small (user report) — the picker
-///   is now laid out at 440×460 and scaled up 1.5× via FittedBox, so the
-///   visible popup is 660×690 with zero blank margins.
+/// - v1.6.2: that 420×520 dialog felt too small (user report) — FittedBox
+///   1.5× scale-up to a 660×690 visual popup.
+/// - v1.6.3: 660×690 felt too big and the 1.5× strokes/text chunky (user
+///   report) — layout 480×500 (the SDK portrait grid width cap → zero
+///   margins) scaled just 1.1× into a 528×550 visual popup.
 void main() {
-  testWidgets('range picker dialog is enlarged 1.5x to a 660x690 popup',
-      (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1600, 1000));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
+  Future<void> openPicker(
+    WidgetTester tester, {
+    TextScaler textScaler = TextScaler.noScaling,
+  }) async {
     await tester.pumpWidget(
       MaterialApp(
+        builder: (context, child) =>
+            MediaQuery(data: MediaQuery.of(context).copyWith(textScaler: textScaler), child: child!),
         home: Builder(
           builder: (context) => Scaffold(
             body: Center(
@@ -37,21 +40,51 @@ void main() {
     );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
+  }
 
+  void expectSizes(WidgetTester tester) {
     // The picker's internal AnimatedContainer is sized from the overridden
-    // MediaQuery — 440x460 layout size, NOT the full 1600x1000 window.
+    // MediaQuery — 480x500 layout size, NOT the full window.
     final sized = find.descendant(
       of: find.byType(Dialog),
       matching: find.byType(AnimatedContainer),
     );
     expect(sized, findsOneWidget);
-    expect(tester.getSize(sized).width, 440);
-    expect(tester.getSize(sized).height, 460);
+    expect(tester.getSize(sized).width, 480);
+    expect(tester.getSize(sized).height, 500);
 
-    // The outer chrome carries the enlarged 660x690 visual size: the
-    // FittedBox (our wrapper's child) is 660x690 and scales the picker up
-    // 1.5x inside it.
-    expect(tester.getSize(find.byType(FittedBox)).width, 660);
-    expect(tester.getSize(find.byType(FittedBox)).height, 690);
+    // The FittedBox carries the enlarged 528x550 visual size (1.1x scale).
+    expect(tester.getSize(find.byType(FittedBox)).width, 528);
+    expect(tester.getSize(find.byType(FittedBox)).height, 550);
+  }
+
+  testWidgets('range picker dialog is a 1.1x-scaled 528x550 popup',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await openPicker(tester);
+    expectSizes(tester);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('picker layout holds across 3 text scales x 2 DPIs (v1.6.3)',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    for (final scale in const [1.0, 1.25, 1.4]) {
+      for (final dpr in const [1.0, 2.0]) {
+        tester.view.devicePixelRatio = dpr;
+        addTearDown(() => tester.view.resetDevicePixelRatio());
+        await openPicker(tester, textScaler: TextScaler.linear(scale));
+        expectSizes(tester);
+        expect(tester.takeException(), isNull,
+            reason: 'scale=$scale dpr=$dpr');
+        // Close the dialog (calendar mode uses an X CloseButton, not a
+        // Cancel text button) before the next combination.
+        await tester.tap(find.byIcon(Icons.close));
+        await tester.pumpAndSettle();
+      }
+    }
   });
 }
