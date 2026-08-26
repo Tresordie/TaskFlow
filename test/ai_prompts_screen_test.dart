@@ -81,5 +81,43 @@ void main() {
         findsOneWidget,
       );
     });
+
+    testWidgets('draft input survives leaving and returning to the page',
+        (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1280, 900));
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: AiPromptsScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '跨页面保留的草稿');
+      await tester.pumpAndSettle();
+
+      // Navigate "away" — the shell disposes the screen; pump a placeholder.
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: Scaffold(body: Text('other page'))),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Back to the page — the draft must be restored from the provider.
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: AiPromptsScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.controller?.text, '跨页面保留的草稿');
+    });
   });
 }

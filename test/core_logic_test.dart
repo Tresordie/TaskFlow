@@ -445,6 +445,57 @@ void main() {
       expect(html, contains('idbase64 fix deployed<br>PDA data sync</td>'));
     });
 
+    test('Overall summary line is removed from the dashboard (v1.5.9)', () {
+      final data = sampleWeekly();
+      final md = ReportService(TaskRepository()).toMarkdown(data);
+      expect(md, isNot(contains('**Overall:**')));
+
+      final html = ReportService(TaskRepository()).toHtml(data);
+      expect(html, isNot(contains('class="overall"')));
+
+      // The AI prompts no longer request it either.
+      expect(ReportService.fullReportPrompt(ReportLanguage.english),
+          isNot(contains('**Overall:**')));
+      expect(ReportService.fullReportPrompt(ReportLanguage.chinese),
+          isNot(contains('**总体:**')));
+    });
+
+    test('executive summary renders the STRUCTURED summary bullets '
+        '(v1.5.9)', () {
+      final data = sampleWeekly();
+      final target = data.completed.first;
+      final md = ReportService(TaskRepository()).toMarkdown(
+        data,
+        aiSummaries: {target: 'Shipped the fix to the factory\nClosed after PVT sign-off'},
+      );
+      // Title bullet, then EVERY summary line as its own indented bullet.
+      expect(md, contains('- **idbase64 fix deployed**'));
+      expect(md, contains('  - Shipped the fix to the factory'));
+      expect(md, contains('  - Closed after PVT sign-off'));
+
+      final html = ReportService(TaskRepository()).toHtml(
+        data,
+        aiSummaries: {target: 'Shipped the fix to the factory\nClosed after PVT sign-off'},
+      );
+      expect(html, contains('>Shipped the fix to the factory</li>'));
+      expect(html, contains('>Closed after PVT sign-off</li>'));
+    });
+
+    test('exported HTML keeps literal tildes (no accidental strikethrough) '
+        '(v1.5.9)', () {
+      const src = 'Vout ~ 5V and temp ~ stable, both fine.\n\n'
+          '| A | B |\n|---|---|\n| ~x~ | 1 Hz ≈ 1 rpm ~ok~ |';
+      final styled =
+          ReportService(TaskRepository()).markdownToStyledHtml(src);
+      expect(styled, contains('Vout ~ 5V and temp ~ stable'));
+      expect(styled, isNot(contains('<del>')));
+
+      final email =
+          ReportService(TaskRepository()).markdownToEmailHtml(src);
+      expect(email, contains('Vout ~ 5V and temp ~ stable'));
+      expect(email, isNot(contains('<del>')));
+    });
+
     test('executive summary drops the sub-step ratio (v1.5.6)', () {
       final data = sampleWeekly(); // brake sensor validation: 1/2 sub-steps
       final md = ReportService(TaskRepository()).toMarkdown(data);

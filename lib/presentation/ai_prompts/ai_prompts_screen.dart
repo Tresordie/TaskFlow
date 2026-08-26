@@ -9,6 +9,14 @@ import '../../providers/typography_provider.dart';
 import '../../core/theme/font_stack.dart';
 import '../shared/app_markdown_body.dart';
 import '../shared/markdown_editor_field.dart';
+import '../shared/markdown_input.dart';
+
+/// Session-scoped draft state for the AI Prompts page: the ShellRoute
+/// disposes the screen widget on every navigation, so the requirement text
+/// and the last generated result live HERE to survive page switches
+/// (v1.5.9 — "switch away and back must keep the content").
+final aiPromptsInputProvider = StateProvider<String>((ref) => '');
+final aiPromptsResultProvider = StateProvider<String>((ref) => '');
 
 /// AI Prompts (v1.5.7) — paste a rough requirement, get an expert-grade,
 /// copy-ready prompt rewritten by the configured LLM following the
@@ -48,7 +56,21 @@ class _AiPromptsScreenState extends ConsumerState<AiPromptsScreen> {
   static const double _maxInputHeight = 420;
 
   @override
+  void initState() {
+    super.initState();
+    // Restore the session draft (input + last result survive page switches).
+    _inputController.text = ref.read(aiPromptsInputProvider);
+    _result = ref.read(aiPromptsResultProvider);
+    _inputController.addListener(_persistDraft);
+  }
+
+  void _persistDraft() {
+    ref.read(aiPromptsInputProvider.notifier).state = _inputController.text;
+  }
+
+  @override
   void dispose() {
+    _inputController.removeListener(_persistDraft);
     _inputController.dispose();
     _inputFocus.dispose();
     _scrollController.dispose();
@@ -83,6 +105,7 @@ class _AiPromptsScreenState extends ConsumerState<AiPromptsScreen> {
         _result = result;
         _generating = false;
       });
+      ref.read(aiPromptsResultProvider.notifier).state = result;
     } catch (e) {
       setState(() {
         _generating = false;
@@ -174,20 +197,32 @@ class _AiPromptsScreenState extends ConsumerState<AiPromptsScreen> {
               ),
             ),
 
-            // ── Input (markdown editor, resizable) ──────────────────
+            // ── Input (markdown editor + toolbar, resizable) ────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: MarkdownEditorField(
-                controller: _inputController,
-                focusNode: _inputFocus,
-                height: _inputHeight,
-                minLines: 4,
-                maxLines: 24,
-                style: inputStyle,
-                hintText:
-                    'Describe what you need, in any form…\n\ne.g.\n- 写一个周报总结工具\n- 帮我分析这份销售数据\n- 写一篇产品发布文案（面向开发者社区）',
-                hardenLineBreaks: true,
-                styleSheet: _previewSheet(theme),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Markdown toolbar: headings, bold/italic, lists, code,
+                  // indent/outdent — same helpers as every other input area.
+                  MarkdownToolbar(
+                    controller: _inputController,
+                    refocus: _inputFocus,
+                  ),
+                  const SizedBox(height: 6),
+                  MarkdownEditorField(
+                    controller: _inputController,
+                    focusNode: _inputFocus,
+                    height: _inputHeight,
+                    minLines: 4,
+                    maxLines: 24,
+                    style: inputStyle,
+                    hintText:
+                        'Describe what you need, in any form…\n\ne.g.\n- 写一个周报总结工具\n- 帮我分析这份销售数据\n- 写一篇产品发布文案（面向开发者社区）',
+                    hardenLineBreaks: true,
+                    styleSheet: _previewSheet(theme),
+                  ),
+                ],
               ),
             ),
 

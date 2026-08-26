@@ -206,7 +206,6 @@ class _L {
   String get status => _zh ? '状态' : 'Status';
   String get progress => _zh ? '进度' : 'Progress';
   String get headline => _zh ? '要点' : 'Headline';
-  String get overall => _zh ? '总体' : 'Overall';
   String get tasksTouched => _zh ? '涉及任务' : 'tasks touched';
   String get completedWord => _zh ? '已完成' : 'completed';
   String get subStepsWord => _zh ? '子步骤' : 'sub-steps';
@@ -646,17 +645,16 @@ class ReportService {
       '|:-----:|:------:|:--------:|:---------|\n'
       '| {Project} | {emoji} {label} | {done}/{total} | {headline 1}<br>'
       '{headline 2}<br>{headline 3} |\n\n'
-      '**Overall:** {emoji} {label} — {N} tasks touched · {M} completed '
-      '({pct}%) · sub-steps {x}/{y}\n\n'
       '---\n\n'
       '## 2. Executive Summary\n\n'
       '### ✅ Achievements (Completed)\n'
       '- **{Task title}** (completed {MM-DD})\n'
-      '  - {1–2 sentence incisive summary of what was accomplished and '
-      'why it matters.}\n\n'
+      '  - {summary fact 1}\n'
+      '  - {summary fact 2}\n\n'
       '### 🚧 In Progress (Watch)\n'
       '- **{Task title}**\n'
-      '  - {1–2 sentence summary of current state and what remains.}\n\n'
+      '  - {summary fact 1}\n'
+      '  - {summary fact 2}\n\n'
       '### ⚠️ Risks / Blockers\n'
       '- **{Task title}** — overdue (due {MM-DD}, {Px}) or blocked since '
       '{MM-DD}\n'
@@ -696,18 +694,17 @@ class ReportService {
       '- Headline = a LIST of up to 3 of the project\'s most significant '
       'task titles or outcomes, most impactful first, one per line, '
       'separated by <br> — never a single line and never a long '
-      'paragraph.\n'
-      '- The Overall line aggregates across all projects.\n\n'
+      'paragraph.\n\n'
       '2. Executive Summary:\n'
       '- Achievements: only Completed tasks (completion date in period). '
-      'Present as a bullet list; each task gets exactly 1–2 sentences '
-      'focusing on OUTCOME and significance, not process. Do NOT write '
-      'paragraphs — keep it tight and scannable. The bullet line carries '
-      'ONLY the bold task title and completion date — NO sub-step '
-      'ratios, no extra metrics after the title.\n'
+      'The bullet line carries ONLY the bold task title and completion '
+      'date — NO sub-step ratios, no extra metrics after the title. The '
+      'task\'s summary is STRUCTURED: 1–3 indented "  - " fact bullets '
+      'under the title, one fact per bullet, focusing on OUTCOME and '
+      'significance. No paragraphs, no merged multi-fact bullets.\n'
       '- In Progress: bullet line = bold task title ONLY (no sub-step '
-      'ratio); the indented summary states what advanced this period '
-      'and what remains.\n'
+      'ratio); the structured indented bullets state what advanced this '
+      'period and what remains.\n'
       '- Risks / Blockers: overdue tasks and tasks with blocked log '
       'entries. MUST include reason/root cause; state schedule impact '
       'if any.\n'
@@ -787,8 +784,8 @@ class ReportService {
       'bullets.\n'
       '- All summaries use nested bullet hierarchy — zero flat '
       'paragraphs anywhere.\n'
-      '- Executive Summary bullets ≤ 2 sentences each; bullet lines carry '
-      'no sub-step ratios.\n'
+      '- Executive Summary: each task = title bullet + 1–3 indented fact '
+      'bullets; no sub-step ratios anywhere.\n'
       '- Status Dashboard Headline cells are <br>-separated lists of up '
       'to 3 headlines — never one long line.\n'
       '- Progress Details: every task is a bold header line + "- " '
@@ -847,16 +844,16 @@ class ReportService {
       '| 项目 | 状态 | 进度 | 要点 |\n'
       '|:-----:|:------:|:--------:|:---------|\n'
       '| {项目} | {emoji} {标签} | {完成数}/{总数} | {要点1}<br>{要点2}<br>{要点3} |\n\n'
-      '**总体:** {emoji} {标签} — 涉及 {N} 项任务 · 已完成 {M} 项'
-      '（{pct}%）· 子步骤 {x}/{y}\n\n'
       '---\n\n'
       '## 2. 执行摘要\n\n'
       '### ✅ 已完成事项\n'
       '- **{任务标题}**（完成于 {MM-DD}）\n'
-      '  - {1–2 句精炼总结：完成了什么、为何重要}\n\n'
+      '  - {要点1}\n'
+      '  - {要点2}\n\n'
       '### 🚧 进行中（关注）\n'
       '- **{任务标题}**\n'
-      '  - {1–2 句总结：当前状态与剩余工作}\n\n'
+      '  - {要点1}\n'
+      '  - {要点2}\n\n'
       '### ⚠️ 风险与阻塞\n'
       '- **{任务标题}** — 逾期（截止 {MM-DD}，{Px}）或阻塞自 {MM-DD}\n'
       '  - {1–2 句总结：根因与影响}\n'
@@ -886,12 +883,12 @@ class ReportService {
       '🟡 有风险（延期/外部依赖/逾期/临近截止）、🔴 阻塞；'
       '进度=已完成/总数；要点=该项目最重要的至多 3 个任务标题或成果，'
       '按影响力排序，每行一个，用 <br> 分隔——禁止挤成一行或写成长段。\n\n'
-      '2. 执行摘要：成果仅含已完成任务，以列表呈现，每条聚焦结果与'
-      '意义、不超 2 句，禁止写成段落，保持精炼可扫读；要点行只含'
-      '加粗任务标题与完成日期，禁止附子步骤比例等任何指标；'
-      '进行中条目要点行仅加粗标题（无子步骤比例），缩进总结说明'
-      '本期推进与剩余工作；风险含逾期任务和阻塞日志条目，'
-      '必须说明根因与进度影响。\n\n'
+      '2. 执行摘要：成果仅含已完成任务。要点行只含加粗任务标题与完成'
+      '日期，禁止附子步骤比例等任何指标；任务总结必须结构化——标题下'
+      '以 1–3 条缩进 "  - " 事实要点呈现，一条一个事实，聚焦结果与意义，'
+      '禁止写成段落、禁止合并多事实；进行中条目要点行仅加粗标题'
+      '（无子步骤比例），缩进要点说明本期推进与剩余工作；风险含逾期'
+      '任务和阻塞日志条目，必须说明根因与进度影响。\n\n'
       '3. 进度明细：按项目分组（H3）。版式（严格）：每个任务是一段'
       '内容清单而非表格——一行加粗标题"**{状态图标} {任务标题}** — '
       '{状态}"，紧跟其详情条目，每条用 "- " 列表项呈现，严格一条'
@@ -927,7 +924,8 @@ class ReportService {
       '需决策事项）全部齐备；每个任务至少出现在一个章节；技术术语、'
       '物料编号、缩写、测量值原样保留不得改写；每个要点只讲一个事实、'
       '不合并多事实；所有总结用嵌套列表层级、全报告零平铺段落；'
-      '摘要不超 2 句、要点行不带子步骤比例；状态仪表盘要点格为'
+      '摘要为标题要点+1–3 条缩进事实要点的结构化列表、要点行不带'
+      '子步骤比例；状态仪表盘要点格为'
       '<br> 分隔的至多 3 条列表；进度明细每个任务=加粗标题行+"- "清单，'
       '严格一条一行，最多 5 条，本节禁止表格与 <br>，超过 10 天的'
       '旧日志只以"早期背景："一句出现；技术要点完整具体、'
@@ -975,12 +973,6 @@ class ReportService {
           '| ${_term(g.key, aiTerms)} | ${rag.emoji} ${rag.label} | $done/${g.value.length} | $headlines |');
     }
     b.writeln();
-    final overall = _overallRag(groups, d, l);
-    b.writeln(
-        '**${l.overall}:** ${overall.emoji} ${overall.label} — ${d.totalTouched} ${l.tasksTouched} · '
-        '${d.completed.length} ${l.completedWord} (${(d.completionRate * 100).toStringAsFixed(0)}%) · '
-        '${l.subStepsWord} ${d.subStepsDone}/${d.subStepsTotal}');
-    b.writeln();
     b.writeln('---');
     b.writeln();
 
@@ -994,8 +986,11 @@ class ReportService {
       for (final t in d.completed) {
         b.writeln('- **${_mdEscape(_title(t, aiTitles))}**${_tagSuffix(t, aiTerms)} '
             '(${l.doneOn(DateFormat('MM-dd').format(t.completedAt!))})');
-        final sub = _firstSummary(t, aiSummaries);
-        if (sub != null) b.writeln('  - ${_mdEscape(sub)}');
+        // v1.5.9: STRUCTURED summary — every AI summary line becomes its
+        // own indented fact bullet (one fact per line), not just the first.
+        for (final line in _summaryLines(t, aiSummaries)) {
+          b.writeln('  - ${_mdEscape(line)}');
+        }
       }
     }
     b.writeln();
@@ -1008,8 +1003,9 @@ class ReportService {
         // gone from the Executive Summary (user request).
         b.writeln(
             '- **${_mdEscape(_title(t, aiTitles))}**${_tagSuffix(t, aiTerms)}');
-        final sub = _firstSummary(t, aiSummaries);
-        if (sub != null) b.writeln('  - ${_mdEscape(sub)}');
+        for (final line in _summaryLines(t, aiSummaries)) {
+          b.writeln('  - ${_mdEscape(line)}');
+        }
       }
     }
     b.writeln();
@@ -1133,19 +1129,6 @@ class ReportService {
     return (emoji: '🟢', label: l.onTrack);
   }
 
-  ({String emoji, String label}) _overallRag(
-      Map<String, List<Task>> groups, ReportData d, _L l) {
-    var worst = 0; // 0 green · 1 yellow · 2 red
-    for (final g in groups.values) {
-      final rag = _ragForGroup(g, d, l);
-      final level = rag.emoji == '🔴' ? 2 : (rag.emoji == '🟡' ? 1 : 0);
-      if (level > worst) worst = level;
-    }
-    if (worst == 2) return (emoji: '🔴', label: l.atRisk);
-    if (worst == 1) return (emoji: '🟡', label: l.watch);
-    return (emoji: '🟢', label: l.onTrack);
-  }
-
   /// Display name for a task: the AI-translated title when available,
   /// otherwise the original title.
   String _title(Task t, Map<Task, String>? aiTitles) {
@@ -1228,16 +1211,17 @@ class ReportService {
     return [parts.isEmpty ? '—' : parts.join(' · ')];
   }
 
-  /// First AI summary bullet for a task, shown as context under the
-  /// Executive Summary entries; null when there is none.
-  String? _firstSummary(Task t, Map<Task, String>? aiSummaries) {
+  /// ALL summary lines of a task for the STRUCTURED Executive Summary
+  /// (v1.5.9): each AI summary line becomes its own indented fact bullet.
+  /// Empty when there is no summary.
+  List<String> _summaryLines(Task t, Map<Task, String>? aiSummaries) {
     final s = aiSummaries?[t];
-    if (s == null) return null;
-    for (final line in s.split('\n')) {
-      final trimmed = line.trim();
-      if (trimmed.isNotEmpty) return _oneLine(trimmed);
-    }
-    return null;
+    if (s == null) return const [];
+    return s
+        .split('\n')
+        .map((line) => _oneLine(line.trim()))
+        .where((line) => line.isNotEmpty)
+        .toList();
   }
 
   /// Upcoming work: in-progress carry-over plus newly planned tasks,
@@ -1369,12 +1353,6 @@ class ReportService {
         'vertical-align:top;';
     const tdC = '${tdL}text-align:center;';
     const tdT = '${tdL}font-weight:600;';
-    final overallS = email
-        ? 'border:1px solid $bd;padding:12px 16px;font-size:13px;'
-            'margin-top:8px;margin-bottom:20px;background-color:#FFFFFF;'
-        : 'background:#ffffff;border:1px solid $bd;'
-            'border-radius:12px;padding:14px 16px;'
-            'font-size:13px;margin-top:8px;';
     const sumUlS = 'margin:6px 0 0;padding-left:20px;';
     const sumLiS = 'font-size:13px;margin-bottom:6px;line-height:1.5;';
     const subUlS = 'margin:4px 0 2px;padding-left:18px;color:#475569;';
@@ -1394,7 +1372,6 @@ class ReportService {
             'padding:8px 14px 6px;margin:0 0 12px;background:$bg;';
 
     final groups = _groupByProject(d.touchedTasks, l);
-    final overall = _overallRag(groups, d, l);
 
     String ragPill(({String emoji, String label}) rag) {
       if (email) {
@@ -1528,8 +1505,6 @@ $bodyOpen$innerHead''');
   .center { text-align:center; }
   .rag { display:inline-block; padding:2px 10px; border-radius:999px;
          font-size:11px; font-weight:700; white-space:nowrap; }
-  .overall { background:#fff; border:1px solid var(--border); border-radius:12px;
-             padding:14px 16px; font-size:13px; margin-top:8px; }
   ul.sum { margin:6px 0 0; padding-left:20px; }
   ul.sum li { font-size:13px; margin-bottom:6px; line-height:1.5; }
   ul.sum li ul.sub { margin:4px 0 2px; padding-left:18px; color:#475569; }
@@ -1565,7 +1540,6 @@ $bodyOpen$innerHead''');
     }
 
     b.write('''</table>
-<div class="overall" style="$overallS"><strong>${l.overall}:</strong> ${ragPill(overall)} — ${d.totalTouched} ${l.tasksTouched} · ${d.completed.length} ${l.completedWord} (${(d.completionRate * 100).toStringAsFixed(0)}%) · ${l.subStepsWord} ${d.subStepsDone}/${d.subStepsTotal}</div>
 
 <h2 style="$h2S">2. ${l.executiveSummary}</h2>
 <h3 style="$h3S">✅ ${l.achievements}</h3>
@@ -1580,10 +1554,14 @@ $bodyOpen$innerHead''');
         b.write(
             '<li style="$sumLiS"><strong>${esc(_title(t, aiTitles))}</strong>${esc(_tagSuffix(t, aiTerms))} '
             '(${esc(l.doneOn(DateFormat('MM-dd').format(t.completedAt!)))})');
-        final sub = _firstSummary(t, aiSummaries);
-        if (sub != null) {
-          b.write(
-              '<ul class="sub" style="$subUlS"><li style="$subLiS">${esc(sub)}</li></ul>');
+        // v1.5.9: STRUCTURED summary — every line its own indented bullet.
+        final lines = _summaryLines(t, aiSummaries);
+        if (lines.isNotEmpty) {
+          b.write('<ul class="sub" style="$subUlS">');
+          for (final line in lines) {
+            b.write('<li style="$subLiS">${esc(line)}</li>');
+          }
+          b.write('</ul>');
         }
         b.write('</li>');
       }
@@ -1601,10 +1579,13 @@ $bodyOpen$innerHead''');
         // v1.5.6: title only — no sub-step ratio (mirrors the markdown).
         b.write(
             '<li style="$sumLiS"><strong>${esc(_title(t, aiTitles))}</strong>${esc(_tagSuffix(t, aiTerms))}');
-        final sub = _firstSummary(t, aiSummaries);
-        if (sub != null) {
-          b.write(
-              '<ul class="sub" style="$subUlS"><li style="$subLiS">${esc(sub)}</li></ul>');
+        final lines = _summaryLines(t, aiSummaries);
+        if (lines.isNotEmpty) {
+          b.write('<ul class="sub" style="$subUlS">');
+          for (final line in lines) {
+            b.write('<li style="$subLiS">${esc(line)}</li>');
+          }
+          b.write('</ul>');
         }
         b.write('</li>');
       }
@@ -1681,6 +1662,15 @@ $bodyOpen$innerHead''');
     return b.toString();
   }
 
+  /// Escapes every literal `~` before the markdown→HTML conversion. The
+  /// markdown package's strikethrough syntax matches SINGLE tildes too
+  /// (`~text~`), so engineering text like "Vout ~ 5V … temp ~ stable"
+  /// turned everything between two tildes into a strikethrough run
+  /// (v1.5.9 user report). Reports never legitimately use ~~strikethrough~~
+  /// — the approx sign is what tildes mean here — so the escape is safe.
+  /// `&#126;` renders as a plain `~` in every browser and mail client.
+  String _escapeTildesForHtml(String markdown) => markdown.replaceAll('~', '&#126;');
+
   /// Converts a Markdown string (typically the user-edited report source)
   /// into a standalone, styled HTML document.
   ///
@@ -1691,7 +1681,7 @@ $bodyOpen$innerHead''');
   /// extension set.
   String markdownToStyledHtml(String markdown, {String? title}) {
     var body = md.markdownToHtml(
-      _normalizeMultilineTableRows(markdown),
+      _escapeTildesForHtml(_normalizeMultilineTableRows(markdown)),
       extensionSet: md.ExtensionSet.gitHubWeb,
     );
     // Align the Progress Details tables (fixed 25%/8%/67% column widths) so
@@ -1748,7 +1738,7 @@ $body
   /// adapted for mail clients.
   String markdownToEmailHtml(String markdown, {String? title}) {
     var body = md.markdownToHtml(
-      _normalizeMultilineTableRows(markdown),
+      _escapeTildesForHtml(_normalizeMultilineTableRows(markdown)),
       extensionSet: md.ExtensionSet.gitHubWeb,
     );
     body = _alignProgressTables(body);
