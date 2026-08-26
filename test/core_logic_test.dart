@@ -431,6 +431,100 @@ void main() {
       expect(md, contains('AI: vendor quote pending, ETA next Tue'));
     });
 
+    test('dashboard Headline cell renders as a <br> list (v1.5.6)', () {
+      final data = sampleWeekly();
+      final md = ReportService(TaskRepository()).toMarkdown(data);
+      // Cosmo group = completed 'idbase64 fix deployed' + in-progress
+      // 'PDA data sync' → two headline lines inside the cell (the group
+      // RAG is 🔴 because of the blocked log entry).
+      expect(md, contains('| Cosmo | 🔴'));
+      expect(
+          md, contains('1/2 | idbase64 fix deployed<br>PDA data sync |'));
+
+      final html = ReportService(TaskRepository()).toHtml(data);
+      expect(html, contains('idbase64 fix deployed<br>PDA data sync</td>'));
+    });
+
+    test('executive summary drops the sub-step ratio (v1.5.6)', () {
+      final data = sampleWeekly(); // brake sensor validation: 1/2 sub-steps
+      final md = ReportService(TaskRepository()).toMarkdown(data);
+      expect(md, contains('- **brake sensor validation**'));
+      expect(md, isNot(contains('**brake sensor validation** — 1/2')));
+
+      final html = ReportService(TaskRepository()).toHtml(data);
+      expect(html, contains('<strong>brake sensor validation</strong>'));
+      expect(html, isNot(contains('</strong> — 1/2 sub-steps')));
+    });
+
+    test('formatTaskData splits logs at the 10-day recency line (v1.5.6)',
+        () {
+      final t = Task()
+        ..uid = 'x'
+        ..title = 'log split'
+        ..project = 'Cosmo'
+        ..executionLog = [
+          ExecutionEntry()
+            ..uid = 'l1'
+            ..timestamp = DateTime(2026, 7, 16)
+            ..content = 'in period entry'
+            ..type = EntryType.note,
+          ExecutionEntry()
+            ..uid = 'l2'
+            ..timestamp = DateTime(2026, 7, 12)
+            ..content = 'recent outside period'
+            ..type = EntryType.note,
+          ExecutionEntry()
+            ..uid = 'l3'
+            ..timestamp = DateTime(2026, 6, 1)
+            ..content = 'ancient history'
+            ..type = EntryType.note,
+        ];
+      final data = ReportData(
+        period: ReportPeriod.weekly,
+        start: DateTime(2026, 7, 13),
+        end: DateTime(2026, 7, 20),
+        completed: const [],
+        inProgress: [t],
+        planned: const [],
+        overdue: const [],
+        logActivity: {},
+        entryPass: 0,
+        entryFail: 0,
+        entryBlocked: 0,
+        entryNote: 3,
+        subStepsDone: 0,
+        subStepsTotal: 0,
+      );
+      final txt = ReportService(TaskRepository()).formatTaskData(data);
+
+      // In-period and recent (last 10 days) entries stay in full …
+      expect(txt, contains('[07-16] note: in period entry'));
+      expect(txt, contains('[2026-07-12] note: recent outside period'));
+      // … the old entry carries the context-only label …
+      expect(txt,
+          contains('(older than 10 days — context only): ancient history'));
+      // … and the recent one does NOT.
+      expect(txt,
+          isNot(contains('context only): recent outside period')));
+      expect(txt,
+          contains('3 entries total, 1 in period, 2 within the last 10 days'));
+    });
+
+    test('full-report prompt encodes headline list + 10-day focus '
+        '(v1.5.6)', () {
+      final en = ReportService.fullReportPrompt(ReportLanguage.english);
+      expect(en, contains('{headline 1}<br>{headline 2}<br>{headline 3}'));
+      expect(en, contains('LAST 10 DAYS'));
+      expect(en, contains('Earlier context: '));
+      expect(en, isNot(contains('- **{Task title}** — {x}/{y} sub-steps')));
+      expect(en, contains('older than 10 days — context only'));
+
+      final zh = ReportService.fullReportPrompt(ReportLanguage.chinese);
+      expect(zh, contains('{要点1}<br>{要点2}<br>{要点3}'));
+      expect(zh, contains('近 10 天'));
+      expect(zh, contains('早期背景：'));
+    });
+
     test('multi-line AI summaries render as a content list in Details', () {
       final data = sampleWeekly();
       final target = data.completed.first; // idbase64 fix deployed
