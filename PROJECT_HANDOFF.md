@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-08-26 · 当前版本 **v1.5.8**（已发版：AI Prompts 页打磨——可调大小 Markdown 输入框 + Settings 字体联动 + 输出质感；代码 + 测试 + 构建 + 提交双推 + 打包完成）
+> 最后更新：2026-08-26 · 当前版本 **v1.5.9**（已发版：AI Prompts 草稿跨页保持+Markdown 工具栏；报告去 Overall、执行摘要结构化、HTML 导出 ~ 转义；代码 + 测试 + 构建 + 提交双推 + 打包完成）
 
 ---
 
@@ -152,6 +152,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | v1.5.6 | 报告生成四项打磨（用户需求）：① 状态仪表盘 Headline 格改 **`<br>` 分隔的至多 3 条任务要点列表**（AI 提示词 + toMarkdown/toHtml 确定性渲染同步，应用内 BrSyntax/导出 HTML 原生渲染换行）；② 执行摘要要点行**去掉 sub-step 比例**（只留加粗标题）；③ 进度明细 **10 天近因聚焦**——formatTaskData 以报告期结束日为基准，近 10 天日志完整投喂、更早的标注 "(older than 10 days — context only)"（12000 字符上限保留），提示词要求旧日志压缩为至多一句"早期背景："置于任务要点末尾（计入 5 条上限）；④ 导出 HTML 本就由 Markdown 源渲染（markdownToStyledHtml/EmailHtml），MD 改动自动带动 HTML 一致 | 用户要求报告更聚焦近期、版式更整洁；Headline 单行信息量不足 |
 | v1.5.7 | 新增 **AI Prompts 页面**（侧边栏 AI Parse 下方，`/prompts`）：输入粗糙需求 → `AiService.generatePrompt`（system=用户提供的提示词工程专家 playbook 常量 `promptEngineerSystemPrompt`，user=`# 用户需求\n{输入}`）→ AppMarkdownBody 渲染 📋提示词/⚠假设/💡使用建议 三段输出 + **Copy prompt**（`extractPromptBody` 抓首个代码块）/Copy all；不落盘纯草稿页；未配置 AI 时提示去 Settings | 用户给定完整 playbook 文本原样入库；顺带修复 Generate 按钮不随输入启用（TextField 不触发 rebuild，接 AnimatedBuilder）与侧边栏 "AI Prompts" 标签 7px 溢出（8.7 同款，Flexible+ellipsis） |
 | v1.5.8 | AI Prompts 四项打磨（用户需求）：① 输入框**拖拽调高**（grip 柄 120–420px，Work Log/AI Parse 同款）；② 输入改 **MarkdownEditorField**（Write/Preview 切换，与其他输入区工具链一致）；③ 字体联动 Settings——输入走 `applyInputTypography`（Settings→Fonts 输入区 family/size），预览与输出走 `applyContentTypography`（内容区设置）；④ 质感——输出卡片 surface 底+圆角 12+RESULT 头条、代码块淡底面板+边框（提示词正文即复制目标的视觉强化）、预览与输出共用同一 styleSheet（WYSIWYG） | 输入框是页面主体，可调大小+markdown 支持是工具页刚需；字体双链路复用既有 Provider 体系不另起炉灶（禁忌 9.11 回退链由 apply*Typography 内建） |
+| v1.5.9 | 五项优化（用户需求）：① AI Prompts 输入/结果**跨页面保持**——`aiPromptsInputProvider`/`aiPromptsResultProvider` 会话级 StateProvider（ShellRoute 每次导航销毁页面 widget，草稿必须放 provider）；② 输入区加 **MarkdownToolbar**（标题/粗斜体/清单/缩进等与全应用一致）；③ 报告**移除 Overall 总结行**（MD/HTML/双语提示词/`_overallRag`/样式全链清除）；④ 执行摘要**结构化**——`_firstSummary`→`_summaryLines`，AI 摘要每行独立缩进要点（MD/HTML/双语提示词同步）；⑤ 导出 HTML **`_escapeTildesForHtml`**——markdown 包删除线语法连单 `~` 都匹配，"Vout ~ 5V … temp ~ stable" 两波浪号间全成删除线；报告不用删除线、`~` 即约等号，全量转 `&#126;`（StyledHtml+EmailHtml 两路径） | ShellRoute 生命周期决定状态必须外置；单波浪号误判删除线是 markdown 包 StrikethroughSyntax 的 `~~?` 贪婪匹配所致 |
 
 ---
 
@@ -209,16 +210,16 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
-- ✅ v1.5.8（已发版）：AI Prompts 打磨——输入框改 MarkdownEditorField（Write/Preview）+ 拖拽调高（120–420px）+ 字体双链路接 Settings（applyInputTypography/applyContentTypography）+ 输出卡片质感（代码块面板、RESULT 头、预览输出同 sheet）；222 测试全过、双推 `56a2ce5`、包体 35.9MB
-- ✅ v1.5.7：新增 AI Prompts 页面（`/prompts`，侧边栏 AI Parse 下方）——粗糙需求改写为专家级提示词；`AiService.generatePrompt` + `promptEngineerSystemPrompt` 常量 + `extractPromptBody` 复制提取；顺带修复 Generate 按钮输入响应与侧边栏标签溢出
-- ✅ v1.5.6：报告生成打磨——仪表盘 Headline `<br>` 列表（≤3 条）、执行摘要去 sub-step 比例、进度明细 10 天近因聚焦（旧日志一句"早期背景："）
-- ✅ v1.5.5：alerts GitHub 风格重构（参考截图）+ LaTeX 接入 TextScaler
-- ✅ v1.5.4：可选链表格 WidgetSpan 真实 Table + checkbox Material 图标 + alerts 美化
-- ✅ v1.5.3：GFM 四能力两链补齐；✅ v1.5.2：字体升级；✅ v1.5.1：块间距；✅ v1.5.0：扩展 Markdown
-- 双远程同步至 `56a2ce5`（v1.5.8）
+- ✅ v1.5.9（已发版）：AI Prompts 草稿跨页保持（StateProvider）+ MarkdownToolbar；报告移除 Overall 行（全链）、执行摘要结构化（每行摘要独立要点）、导出 HTML 转义 `~` 防误判删除线；226 测试全过（+4 契约）、双推 `cc8c322`、包体 35.9MB
+- ✅ v1.5.8：AI Prompts 打磨——可调大小 MarkdownEditorField + Settings 字体双链路 + 输出卡片质感
+- ✅ v1.5.7：新增 AI Prompts 页面（`/prompts`）
+- ✅ v1.5.6：报告生成打磨——Headline `<br>` 列表、摘要去 sub-step 比例、10 天近因聚焦
+- ✅ v1.5.5：alerts GitHub 风格 + LaTeX TextScaler；✅ v1.5.4：表格 WidgetSpan/checkbox 图标/alerts 美化
+- ✅ v1.5.3：GFM 四能力；✅ v1.5.2：字体升级；✅ v1.5.1：块间距；✅ v1.5.0：扩展 Markdown
+- 双远程同步至 `cc8c322`（v1.5.9）
 
 **进行中**：
-- 用户实机验证 v1.5.8：AI Prompts 页拖拽调高、Write/Preview、字体随 Settings 变化、输出观感。应用已在运行（v1.5.8 exe）。
+- 用户实机验证 v1.5.9：AI Prompts 切页草稿保持 + 工具栏；报告无 Overall、摘要结构化要点、导出 HTML 中 `~` 正常显示。应用已在运行（v1.5.9 exe）。
 
 **待办/已知局限**：
 - **疑似 UI 缺陷（待排查）**：快速添加任务后列表偶发不刷新，重启后自愈（v1.5.2 验证时由 ComputerUse 发现，未复现定位）。
@@ -255,3 +256,4 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | 2026-08-26 | 接班模型（本会话，v1.5.5→v1.5.6 报告打磨轮） | 待定 | 用户四需求：①仪表盘 Headline 列表化（`_groupHeadline`→`_groupHeadlines` ≤3 条 `<br>` 连接，提示词模板+规则+自检三处同步）；②执行摘要去 sub-step 比例（MD/HTML/双语提示词）；③进度明细 10 天近因聚焦（formatTaskData 以期终为基准分档，旧日志标 context-only，提示词要求压成"早期背景："一句计入 5 条上限）；④HTML 导出由 MD 源渲染天然一致（确认 toHtml 仅测试用，做 lockstep 更新）。新增 4 项契约测试（共 217）；提交 `2acf634` 双推一次成功；打包 v1.5.6 35.9MB；exe 已启动 |
 | 2026-08-26 | 接班模型（本会话，v1.5.6→v1.5.7 AI Prompts 页） | 待定 | 新增 AI Prompts 页面：`ai_prompts_screen.dart`（输入→生成→MD 渲染→Copy prompt 抓代码块）+ 路由 `/prompts` + 侧边栏项；`AiService.generatePrompt`（system=用户提供的 playbook 原文常量，user=`# 用户需求`+输入，temp 0.5/maxTokens 2000/响应超时 120s×3 推理模型）；顺带修复 Generate 按钮不随输入启用的真实缺陷（AnimatedBuilder）与侧边栏 "AI Prompts" 标签溢出（Flexible+ellipsis，8.7 模式）；5 项契约测试（共 222）；提交 `84deae2` 双推一次成功；打包 v1.5.7 35.9MB；exe 已启动 |
 | 2026-08-26 | 接班模型（本会话，v1.5.7→v1.5.8 AI Prompts 打磨轮） | 待定 | 用户四需求：①输入框拖拽调高（grip 120–420px）；②输入改 MarkdownEditorField（Write/Preview + 预览 sheet）；③字体接 Settings 双链路（输入 applyInputTypography、预览/输出 applyContentTypography，复用既有 Provider 不另起炉灶）；④质感（输出卡片 surface+圆角 12+RESULT 头、代码块淡底面板+边框、预览输出同 sheet WYSIWYG）。测试加 Write/Preview 存在断言（共 222）；提交 `56a2ce5` 双推一次成功；打包 v1.5.8 35.9MB；exe 已启动 |
+| 2026-08-26 | 接班模型（本会话，v1.5.8→v1.5.9 五项优化轮） | 待定 | ①AI Prompts 草稿跨页保持（ShellRoute 销毁 widget → 输入/结果入会话级 StateProvider，initState 恢复 + listener 持久化）；②输入区加 MarkdownToolbar；③报告移除 Overall（MD/HTML/双语提示词/_overallRag/overallS/`l.overall` 全链清除）；④执行摘要结构化（_firstSummary→_summaryLines，每行摘要独立 `  - ` 要点，MD/HTML/提示词同步）；⑤导出 HTML `_escapeTildesForHtml`（markdown 包 StrikethroughSyntax 连单 `~` 都匹配致误判删除线，全量转 `&#126;`，StyledHtml+EmailHtml 两路径）。4 项契约测试（共 226）；提交 `cc8c322` 双推一次成功；打包 v1.5.9 35.9MB；exe 已启动 |
