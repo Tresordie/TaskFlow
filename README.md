@@ -37,7 +37,7 @@ lib/
 │   └── router.dart                    # GoRouter navigation
 ├── core/
 │   ├── theme/
-│   │   ├── app_colors.dart            # 7 theme palettes + priority colors
+│   │   ├── app_colors.dart            # 21 theme palettes + priority colors
 │   │   └── app_theme.dart             # ThemeData per palette
 │   └── markdown/
 │       ├── latex_support.dart         # $..$ / $$..$$ LaTeX in Markdown
@@ -85,7 +85,7 @@ test/
 - Sub-step checklists within tasks
 - Today board, Timeline, Calendar and Activity (heatmap) views
 - Quick-add bar with priority + due date
-- 7 color themes, 10 font presets + custom fonts, global font-size scaling (80–140%)
+- 21 color themes — muted lights (Celadon / Ink Blue / Dusty Rose, v1.7.0), refined darks (Espresso / Deep Sea / Aubergine, v1.7.0) plus the earlier palette and Catppuccin sets; 12 CN/EN font presets + custom fonts; global font-size scaling (80–140%)
 - Responsive: sidebar on desktop, bottom nav on mobile
 - Local-first persistence via Isar (NoSQL)
 

@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-08-26 · 当前版本 **v1.6.5**（已发版：Custom 日期范围单弹窗选择——Daily/Weekly 同款日历网格，点开始日→点结束日→OK，不再两次弹窗；15 主题 / 242 测试 / 35.6MB）
+> 最后更新：2026-09-02 · 当前版本 **v1.7.0**（已发版：6 新主题——青瓷/黛蓝/胭脂（浅）+ 深咖啡/深海蓝/墨紫（深），共 **21 主题**；3 字体配对 Inter×MiSans / Plus Jakarta Sans×思源黑体 / Lexend×思源黑体；顺带修复 IBM Plex Sans/Outfit 拉丁下载分支缺失；255 测试 / 35.7MB）
 
 ---
 
@@ -10,7 +10,7 @@
 - **项目**：TaskFlow —— Flutter Windows 桌面任务管理应用，面向硬件测试工程师（NPI 电动自行车项目）的个人任务/日志/周报工具。
 - **位置**：`outputs/taskflow/`（工作区根 = `c:\Users\Administrator\.qoderworkcn\workspace\mrtw67znp8zrkqp4`）。
 - **跑起来**：`cd outputs/taskflow && flutter run -d windows`（或 `flutter build windows --release` 后运行 `build\windows\x64\runner\Release\taskflow.exe`）。
-- **发版闭环（每次变更必做）**：升版本（`pubspec.yaml` + `lib/core/version.dart` 的 `kAppVersion` **必须同步**）→ `flutter test`（213 个）→ 构建 → `git commit` → **显式单 URL 双推** GitHub + Gitee → `Compress-Archive` 打包 zip 到 `outputs/` → 启动 exe 验证。
+- **发版闭环（每次变更必做）**：升版本（`pubspec.yaml` + `lib/core/version.dart` 的 `kAppVersion` **必须同步**）→ `flutter test`（255 个）→ 构建 → `git commit` → **显式单 URL 双推** GitHub + Gitee → `Compress-Archive` 打包 zip 到 `outputs/` → 启动 exe 验证。
 - **最高危五条**：① Isar 嵌入对象字段冻结（见禁忌 9.1）；② 禁用全局 SelectionArea（9.2）；③ 杀进程后立即构建会“拒绝访问”，等 15–25 秒重试（8.1）；④ 可能出现中文的 TextStyle 禁只设 `fontFamily`，必须带 `FontStack` 回退链（9.11）；⑤ 两渲染链共用的 `GfmExtensions.prepare` 管线（多行公式展平 → 表格行归一 → 硬换行硬化）顺序不可乱改，表格行/alert 起始行/`$$` 行豁免硬化（8.19-8.20）。
 
 ---
@@ -51,7 +51,7 @@ outputs/taskflow/
 │   ├── main.dart                 # 启动：AttachmentService.init() 预热附件目录
 │   ├── app/                      # TaskFlowApp（主题/字体/字号缩放注入）、router、AppShell 之外的壳
 │   ├── core/
-│   │   ├── theme/app_colors.dart # ThemePalette 定义（13 个主题调色板）+ 遗留硬编码别名
+│   │   ├── theme/app_colors.dart # ThemePalette 定义（21 个主题调色板）+ 遗留硬编码别名
 │   │   ├── theme/app_theme.dart  # AppThemeMode 枚举（label/labelZh/palette/brightness）+ buildTheme
 │   │   ├── theme/font_stack.dart # 中英混排链单一事实源（v1.5.2，拉丁/中文/回退链常量）
 │   │   ├── markdown/             # html_sanitize（HTML混入清洗）、line_breaks（硬换行硬化+结构行豁免）、rich_markdown（含上下标语法）、latex_support（严格定界+多行展平）、gfm_extensions（alerts 大小写敏感语法/任务清单 checkbox hoist/`<br>`/prepare 管线）、table_support（多行行归一+列宽）
@@ -67,7 +67,7 @@ outputs/taskflow/
 │       ├── task_detail/          # task_detail_screen、execution_log_widget（内联编辑）
 │       ├── reports/              # reports_screen（分栏编辑器 + AI 生成）
 │       ├── work_log/ calendar/ heatmap/ ai_parse/ settings/
-├── test/                         # 19 个测试文件，213 个测试（含 extended_markdown/selectable_spacing/font_upgrade/gfm_extensions 契约）
+├── test/                         # 20 个测试文件，255 个测试（含 extended_markdown/selectable_spacing/font_upgrade/gfm_extensions/theme_palette 契约）
 └── pubspec.yaml                  # version 字段与 kAppVersion 必须同步；fonts + FONT_LICENSES.md 声明
 ```
 
@@ -79,7 +79,7 @@ outputs/taskflow/
 
 ```powershell
 cd outputs\taskflow
-flutter test                                    # 213 个，约 20–30 秒
+flutter test                                    # 255 个，约 30–40 秒
 dart analyze lib                                # 要求 0 error（task.g.dart 的 experimental 警告为既有）
 flutter build windows --release                 # 约 60–110 秒
 
@@ -119,7 +119,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 
 1. **双远程同步**：每次提交必须推 GitHub（`https://github.com/Tresordie/TaskFlow.git`）+ Gitee（`https://gitee.com/simonyuan2019/TaskFlow.git`），显式单 URL 分别推，不用 `origin` 多 URL。
 2. **版本显示**：只在 Settings → About 显示 `kAppVersion`；侧边栏不显示版本号（用户明确要求，v1.4.93）。
-3. **主题体系**：15 个主题（v1.6.0）= 5 浅色（indigoLight/freshGreen/sunsetOrange/lavenderPurple/warmSand）+ 2 暗色（dark/nordNight）+ 8 Catppuccin（Latte×2 浅色、Frappé/Macchiato/Mocha×2 暗色）。已删除：oceanBlue、sakuraPink、blueDark、purpleDark。主题按 `mode.name` 字符串持久化，删除枚举值安全（回退默认）。
+3. **主题体系**：21 个主题（v1.7.0）= 8 浅色（indigoLight/freshGreen/sunsetOrange/lavenderPurple/warmSand + v1.7.0 celadon 青瓷/inkBlue 黛蓝/dustyRose 胭脂）+ 5 暗色（dark/nordNight + v1.7.0 espresso 深咖啡/deepSea 深海蓝/aubergine 墨紫）+ 8 Catppuccin。已删除：oceanBlue、sakuraPink、blueDark、purpleDark。主题按 `mode.name` 字符串持久化，删除枚举值安全（回退默认）；枚举按组插入（浅接 warmSand 后、深接 nordNight 后），Settings 列表/亮度/GFM alert 色自动适配。
 4. **报告**：AI 总结必须基于描述+全部日志；技术要点（料号/固件版本/参数/测量值/测试条件/结果/根因）绝不过度压缩，照抄原文；5 章节齐备不可省。
 5. **编辑记录**：Execution Log 记录编辑为**输入区内联模式**（v1.4.90）：点编辑 → 内容/类型/附件载入底部输入区，记录高亮 + "Editing" 徽标 → Update 原位更新（保留 uid+时间戳）/ Cancel 取消。编辑对话框已删除。按钮布局：Cancel（描边）左 + Update（主题色）右（v1.4.95 等高等圆角）。
 6. **导出同源**：Export.md / Export.html / Email.html 均来自 `s.markdown`；Email 版适配 Gmail（表格布局+内联样式+无 `<style>` 块）。
@@ -154,6 +154,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | v1.5.8 | AI Prompts 四项打磨（用户需求）：① 输入框**拖拽调高**（grip 柄 120–420px，Work Log/AI Parse 同款）；② 输入改 **MarkdownEditorField**（Write/Preview 切换，与其他输入区工具链一致）；③ 字体联动 Settings——输入走 `applyInputTypography`（Settings→Fonts 输入区 family/size），预览与输出走 `applyContentTypography`（内容区设置）；④ 质感——输出卡片 surface 底+圆角 12+RESULT 头条、代码块淡底面板+边框（提示词正文即复制目标的视觉强化）、预览与输出共用同一 styleSheet（WYSIWYG） | 输入框是页面主体，可调大小+markdown 支持是工具页刚需；字体双链路复用既有 Provider 体系不另起炉灶（禁忌 9.11 回退链由 apply*Typography 内建） |
 | v1.5.9 | 五项优化（用户需求）：① AI Prompts 输入/结果**跨页面保持**——`aiPromptsInputProvider`/`aiPromptsResultProvider` 会话级 StateProvider（ShellRoute 每次导航销毁页面 widget，草稿必须放 provider）；② 输入区加 **MarkdownToolbar**（标题/粗斜体/清单/缩进等与全应用一致）；③ 报告**移除 Overall 总结行**（MD/HTML/双语提示词/`_overallRag`/样式全链清除）；④ 执行摘要**结构化**——`_firstSummary`→`_summaryLines`，AI 摘要每行独立缩进要点（MD/HTML/双语提示词同步）；⑤ 导出 HTML **`_escapeTildesForHtml`**——markdown 包删除线语法连单 `~` 都匹配，"Vout ~ 5V … temp ~ stable" 两波浪号间全成删除线；报告不用删除线、`~` 即约等号，全量转 `&#126;`（StyledHtml+EmailHtml 两路径） | ShellRoute 生命周期决定状态必须外置；单波浪号误判删除线是 markdown 包 StrikethroughSyntax 的 `~~?` 贪婪匹配所致 |
 | v1.5.10 | 全页面输入框 Tab 缩进审计收口：全应用 Markdown 输入区统一 `markdownIndentFocusNode`（Tab 缩进当前行/选区、Shift+Tab 反缩进）——Work Log（`_onInputKey` 自处理）、执行日志（内联 onKeyEvent）、AI Parse/Reports/建任务/编辑任务对话框、MarkdownEditorField 默认节点本已支持；唯一缺口 **AI Prompts 编辑器用裸 `FocusNode`**（Tab 移焦点不缩进）→ 换 `markdownIndentFocusNode(_inputController)`。单行字段（搜索/配置项）保持 Tab=焦点导航不改动 | 用户要求"所有页面输入框支持 Tab 缩进"；审计先行，只修真缺口（外科手术式改动） |
+| v1.7.0 | 六新主题三浅（celadon 青瓷/inkBlue 黛蓝/dustyRose 胭脂）三深（espresso 深咖啡/deepSea 深海蓝/aubergine 墨紫），低饱和纸感/器物质感路线，每套 10 字段齐备、枚举按组插入；三新字体配对 interMisans=Inter×MiSans、jakartaNoto=Plus Jakarta Sans×思源黑体、lexendNoto=Lexend×思源黑体（google_fonts 在线下载零包体；`pairInterMiSans` id 已被 Manrope 占用故新 id 另起名）；顺带修复 v1.6.0 pairPlexNoto/pairOutfitMiSans 拉丁半 `_googleFontTextTheme` 分支缺失（预设存在但字体从不下车，补 IBM Plex Sans/Outfit 两 case）；新增 theme_palette_test（21 枚举/唯一 name/双语标签/亮度分组/bg 最暗层阶梯/signature 色锁定）+ 字体契约（新预设字段 + GoogleFonts.asMap 验证所有预设家族真实可解析）；255 测试全过（+13）、双推 `29bedd0`、包体 35.7MB | 用户要"精美有质感的主题 + 中英文都美观的字体"；层级断言只约束 bg 最暗层、不约束 card vs surface——Latte 教训（禁忌 6）：浅色下 card 可高于 surface |
 | v1.6.5 | Custom 日期范围单弹窗（用户需求）：v1.6.4 两步两次弹窗被反馈“希望一页选完”→ 新建自定义 `_RangePickerDialog`：**复用 Daily/Weekly 同款 `CalendarDatePicker` 日历网格**（观感已被用户认可），交互=点一天→开始日、再点→结束日（早于开始日则原地重开；两端已齐再点则全新重选；同日点两次=单日范围），OK 在两端齐后启用，Cancel 返回 null；头部主色淡染+范围实时读出头条+Start/End 状态 chip（短日期格式 formatShortDate，标题 FittedBox 自适应、chips 用 Wrap 防窄布局溢出——踩坑：测试环境 Ahem 字体每字 1em 宽，Row 硬排会溢出，改用 Wrap 后两全）；API 签名不变三处零改动；文案全 MaterialLocalizations；5 项契约测试（单弹窗主流程/早于开始日重开/同日双击单日/Cancel/预填直接 OK，共 242） | 自绘选择器时横向状态条用 Wrap 不用 Row；日期格式选短格式（formatShortDate）不选带星期的 medium 格式 |
 | v1.6.4 | Custom 日期范围弹窗最终方案（用户需求）：v1.6.1–1.6.3 三连调 Material `showDateRangePicker` 的尺寸/样式后用户仍觉得“难看”→ **改用 Reports Daily/Weekly 同款 `showDatePicker` 单日期弹窗**（紧凑对话框、自动继承应用 ColorScheme、观感已被用户认可）：`showAppDateRangePicker` 重写为**两步流**——① 先选开始日期（helpText=Start Date，默认上次范围起点或今天-7 天）；② 再选结束日期（firstDate=已选开始日，只能选不早于开始；默认上次范围终点或开始日）；任一步 Cancel 则整体返回 null。API 签名不变（Timeline/Calendar/Reports 三处调用零改动）；文案全走 MaterialLocalizations；测试重写为 4 项契约（两步流产物、首步取消、末步取消、结束日下限）。注意 M3 单日期弹窗选日后需按 OK 确认才关闭（测试要点选日→点 OK） | 用户对控件观感不满意且多轮微调无效时，停止调样式，改用用户已经认可的现成控件 |
 | v1.6.3 | 日期范围选择器定稿（用户按规格要求）：① 倍率 1.5× 降至 **1.1×**——布局取 SDK 竖版网格宽度上限 **480×500**（零留白，不加大 MediaQuery），FittedBox 1.1× → 视觉 **528×550**（宽 500–560 达标、6 行网格月 484px 完整可见不滚动）；② “布局≈视觉+≤1.1×”评估**可行并直接采用**——1.1× 下描边/字重近乎原生（今天圈 1.4→1.54px），不再保留 1.5×；③ rangePicker*/普通槽位全部对齐共享卡片配方（背景 `cardTheme.color`=palette.card、边框 outline 80%、圆角 18、阴影 primary 10% 暗色无，15 主题自动生效）；④ 按钮统一（取消=描边、确定=主题色填充、等高圆角）+ 文案去硬编码全走 MaterialLocalizations（当前英文与全应用 UI 一致，locale 自动跟随）；⑤ 契约测试迁移为 480×500 布局 + 528×550 视觉双断言，并新增 3 档字号（100/125/140%）× 2 档 DPR（1.0/2.0）共 6 组合无溢出错位回归 | 三连迭代教训：倍率 >1.2 显粗糙、<500 宽显小，最终“网格上限布局+低倍率”是甜点位；Material 文案一律 localizations 取值 |
@@ -209,7 +210,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 10. **禁删测试代替改测试**——断言是契约，架构变更时更新断言。
 11. **禁在可能出现中文的 TextStyle 上只设 `fontFamily`**——必须携带 `FontStack` 回退链，否则中文落系统字体破坏混排灰度（v1.5.2 教训）。
 12. **禁擅自添加 Mermaid 扩展支持**（v1.5.3 修订：仅禁 Mermaid；LaTeX 已由用户重提并落地，只支持 `$...$` 与 `$$...$$`，不解析 `\( \)`/`\[ \]`）。如用户再重提 Mermaid，先重审无 WebView 前提下的路线再确认。
-13. **禁把 GFM alerts 五色语义色硬编码到组件里**——必须经 `AppColors.alertAccent/alertBackground`（亮/暗双套），保证 13 主题下可读对比度（v1.5.3）。
+13. **禁把 GFM alerts 五色语义色硬编码到组件里**——必须经 `AppColors.alertAccent/alertBackground`（亮/暗双套），保证全部 21 主题下可读对比度（v1.5.3）。
 14. **禁改 `GfmExtensions.prepare` 管线顺序或去掉结构行豁免**——会导致表格再次退化为字面 `\|` 行（8.19）。
 15. **禁用 PowerShell Set-Content/Get-Content 批量改源码文件**——去重/替换脚本会把整个文件压成一行（v1.6.0 曾毁掉 timeline/calendar/reports 三文件，靠 git checkout 恢复）；源码编辑一律用 Edit 工具。
 
@@ -218,6 +219,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
+- ✅ v1.7.0（已发版）：6 新主题（青瓷/黛蓝/胭脂 + 深咖啡/深海蓝/墨紫，共 21）+ 3 字体配对（Inter×MiSans、Plus Jakarta Sans×思源黑体、Lexend×思源黑体）+ 修复 Plex/Outfit 拉丁下载分支缺失；255 测试全过（+13 契约）、双推 `29bedd0`、包体 35.7MB
 - ✅ v1.6.5（已发版）：Custom 日期范围单弹窗选择（Daily/Weekly 同款日历网格，点开始日→点结束日→OK，同日双击=单日范围）；242 测试全过（+5 契约）、双推 `63a97b4`、包体 35.6MB
 - ✅ v1.6.4（已发版）：Custom 日期范围改用 Daily/Weekly 同款单日期弹窗（两步 start→end，任一步取消整体中止，API 不变三处零改动）；241 测试全过（+4 契约）、双推 `b1836be`、包体 35.6MB
 - ✅ v1.6.3（已发版）：日期范围选择器定稿——480×500 布局 ×1.1 → 528×550 近原生弹窗（倍率 1.5×→1.1×、卡片对齐铬层、按钮统一、文案全 i18n）；239 测试全过（+1 组合回归）、双推 `23a9036`、包体 35.7MB
@@ -229,10 +231,11 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 - ✅ v1.5.8：AI Prompts 打磨（可调大小/Settings 字体/质感）；✅ v1.5.7：AI Prompts 页面
 - ✅ v1.5.6：报告打磨（Headline 列表/去 sub-steps/10 天聚焦）
 - ✅ v1.5.5-3：alerts GitHub 风格/LaTeX TextScaler/表格 WidgetSpan/GFM 四能力
-- 双远程同步至 `6befd97`（v1.6.0）
+- 双远程同步至 `29bedd0`（v1.7.0）
 
 **进行中**：
-- 用户实机验证 v1.6.5：Timeline/Calendar/Reports 的 Custom 单弹窗范围选择（点开始→点结束→OK、chips 状态提示、同日双击单日范围）。应用已在运行（v1.6.5 exe）。
+- 用户实机验证 v1.7.0：Settings 主题列表 6 套新主题观感（青瓷/黛蓝/胭脂/深咖啡/深海蓝/墨紫）+ 3 个新字体预设选用（google_fonts 预设首次选用需联网下载，离线时回退链兜底）。应用已在运行（v1.7.0 exe）。
+- 本仓库由旧工作区迁至 `F:\gitee\taskflow\TaskFlow` 后首次构建：`build/` 内旧 CMake 缓存指向旧路径导致 "does not match the source" 报错，删 `build/` 重来即愈；`windows/flutter/ephemeral/.plugin_symlinks` 陈旧符号链接致 errno 183，同删即愈。
 
 **待办/已知局限**：
 - **疑似 UI 缺陷（待排查）**：快速添加任务后列表偶发不刷新，重启后自愈（v1.5.2 验证时由 ComputerUse 发现，未复现定位）。
@@ -272,3 +275,4 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | 2026-08-26 | 接班模型（本会话，v1.5.8→v1.5.9 五项优化轮） | 待定 | ①AI Prompts 草稿跨页保持（ShellRoute 销毁 widget → 输入/结果入会话级 StateProvider，initState 恢复 + listener 持久化）；②输入区加 MarkdownToolbar；③报告移除 Overall（MD/HTML/双语提示词/_overallRag/overallS/`l.overall` 全链清除）；④执行摘要结构化（_firstSummary→_summaryLines，每行摘要独立 `  - ` 要点，MD/HTML/提示词同步）；⑤导出 HTML `_escapeTildesForHtml`（markdown 包 StrikethroughSyntax 连单 `~` 都匹配致误判删除线，全量转 `&#126;`，StyledHtml+EmailHtml 两路径）。4 项契约测试（共 226）；提交 `cc8c322` 双推一次成功；打包 v1.5.9 35.9MB；exe 已启动 |
 | 2026-08-26 | 接班模型（本会话，v1.5.9→v1.5.10 Tab 缩进收口） | 待定 | 用户要求所有页面输入框支持 Tab 缩进。全量审计：Work Log（_onInputKey）/执行日志（内联 onKeyEvent）/AI Parse/Reports/建任务/编辑任务对话框/MarkdownEditorField 默认节点均已支持；唯一缺口 AI Prompts 编辑器（裸 FocusNode）→ 换 `markdownIndentFocusNode(_inputController)`；单行字段（搜索/配置）保持 Tab=焦点导航。1 项 Tab 契约测试（共 227，注意 enterText 光标在文末，断言前须显式置 caret）；提交 `b83b60a` 双推一次成功；打包 v1.5.10 35.9MB；exe 已启动 |
 | 2026-08-26 | 接班模型（本会话，v1.6.4→v1.6.5 单弹窗范围选择轮） | 待定 | 用户反馈两步两次弹窗 → 自定义单弹窗 `_RangePickerDialog`（复用 Daily/Weekly 同款 CalendarDatePicker 网格：点开始→点结束→OK，同日双击=单日范围，早于开始日原地重开，Cancel 中止，预填范围直接可 OK）；头部主色淡染+实时范围头条+Start/End 状态 chips（短日期格式；标题 FittedBox、chips Wrap 防溢出——测试环境 Ahem 字体踩坑）；5 项契约测试（共 242）；提交 `63a97b4` 双推一次成功；打包 v1.6.5 35.6MB；exe 已启动 |
+| 2026-09-02 | 接班模型（本会话，v1.6.5→v1.7.0 主题+字体轮） | 待定 | 用户两需求：①三浅三深六新主题（青瓷/黛蓝/胭脂 + 深咖啡/深海蓝/墨紫，共 21，枚举按组插入四 switch 同步，dustyRose 初稿 card 亮度低于 bg 违反浅色层级经测试驱动物调为 bg F6F0F0/card FAF3F3）；②三字体配对 Inter×MiSans、Plus Jakarta Sans×思源黑体、Lexend×思源黑体（google_fonts 下载零包体），顺带修复 v1.6.0 IBM Plex Sans/Outfit 漏注册 `_googleFontTextTheme`（真缺陷）；新增 theme_palette_test 11 项 + font_upgrade_test 2 项契约（共 255，含 GoogleFonts.asMap 家族存在性验证）；迁移环境踩坑：旧 build/ 的 CMakeCache 指向旧工作区路径 + 陈旧 .plugin_symlinks errno 183，均删目录重建即愈；提交 `29bedd0` 双推一次成功；打包 v1.7.0 35.7MB；exe 已启动 |
