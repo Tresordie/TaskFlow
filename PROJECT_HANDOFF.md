@@ -92,6 +92,8 @@ Compress-Archive -Path "taskflow\build\windows\x64\runner\Release\*" -Destinatio
 Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe" -WorkingDirectory "taskflow\build\windows\x64\runner\Release"
 ```
 
+**分发打包（v1.9.2 起固定步骤）**：Flutter Release 产物不含 VC++ 运行时，干净系统会报缺 `VCRUNTIME140.dll`——打包前必须把 4 个 DLL 复制到 Release 目录（来源 `C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Redist\MSVC\14.30.30704\x64\Microsoft.VC143.CRT\`：`msvcp140.dll`、`msvcp140_1.dll`、`vcruntime140.dll`、`vcruntime140_1.dll`），并确认 `使用说明.txt`（解压即用/SmartScreen 应对/数据位置/迁移方法）在包根目录；若 `build/` 被清空重建，这两个动作都要重做。
+
 **版本纪律**：每次发版同时改 `pubspec.yaml` 的 `version: 1.5.X+1` 和 `lib/core/version.dart` 的 `kAppVersion = '1.5.X'`（v1.4.63 曾落后 29 个版本的事故）。
 
 ---
