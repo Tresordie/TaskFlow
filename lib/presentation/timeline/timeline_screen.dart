@@ -262,14 +262,28 @@ class _TimelineItem extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Time column
+          // Date + time column (v1.9.1: HH:mm alone gave no clue which day
+          // a task belongs to, especially in range mode where several days
+          // share one list). Width fits yyyy-MM-dd at the 140% font scale.
           SizedBox(
-            width: 52,
-            child: Text(
-              DateFormat('HH:mm').format(task.createdAt),
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.lightTextSecondary,
-                  ),
+            width: 96,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  DateFormat('yyyy-MM-dd').format(task.createdAt),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.lightTextSecondary,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  DateFormat('HH:mm').format(task.createdAt),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.lightTextSecondary,
+                      ),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 12),
