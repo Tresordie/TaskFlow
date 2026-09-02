@@ -37,7 +37,7 @@ lib/
 │   └── router.dart                    # GoRouter 导航
 ├── core/
 │   ├── theme/
-│   │   ├── app_colors.dart            # 21 套主题色板 + 优先级颜色
+│   │   ├── app_colors.dart            # 18 套主题色板 + 优先级颜色
 │   │   └── app_theme.dart             # 每套色板的 ThemeData
 │   └── markdown/
 │       ├── latex_support.dart         # Markdown 中的 $..$ / $$..$$ LaTeX
@@ -85,7 +85,7 @@ test/
 - 任务内子步骤清单
 - 今日看板、时间线、日历和热力图视图
 - 快速添加栏（优先级 + 截止日期）
-- 21 套颜色主题——低饱和浅色（青瓷 / 黛蓝 / 胭脂，v1.7.0）、质感深色（深咖啡 / 深海蓝 / 墨紫，v1.7.0）及此前的基础色板与 Catppuccin 系列；12 种中英混排字体预设 + 自定义字体；全局字号缩放（80–140%）
+- 18 套颜色主题——低饱和浅色（青瓷 / 黛蓝 / 胭脂）及此前的基础色板与 Catppuccin 系列；3 种精选中英混排字体配对（Inter × MiSans、Plus Jakarta Sans × 思源黑体、Lexend × 思源黑体）+ 系统默认与自定义字体；全局字号缩放（80–140%）
 - 响应式布局：桌面侧边栏，移动端底部导航
 - 基于 Isar (NoSQL) 的本地优先持久化
 
