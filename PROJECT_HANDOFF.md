@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-09-02 · 当前版本 **v1.9.0**（已发版：删除"系统默认"字体预设，**Inter × MiSans 成为应用默认字体**（预设仅剩 3 配对）；修复 Timeline 页任务标题缺画线——completed/archived 现与 Today 看板一致（画线+变淡）；253 测试）
+> 最后更新：2026-09-02 · 当前版本 **v1.9.1**（已发版：Timeline 左侧时间列改为**日期+时间两行**（yyyy-MM-dd / HH:mm，列宽 96 容纳 140% 字号缩放）——范围模式下多天任务同列时不再分不清归属日；253 测试）
 
 ---
 
@@ -134,6 +134,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 
 | 日期/版本 | 决策 | 理由 |
 |---|---|---|
+| v1.9.1 | Timeline `_TimelineItem` 左侧时间列 52px 单行 HH:mm → **96px 两行堆叠（yyyy-MM-dd 上、HH:mm 下）**，样式沿用 labelSmall+lightTextSecondary | 范围模式下多天任务同列只有时刻无日期，无法辨认归属日；96px 按 labelSmall 11px×140% 缩放 ×10 字符留足余量 |
 | v1.9.0 | 用户两需求：①删除"系统默认"预设，**Inter×MiSans 成为应用默认字体**（defaultFont 改指 interMisans；旧 'system' 持久化 id 经未知 id 路径安全迁移到默认；预设仅剩 3 配对；离线首启 Inter 下载失败由 MiSans→HarmonyOS 回退链兜底）；②Timeline `_TimelineItem` 任务标题补 completed/archived 画线+变淡（此前完全无画线，与 Today TaskCard 不一致；状态点/徽标保持真实状态色不动） | 用户明确"Inter×MiSans 设为系统默认"；画线对齐以 Today 看板为基准，状态徽标保留信息量 |
 | v1.8.0 | 用户实测 v1.7.0 后四需求：①删三深色主题（espresso/deepSea/aubergine），保留青瓷/黛蓝/胭脂（18 主题；持久化按 name，已选被删主题者回退 freshGreen）；②字体预设裁至 系统默认+3 配对（interMisans/jakartaNoto/lexendNoto），删除 notoSansSC/poppins/两 Manrope 配对/serif/文楷/plex/outfit 及整个 systemFonts 列表（AppFonts.all=presets；内容/输入字体下拉随之只剩 3 配对家族+Follow global+custom），app.dart 两 switch 同步清孤儿分支（_ensureCjkFontLoaded 只留 Noto Sans SC、_googleFontTextTheme 只留三拉丁）；③修复 Settings→AI 三输入框不自动加载——根因是 AiConfigNotifier 懒创建+_restore() 异步，而 _AiConfigCard._ensureLoaded 首帧即锁存 `_loaded`，把空默认值永久写进输入框（且后续手输触发 autosave 会把存量配置覆盖成空）；修复=Notifier 加 `restored` 标志（赋值在 state 置换前），_ensureLoaded 在 restored 前直接 return，等 watch 重建后自然装载；④统一 Archived 渲染——heatmap `_ActivityTaskItem` 与 calendar `_DayTaskItem`/`_DuePill` 三处 `isCompleted` 只判 completed 漏 archived，补齐后 Archived 与 Today 看板 TaskCard 同为绿点+画线（README Phase 6 约定）；契约测试同步（主题 18/字体裁剪后共 253） | "系统默认"是离线优先兜底（内置 Manrope×MiSans 栈）且是被删 id 的回退着陆点，故保留；修复竞态时 `restored=true` 必须在 `state=` 之前赋值，否则同步监听仍见旧值 |
 | v1.4.73-77 | 移除全局 SelectionArea，内容区统一 SelectableMarkdownBody | SDK bug：右键时 `_handleRightClickDown` 命中测试失败清空选区 |
@@ -221,6 +222,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
+- ✅ v1.9.1（已发版）：Timeline 时间列改日期+时间两行（yyyy-MM-dd/HH:mm）；253 测试全过、双推 `26aa546`、包体 35.6MB
 - ✅ v1.9.0（已发版）：删"系统默认"预设、Inter×MiSans 设为应用默认（预设仅剩 3 配对）+ Timeline 任务标题画线对齐 Today；253 测试全过、双推 `23344f1`、包体 35.6MB
 - ✅ v1.8.0（已发版）：按用户实测反馈精简——删 3 深色主题（共 18）+ 字体预设裁至 系统默认+3 配对；修复 AI 配置不自动加载（异步恢复竞态锁存空值）+ Activity/Calendar 页 Archived 缺画线；253 测试全过（契约同步）、双推 `a2c7ed6`、包体 35.6MB
 - ✅ v1.7.0（已发版）：6 新主题（青瓷/黛蓝/胭脂 + 深咖啡/深海蓝/墨紫，共 21）+ 3 字体配对（Inter×MiSans、Plus Jakarta Sans×思源黑体、Lexend×思源黑体）+ 修复 Plex/Outfit 拉丁下载分支缺失；255 测试全过（+13 契约）、双推 `29bedd0`、包体 35.7MB
@@ -235,10 +237,10 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 - ✅ v1.5.8：AI Prompts 打磨（可调大小/Settings 字体/质感）；✅ v1.5.7：AI Prompts 页面
 - ✅ v1.5.6：报告打磨（Headline 列表/去 sub-steps/10 天聚焦）
 - ✅ v1.5.5-3：alerts GitHub 风格/LaTeX TextScaler/表格 WidgetSpan/GFM 四能力
-- 双远程同步至 `23344f1`（v1.9.0）
+- 双远程同步至 `26aa546`（v1.9.1）
 
 **进行中**：
-- 用户实机验证 v1.9.0：Settings 字体列表仅 3 张卡（无"系统默认"）、默认即 Inter×MiSans、Timeline 页已完成/已归档任务标题画线+变淡与 Today 一致。应用已在运行（v1.9.0 exe）。
+- 用户实机验证 v1.9.1：Timeline 左列日期+时间两行显示。应用已在运行（v1.9.1 exe）。
 - 本仓库由旧工作区迁至 `F:\gitee\taskflow\TaskFlow` 后首次构建：`build/` 内旧 CMake 缓存指向旧路径导致 "does not match the source" 报错，删 `build/` 重来即愈；`windows/flutter/ephemeral/.plugin_symlinks` 陈旧符号链接致 errno 183，同删即愈。
 
 **待办/已知局限**：
@@ -282,3 +284,4 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | 2026-09-02 | 接班模型（本会话，v1.6.5→v1.7.0 主题+字体轮） | 待定 | 用户两需求：①三浅三深六新主题（青瓷/黛蓝/胭脂 + 深咖啡/深海蓝/墨紫，共 21，枚举按组插入四 switch 同步，dustyRose 初稿 card 亮度低于 bg 违反浅色层级经测试驱动物调为 bg F6F0F0/card FAF3F3）；②三字体配对 Inter×MiSans、Plus Jakarta Sans×思源黑体、Lexend×思源黑体（google_fonts 下载零包体），顺带修复 v1.6.0 IBM Plex Sans/Outfit 漏注册 `_googleFontTextTheme`（真缺陷）；新增 theme_palette_test 11 项 + font_upgrade_test 2 项契约（共 255，含 GoogleFonts.asMap 家族存在性验证）；迁移环境踩坑：旧 build/ 的 CMakeCache 指向旧工作区路径 + 陈旧 .plugin_symlinks errno 183，均删目录重建即愈；提交 `29bedd0` 双推一次成功；打包 v1.7.0 35.7MB；exe 已启动 |
 | 2026-09-02 | 接班模型（本会话，v1.7.0→v1.8.0 精简+修复轮） | 待定 | 用户实测后四需求：删三深色主题（保留三浅色，共 18）；字体预设裁至 系统默认+3 配对（systemFonts 列表整体删除、app.dart 孤儿下载分支清理、内容/输入下拉自动收窄）；修复 AI 配置自动加载竞态（AiConfigNotifier.restored 标志 + _ensureLoaded 门闩推迟，防首帧锁存空默认值且防后续 autosave 把存量配置覆盖成空）；统一 Archived 渲染（heatmap 1 处 + calendar 2 处 isCompleted 补 archived 判定，与 Today 看板/README 约定对齐）；契约测试同步更新（font_upgrade/font_settings/theme_palette，共 253）；提交 `a2c7ed6` 双推一次成功；打包 v1.8.0 35.6MB；exe 已启动 |
 | 2026-09-02 | 接班模型（本会话，v1.8.0→v1.9.0 默认字体+Timeline 画线轮） | 待定 | 用户两需求：①删"系统默认"预设，Inter×MiSans 设为应用默认（defaultFont→interMisans，旧 'system' id 未知即回退默认天然迁移；预设 4→3）；②Timeline `_TimelineItem` 标题补 completed/archived lineThrough+0.4 变淡（含 decorationColor），状态点/徽标不动；契约测试同步（defaultFont 断言、ids 白名单、'system' 入 removed 清单，共 253）；提交 `23344f1` 双推一次成功；打包 v1.9.0 35.6MB；exe 已启动 |
+| 2026-09-02 | 接班模型（本会话，v1.9.0→v1.9.1 时间列日期轮） | 待定 | 用户需求：Timeline 左侧只有时间希望有日期 → `_TimelineItem` 时间列 52px 单行 HH:mm 改 96px 两行（yyyy-MM-dd 上/HH:mm 下，IntrinsicHeight 内 Column 天然取内容高，行间 2px）；宽度按 140% 字号缩放最坏情况（labelSmall 11px→15.4px×10 字符≈92px）留余量；纯展示改动无契约测试变更（253 不变）；提交 `26aa546` 双推一次成功；打包 v1.9.1 35.6MB；exe 已启动 |
