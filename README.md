@@ -85,7 +85,7 @@ test/
 - Sub-step checklists within tasks
 - Today board, Timeline, Calendar and Activity (heatmap) views
 - Quick-add bar with priority + due date
-- 18 color themes — muted lights (Celadon / Ink Blue / Dusty Rose) plus the earlier palette and Catppuccin sets; 3 curated CN/EN font pairings (Inter × MiSans, Plus Jakarta Sans × Noto Sans SC, Lexend × Noto Sans SC) + system default & custom fonts; global font-size scaling (80–140%)
+- 18 color themes — muted lights (Celadon / Ink Blue / Dusty Rose) plus the earlier palette and Catppuccin sets; 3 curated CN/EN font pairings with **Inter × MiSans as the app default** (Plus Jakarta Sans × Noto Sans SC and Lexend × Noto Sans SC selectable); global font-size scaling (80–140%)
 - Responsive: sidebar on desktop, bottom nav on mobile
 - Local-first persistence via Isar (NoSQL)
 
