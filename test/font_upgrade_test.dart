@@ -45,14 +45,15 @@ void main() {
     });
   });
 
-  group('v1.8.0 preset cull — removed ids fall back safely', () {
-    test('the three curated pairings are the only non-system presets', () {
+  group('v1.8.0/1.9.0 preset cull — removed ids fall back safely', () {
+    test('the three curated pairings are the only presets', () {
       final ids = AppFonts.presets.map((f) => f.id).toSet();
-      expect(ids, {'system', 'interMisans', 'jakartaNoto', 'lexendNoto'});
-      // v1.8.0: every earlier preset is gone — users who had one selected
-      // fall back to the default through the unknown-id path.
+      expect(ids, {'interMisans', 'jakartaNoto', 'lexendNoto'});
+      // v1.8.0/1.9.0: every earlier preset is gone — users who had one
+      // selected (including the old bare 'system') fall back to the
+      // default through the unknown-id path.
       const removed = [
-        'notoSansSC', 'poppins', 'pairInterNoto', 'pairInterMiSans',
+        'system', 'notoSansSC', 'poppins', 'pairInterNoto', 'pairInterMiSans',
         'pairLoraSerif', 'pairNunitoWenKai', 'pairPlexNoto', 'pairOutfitMiSans',
       ];
       for (final r in removed) {

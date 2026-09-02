@@ -526,7 +526,7 @@ class _AreaTypographyCard extends ConsumerWidget {
       }
     }
 
-    // Family options: follow global + every known font (presets + system).
+    // Family options: follow global + every preset family.
     // v1.4.99: dedupe by family name — the pairing presets reuse families
     // (e.g. Inter) and DropdownButtonFormField crashes on duplicate values.
     // A persisted custom font that is not in the list stays selectable.

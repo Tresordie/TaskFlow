@@ -245,6 +245,18 @@ class _TimelineItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusColor = _statusColor(task.status);
     final priorityColor = AppColors.priorityColor(task.priority.index);
+    // v1.9.0: completed AND archived titles strike through + dim, matching
+    // the Today board's TaskCard (archived previously showed as untouched).
+    final isCompleted = task.status == TaskStatus.completed ||
+        task.status == TaskStatus.archived;
+    final titleStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+          decoration: isCompleted ? TextDecoration.lineThrough : null,
+          color: isCompleted
+              ? Theme.of(context).colorScheme.onSurface.withOpacity(0.4)
+              : null,
+          decorationColor:
+              Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+        );
 
     return IntrinsicHeight(
       child: Row(
@@ -324,7 +336,7 @@ class _TimelineItem extends StatelessWidget {
                         Expanded(
                           child: Text(
                             task.title,
-                            style: Theme.of(context).textTheme.titleMedium,
+                            style: titleStyle,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),

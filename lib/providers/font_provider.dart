@@ -33,17 +33,10 @@ class AppFonts {
   /// request; v1.4.25: dropped ZCOOL XiaoWei and ZCOOL QingKe HuangYou per
   /// user request; v1.8.0: user asked to keep ONLY the three pairings below
   /// — every earlier preset and the Windows/macOS system-font list were
-  /// removed. Deleted ids fall back to the default via the unknown-id path,
-  /// and 'system' stays as the offline-first out-of-the-box choice.)
+  /// removed; v1.9.0: the bare 'system' preset was removed too and Inter ×
+  /// MiSans became the out-of-the-box default. Deleted ids (including the
+  /// old 'system') fall back to the default via the unknown-id path.)
   static const List<FontOption> presets = [
-    FontOption(
-      id: 'system',
-      labelZh: '系统默认',
-      labelEn: 'System Default',
-    ),
-    // v1.7.0: three quality CN+EN pairings (Google-hosted Latin half, zero
-    // bundle cost). Inter pairs with the bundled MiSans; the other two use
-    // the downloadable Noto Sans SC.
     FontOption(
       id: 'interMisans',
       labelZh: 'Inter × MiSans（经典均衡）',
@@ -72,15 +65,16 @@ class AppFonts {
 
   static List<FontOption> get all => [...presets];
 
-  /// The out-of-the-box font (used until the user picks one).
+  /// The out-of-the-box font (used until the user picks one, and the
+  /// landing spot for any persisted-but-removed id).
   ///
-  /// v1.5.2: defaults to the SYSTEM preset, which now means the bundled
-  /// Manrope × MiSans stack (ThemeData fontFamily + FontStack.fallback).
-  /// Bundled = offline-first: no google_fonts download before the real
-  /// face appears (the old Noto-Sans-SC default flashed system fonts on
-  /// first launch / offline).
+  /// v1.9.0: the bare 'system' preset is gone — the user asked for Inter ×
+  /// MiSans as the app's default font. The bundled Manrope × MiSans stack
+  /// still powers the ThemeData base, and the pairing fallback chain
+  /// (MiSans → HarmonyOS Sans SC → …) keeps mixed text readable while /
+  /// if the Inter download is unavailable.
   static FontOption get defaultFont => presets.firstWhere(
-        (f) => f.id == 'system',
+        (f) => f.id == 'interMisans',
         orElse: () => presets[0],
       );
 }

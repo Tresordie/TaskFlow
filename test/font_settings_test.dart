@@ -15,10 +15,9 @@ void main() {
 
   group('AppFonts preset curation (v1.4.22 → v1.8.0 cull)', () {
     test('standalone presets carry no Latin-only / mono / display fonts', () {
-      // v1.8.0: the only standalone preset left is 'system' (fontFamily
-      // null) — every downloadable font lives in one of the three pairing
-      // presets, so this curation rule is trivially satisfied but kept as a
-      // guard against reintroducing bare Latin-only options.
+      // v1.9.0: no standalone presets remain at all — every selectable font
+      // is one of the three pairing presets, so this curation rule guards
+      // against reintroducing bare Latin-only options.
       final families = AppFonts.presets
           .where((f) => f.cjkFamily == null)
           .map((f) => f.fontFamily)
@@ -70,13 +69,16 @@ void main() {
     });
   });
 
-  group('AppFonts default font (v1.4.23 → v1.5.2)', () {
-    test('defaults to the bundled system stack (Manrope × MiSans)', () {
-      // v1.5.2: the default is the SYSTEM preset — ThemeData supplies the
-      // bundled Manrope (Latin) + MiSans (CJK) stack, so first launch and
-      // offline use never flash unregistered fonts.
-      expect(AppFonts.defaultFont.id, 'system');
-      expect(AppFonts.defaultFont.fontFamily, isNull);
+  group('AppFonts default font (v1.5.2 → v1.9.0)', () {
+    test('defaults to Inter × MiSans (user-set app default)', () {
+      // v1.9.0: the bare 'system' preset was removed and Inter × MiSans is
+      // the out-of-the-box default. While / if the Inter download is
+      // unavailable, the pairing fallback chain (MiSans → HarmonyOS Sans SC
+      // → …) keeps mixed text readable.
+      expect(AppFonts.defaultFont.id, 'interMisans');
+      expect(AppFonts.defaultFont.fontFamily, 'Inter');
+      expect(AppFonts.defaultFont.cjkFamily, 'MiSans');
+      expect(AppFonts.defaultFont.isGoogleFont, isTrue);
     });
   });
 
