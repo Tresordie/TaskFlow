@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:taskflow/core/theme/font_stack.dart';
@@ -55,6 +56,65 @@ void main() {
       expect(miPair.fontFamily, 'Manrope');
       expect(miPair.cjkFamily, 'MiSans');
       expect(miPair.isGoogleFont, isFalse);
+    });
+  });
+
+  group('v1.7.0 pairing presets', () {
+    test('three new CN+EN pairings carry the designed halves', () {
+      final byId = {for (final f in AppFonts.presets) f.id: f};
+      final inter = byId['interMisans']!;
+      expect(inter.fontFamily, 'Inter');
+      expect(inter.isGoogleFont, isTrue);
+      expect(inter.cjkFamily, 'MiSans');
+      final jakarta = byId['jakartaNoto']!;
+      expect(jakarta.fontFamily, 'Plus Jakarta Sans');
+      expect(jakarta.isGoogleFont, isTrue);
+      expect(jakarta.cjkFamily, 'Noto Sans SC');
+      final lexend = byId['lexendNoto']!;
+      expect(lexend.fontFamily, 'Lexend');
+      expect(lexend.isGoogleFont, isTrue);
+      expect(lexend.cjkFamily, 'Noto Sans SC');
+    });
+
+    test('every Google-hosted family a preset names exists in google_fonts',
+        () {
+      // v1.6.0 lesson: pairPlexNoto / pairOutfitMiSans shipped without a
+      // download branch in TaskFlowApp._googleFontTextTheme, so the Latin
+      // half never loaded. This contract pins (a) that every family named
+      // by any preset is actually resolvable by the installed google_fonts
+      // package, and (b) the reminder list of families the download switch
+      // must cover — extending it when you add a preset, not after.
+      const switchCovered = {
+        'Noto Sans SC', // _ensureCjkFontLoaded + _googleFontTextTheme
+        'Noto Serif SC', // _ensureCjkFontLoaded
+        'LXGW WenKai TC', // _ensureCjkFontLoaded
+        'Poppins', // _googleFontTextTheme
+        'Lora',
+        'Nunito',
+        'Inter',
+        'Plus Jakarta Sans',
+        'Lexend',
+        'IBM Plex Sans',
+        'Outfit',
+      };
+      final needed = <String>{
+        for (final f in AppFonts.presets) ...[
+          if (f.isGoogleFont) f.fontFamily!,
+          if (f.cjkFamily != null &&
+              f.cjkFamily != 'MiSans' && // bundled — no download needed
+              f.cjkFamily != 'HarmonyOS Sans SC')
+            f.cjkFamily!,
+        ],
+      };
+      // The switch list must cover every downloadable family a preset needs.
+      expect(needed.difference(switchCovered), isEmpty);
+      // And google_fonts must actually host every one of them (catches
+      // typos like 'Plus Jakarta' and package downgrades).
+      final hosted = GoogleFonts.asMap().keys.toSet();
+      for (final family in switchCovered) {
+        expect(hosted, contains(family),
+            reason: 'google_fonts must host "$family"');
+      }
     });
   });
 

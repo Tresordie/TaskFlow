@@ -178,6 +178,18 @@ class TaskFlowApp extends ConsumerWidget {
         return GoogleFonts.loraTextTheme(base);
       case 'Nunito':
         return GoogleFonts.nunitoTextTheme(base);
+      // v1.7.0: register the new pairing presets…
+      case 'Inter':
+        return GoogleFonts.interTextTheme(base);
+      case 'Plus Jakarta Sans':
+        return GoogleFonts.plusJakartaSansTextTheme(base);
+      case 'Lexend':
+        return GoogleFonts.lexendTextTheme(base);
+      // …and fix the v1.6.0 pairings whose download branches were missing.
+      case 'IBM Plex Sans':
+        return GoogleFonts.ibmPlexSansTextTheme(base);
+      case 'Outfit':
+        return GoogleFonts.outfitTextTheme(base);
       default:
         return base;
     }

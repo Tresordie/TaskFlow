@@ -103,6 +103,33 @@ class AppFonts {
       isGoogleFont: true,
       cjkFamily: 'MiSans',
     ),
+    // v1.7.0: three more quality CN+EN pairings (Google-hosted, zero bundle
+    // cost). Inter pairs with the bundled MiSans; the other two use the
+    // downloadable Noto Sans SC.
+    FontOption(
+      id: 'interMisans',
+      labelZh: 'Inter × MiSans（经典均衡）',
+      labelEn: 'Inter + MiSans',
+      fontFamily: 'Inter',
+      isGoogleFont: true,
+      cjkFamily: 'MiSans',
+    ),
+    FontOption(
+      id: 'jakartaNoto',
+      labelZh: 'Plus Jakarta Sans × 思源黑体（优雅几何）',
+      labelEn: 'Plus Jakarta Sans + Noto Sans SC',
+      fontFamily: 'Plus Jakarta Sans',
+      isGoogleFont: true,
+      cjkFamily: 'Noto Sans SC',
+    ),
+    FontOption(
+      id: 'lexendNoto',
+      labelZh: 'Lexend × 思源黑体（清晰舒展）',
+      labelEn: 'Lexend + Noto Sans SC',
+      fontFamily: 'Lexend',
+      isGoogleFont: true,
+      cjkFamily: 'Noto Sans SC',
+    ),
   ];
 
   /// Common system fonts available on Windows / macOS

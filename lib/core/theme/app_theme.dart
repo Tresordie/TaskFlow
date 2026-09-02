@@ -8,8 +8,16 @@ enum AppThemeMode {
   sunsetOrange,
   lavenderPurple,
   warmSand,
+  // v1.7.0: three muted-quality light themes.
+  celadon,
+  inkBlue,
+  dustyRose,
   dark,
   nordNight,
+  // v1.7.0: three refined dark themes.
+  espresso,
+  deepSea,
+  aubergine,
   // v1.4.96: Catppuccin — four flavours × two accents.
   catLatteLavender,
   catLatteMauve,
@@ -32,10 +40,22 @@ enum AppThemeMode {
         return 'Lavender Purple';
       case AppThemeMode.warmSand:
         return 'Warm Sand';
+      case AppThemeMode.celadon:
+        return 'Celadon';
+      case AppThemeMode.inkBlue:
+        return 'Ink Blue';
+      case AppThemeMode.dustyRose:
+        return 'Dusty Rose';
       case AppThemeMode.dark:
         return 'Dark';
       case AppThemeMode.nordNight:
         return 'Nord Night';
+      case AppThemeMode.espresso:
+        return 'Espresso';
+      case AppThemeMode.deepSea:
+        return 'Deep Sea';
+      case AppThemeMode.aubergine:
+        return 'Aubergine';
       case AppThemeMode.catLatteLavender:
         return 'Catppuccin Latte · Lavender';
       case AppThemeMode.catLatteMauve:
@@ -67,10 +87,22 @@ enum AppThemeMode {
         return '薰衣草紫';
       case AppThemeMode.warmSand:
         return '暖沙';
+      case AppThemeMode.celadon:
+        return '青瓷';
+      case AppThemeMode.inkBlue:
+        return '黛蓝';
+      case AppThemeMode.dustyRose:
+        return '胭脂';
       case AppThemeMode.dark:
         return '暗夜模式';
       case AppThemeMode.nordNight:
         return '极夜蓝';
+      case AppThemeMode.espresso:
+        return '深咖啡';
+      case AppThemeMode.deepSea:
+        return '深海蓝';
+      case AppThemeMode.aubergine:
+        return '墨紫';
       case AppThemeMode.catLatteLavender:
         return '拿铁 · 薰衣草';
       case AppThemeMode.catLatteMauve:
@@ -102,10 +134,22 @@ enum AppThemeMode {
         return AppColors.lavenderPurple;
       case AppThemeMode.warmSand:
         return AppColors.warmSand;
+      case AppThemeMode.celadon:
+        return AppColors.celadon;
+      case AppThemeMode.inkBlue:
+        return AppColors.inkBlue;
+      case AppThemeMode.dustyRose:
+        return AppColors.dustyRose;
       case AppThemeMode.dark:
         return AppColors.dark;
       case AppThemeMode.nordNight:
         return AppColors.nordNight;
+      case AppThemeMode.espresso:
+        return AppColors.espresso;
+      case AppThemeMode.deepSea:
+        return AppColors.deepSea;
+      case AppThemeMode.aubergine:
+        return AppColors.aubergine;
       case AppThemeMode.catLatteLavender:
         return AppColors.catLatteLavender;
       case AppThemeMode.catLatteMauve:
@@ -132,11 +176,17 @@ enum AppThemeMode {
       case AppThemeMode.sunsetOrange:
       case AppThemeMode.lavenderPurple:
       case AppThemeMode.warmSand:
+      case AppThemeMode.celadon:
+      case AppThemeMode.inkBlue:
+      case AppThemeMode.dustyRose:
       case AppThemeMode.catLatteLavender:
       case AppThemeMode.catLatteMauve:
         return Brightness.light;
       case AppThemeMode.dark:
       case AppThemeMode.nordNight:
+      case AppThemeMode.espresso:
+      case AppThemeMode.deepSea:
+      case AppThemeMode.aubergine:
       case AppThemeMode.catFrappeMauve:
       case AppThemeMode.catFrappeSapphire:
       case AppThemeMode.catMacchiatoMauve:
