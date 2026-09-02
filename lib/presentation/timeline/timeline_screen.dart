@@ -212,7 +212,9 @@ class TimelineScreen extends ConsumerWidget {
           nav.selectedDate.year, nav.selectedDate.month, nav.selectedDate.day);
       return taskDay == selected;
     }).toList()
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      // v1.9.2: newest first — the timeline reads top-down from the most
+      // recent task down to the oldest.
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 }
 
