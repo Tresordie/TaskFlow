@@ -89,14 +89,12 @@ class TaskFlowApp extends ConsumerWidget {
   /// CJK family. Once loaded the family name resolves everywhere, so plain
   /// fontFamilyFallback entries work. MiSans needs no download — it is
   /// either bundled as an asset font or installed on the system.
+  /// v1.8.0: only 'Noto Sans SC' remains — every other CJK pairing was
+  /// removed with its preset.
   void _ensureCjkFontLoaded(String family) {
     switch (family) {
       case 'Noto Sans SC':
         GoogleFonts.notoSansSc();
-      case 'Noto Serif SC':
-        GoogleFonts.notoSerifSc();
-      case 'LXGW WenKai TC':
-        GoogleFonts.lxgwWenKaiTc();
       default:
         break;
     }
@@ -169,27 +167,15 @@ class TaskFlowApp extends ConsumerWidget {
   }
 
   TextTheme _googleFontTextTheme(String family, TextTheme base) {
+    // v1.8.0: the curated preset list is the three pairings only, so only
+    // their Latin halves need a download branch.
     switch (family) {
-      case 'Noto Sans SC':
-        return GoogleFonts.notoSansScTextTheme(base);
-      case 'Poppins':
-        return GoogleFonts.poppinsTextTheme(base);
-      case 'Lora':
-        return GoogleFonts.loraTextTheme(base);
-      case 'Nunito':
-        return GoogleFonts.nunitoTextTheme(base);
-      // v1.7.0: register the new pairing presets…
       case 'Inter':
         return GoogleFonts.interTextTheme(base);
       case 'Plus Jakarta Sans':
         return GoogleFonts.plusJakartaSansTextTheme(base);
       case 'Lexend':
         return GoogleFonts.lexendTextTheme(base);
-      // …and fix the v1.6.0 pairings whose download branches were missing.
-      case 'IBM Plex Sans':
-        return GoogleFonts.ibmPlexSansTextTheme(base);
-      case 'Outfit':
-        return GoogleFonts.outfitTextTheme(base);
       default:
         return base;
     }

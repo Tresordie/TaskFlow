@@ -14,10 +14,6 @@ enum AppThemeMode {
   dustyRose,
   dark,
   nordNight,
-  // v1.7.0: three refined dark themes.
-  espresso,
-  deepSea,
-  aubergine,
   // v1.4.96: Catppuccin — four flavours × two accents.
   catLatteLavender,
   catLatteMauve,
@@ -50,12 +46,6 @@ enum AppThemeMode {
         return 'Dark';
       case AppThemeMode.nordNight:
         return 'Nord Night';
-      case AppThemeMode.espresso:
-        return 'Espresso';
-      case AppThemeMode.deepSea:
-        return 'Deep Sea';
-      case AppThemeMode.aubergine:
-        return 'Aubergine';
       case AppThemeMode.catLatteLavender:
         return 'Catppuccin Latte · Lavender';
       case AppThemeMode.catLatteMauve:
@@ -97,12 +87,6 @@ enum AppThemeMode {
         return '暗夜模式';
       case AppThemeMode.nordNight:
         return '极夜蓝';
-      case AppThemeMode.espresso:
-        return '深咖啡';
-      case AppThemeMode.deepSea:
-        return '深海蓝';
-      case AppThemeMode.aubergine:
-        return '墨紫';
       case AppThemeMode.catLatteLavender:
         return '拿铁 · 薰衣草';
       case AppThemeMode.catLatteMauve:
@@ -144,12 +128,6 @@ enum AppThemeMode {
         return AppColors.dark;
       case AppThemeMode.nordNight:
         return AppColors.nordNight;
-      case AppThemeMode.espresso:
-        return AppColors.espresso;
-      case AppThemeMode.deepSea:
-        return AppColors.deepSea;
-      case AppThemeMode.aubergine:
-        return AppColors.aubergine;
       case AppThemeMode.catLatteLavender:
         return AppColors.catLatteLavender;
       case AppThemeMode.catLatteMauve:
@@ -184,9 +162,6 @@ enum AppThemeMode {
         return Brightness.light;
       case AppThemeMode.dark:
       case AppThemeMode.nordNight:
-      case AppThemeMode.espresso:
-      case AppThemeMode.deepSea:
-      case AppThemeMode.aubergine:
       case AppThemeMode.catFrappeMauve:
       case AppThemeMode.catFrappeSapphire:
       case AppThemeMode.catMacchiatoMauve:

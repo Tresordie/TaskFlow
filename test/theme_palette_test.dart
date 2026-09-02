@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:taskflow/core/theme/app_colors.dart';
 import 'package:taskflow/core/theme/app_theme.dart';
 
-/// v1.7.0 theme contracts:
+/// v1.7.0 theme contracts (v1.8.0: the three dark additions were removed
+/// again per user request — 18 themes remain):
 ///  - every AppThemeMode has complete bilingual labels and a fully
 ///    populated palette (no half-copied colors);
 ///  - surface elevation follows the ladder every theme is designed on —
@@ -12,14 +13,14 @@ import 'package:taskflow/core/theme/app_theme.dart';
 ///    always lift off the canvas (the v1.4.98 Latte lesson, generalized);
 ///  - brightness grouping is correct (the GFM alert color table and the
 ///    buildTheme light/dark branches both depend on it);
-///  - the six new palettes keep their designed signature colors so a
-///    refactor can't silently flatten them into each other.
+///  - the three kept light palettes carry their designed signature colors
+///    so a refactor can't silently flatten them into each other.
 void main() {
-  group('AppThemeMode catalog (v1.7.0)', () {
-    test('21 themes with unique names and non-empty bilingual labels', () {
-      expect(AppThemeMode.values.length, 21);
+  group('AppThemeMode catalog (v1.7.0, trimmed v1.8.0)', () {
+    test('18 themes with unique names and non-empty bilingual labels', () {
+      expect(AppThemeMode.values.length, 18);
       final names = AppThemeMode.values.map((m) => m.name).toSet();
-      expect(names.length, 21);
+      expect(names.length, 18);
       for (final mode in AppThemeMode.values) {
         expect(mode.label.isNotEmpty, isTrue, reason: '${mode.name}.label');
         expect(mode.labelZh.isNotEmpty, isTrue, reason: '${mode.name}.labelZh');
@@ -95,9 +96,6 @@ void main() {
       const dark = [
         AppThemeMode.dark,
         AppThemeMode.nordNight,
-        AppThemeMode.espresso,
-        AppThemeMode.deepSea,
-        AppThemeMode.aubergine,
         AppThemeMode.catFrappeMauve,
         AppThemeMode.catFrappeSapphire,
         AppThemeMode.catMacchiatoMauve,
@@ -115,8 +113,8 @@ void main() {
     });
   });
 
-  group('v1.7.0 signature colors', () {
-    // One anchor per new palette: the accent that gives the theme its
+  group('v1.7.0 signature colors (trimmed v1.8.0)', () {
+    // One anchor per kept palette: the accent that gives the theme its
     // identity, plus the canvas tone where the design intent lives there.
     test('celadon keeps the jade accent on a porcelain canvas', () {
       final p = AppThemeMode.celadon.palette;
@@ -135,25 +133,6 @@ void main() {
       final p = AppThemeMode.dustyRose.palette;
       expect(p.primary, const Color(0xFFA66470));
       expect(AppThemeMode.dustyRose.labelZh, '胭脂');
-    });
-
-    test('espresso keeps the caramel accent on coffee surfaces', () {
-      final p = AppThemeMode.espresso.palette;
-      expect(p.primary, const Color(0xFFDBA159));
-      expect(p.surface, const Color(0xFF2A241F));
-      expect(AppThemeMode.espresso.labelZh, '深咖啡');
-    });
-
-    test('deepSea keeps the lagoon-teal accent', () {
-      final p = AppThemeMode.deepSea.palette;
-      expect(p.primary, const Color(0xFF54B8AC));
-      expect(AppThemeMode.deepSea.labelZh, '深海蓝');
-    });
-
-    test('aubergine keeps the misty-violet accent', () {
-      final p = AppThemeMode.aubergine.palette;
-      expect(p.primary, const Color(0xFFA78BC9));
-      expect(AppThemeMode.aubergine.labelZh, '墨紫');
     });
   });
 

@@ -45,17 +45,31 @@ void main() {
     });
   });
 
-  group('pairing presets after the Inter→Manrope switch', () {
-    test('preset ids are kept and now use bundled Manrope', () {
-      final byId = {for (final f in AppFonts.presets) f.id: f};
-      final notoPair = byId['pairInterNoto']!;
-      final miPair = byId['pairInterMiSans']!;
-      expect(notoPair.fontFamily, 'Manrope');
-      expect(notoPair.cjkFamily, 'Noto Sans SC');
-      expect(notoPair.isGoogleFont, isFalse); // bundled Latin half
-      expect(miPair.fontFamily, 'Manrope');
-      expect(miPair.cjkFamily, 'MiSans');
-      expect(miPair.isGoogleFont, isFalse);
+  group('v1.8.0 preset cull — removed ids fall back safely', () {
+    test('the three curated pairings are the only non-system presets', () {
+      final ids = AppFonts.presets.map((f) => f.id).toSet();
+      expect(ids, {'system', 'interMisans', 'jakartaNoto', 'lexendNoto'});
+      // v1.8.0: every earlier preset is gone — users who had one selected
+      // fall back to the default through the unknown-id path.
+      const removed = [
+        'notoSansSC', 'poppins', 'pairInterNoto', 'pairInterMiSans',
+        'pairLoraSerif', 'pairNunitoWenKai', 'pairPlexNoto', 'pairOutfitMiSans',
+      ];
+      for (final r in removed) {
+        expect(ids.contains(r), isFalse, reason: '$r should be removed');
+      }
+    });
+
+    test('removed ids persist no fonts: presets have no Manrope standalone',
+        () {
+      // The Manrope Latin half now lives only in the bundled FontStack
+      // default (via the 'system' preset), not as a selectable preset.
+      expect(
+        AppFonts.presets
+            .where((f) => f.fontFamily == 'Manrope')
+            .map((f) => f.id),
+        isEmpty,
+      );
     });
   });
 
@@ -85,17 +99,10 @@ void main() {
       // package, and (b) the reminder list of families the download switch
       // must cover — extending it when you add a preset, not after.
       const switchCovered = {
-        'Noto Sans SC', // _ensureCjkFontLoaded + _googleFontTextTheme
-        'Noto Serif SC', // _ensureCjkFontLoaded
-        'LXGW WenKai TC', // _ensureCjkFontLoaded
-        'Poppins', // _googleFontTextTheme
-        'Lora',
-        'Nunito',
-        'Inter',
+        'Noto Sans SC', // _ensureCjkFontLoaded (CJK half of two pairings)
+        'Inter', // _googleFontTextTheme (Latin halves)
         'Plus Jakarta Sans',
         'Lexend',
-        'IBM Plex Sans',
-        'Outfit',
       };
       final needed = <String>{
         for (final f in AppFonts.presets) ...[
@@ -130,12 +137,11 @@ void main() {
     });
 
     test('known persisted id still restores', () async {
-      SharedPreferences.setMockInitialValues(
-          {'settings.fontId': 'pairInterMiSans'});
+      SharedPreferences.setMockInitialValues({'settings.fontId': 'interMisans'});
       final notifier = FontNotifier();
       await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(notifier.state.id, 'pairInterMiSans');
-      expect(notifier.state.fontFamily, 'Manrope');
+      expect(notifier.state.id, 'interMisans');
+      expect(notifier.state.fontFamily, 'Inter');
     });
   });
 

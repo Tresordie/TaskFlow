@@ -31,81 +31,19 @@ class AppFonts {
   /// Curated presets focused on crisp, beautiful mixed Chinese + English
   /// rendering. (v1.4.24: dropped Noto Serif SC and LXGW WenKai per user
   /// request; v1.4.25: dropped ZCOOL XiaoWei and ZCOOL QingKe HuangYou per
-  /// user request — leaving Noto Sans SC as the curated CJK choice.)
+  /// user request; v1.8.0: user asked to keep ONLY the three pairings below
+  /// — every earlier preset and the Windows/macOS system-font list were
+  /// removed. Deleted ids fall back to the default via the unknown-id path,
+  /// and 'system' stays as the offline-first out-of-the-box choice.)
   static const List<FontOption> presets = [
     FontOption(
       id: 'system',
       labelZh: '系统默认',
       labelEn: 'System Default',
     ),
-    FontOption(
-      id: 'notoSansSC',
-      labelZh: 'Noto Sans SC (思源黑体 · 中英混排清晰)',
-      labelEn: 'Noto Sans SC',
-      fontFamily: 'Noto Sans SC',
-      isGoogleFont: true,
-    ),
-    FontOption(
-      id: 'poppins',
-      labelZh: 'Poppins (几何圆润 · 英文为主)',
-      labelEn: 'Poppins',
-      fontFamily: 'Poppins',
-      isGoogleFont: true,
-    ),
-    // v1.4.99: curated Chinese-English pairing presets.
-    // v1.5.2: Latin half switched from Inter (unbundled) to the bundled
-    // Manrope variable font; preset ids are KEPT so users' saved choices
-    // migrate to the new pairing instead of falling back to default.
-    FontOption(
-      id: 'pairInterNoto',
-      labelZh: 'Manrope × 思源黑体（现代均衡）',
-      labelEn: 'Manrope + Noto Sans SC',
-      fontFamily: 'Manrope',
-      cjkFamily: 'Noto Sans SC',
-    ),
-    FontOption(
-      id: 'pairInterMiSans',
-      labelZh: 'Manrope × MiSans（屏幕锐利）',
-      labelEn: 'Manrope + MiSans',
-      fontFamily: 'Manrope',
-      cjkFamily: 'MiSans',
-    ),
-    FontOption(
-      id: 'pairLoraSerif',
-      labelZh: 'Lora × 思源宋体（文艺优雅）',
-      labelEn: 'Lora + Noto Serif SC',
-      fontFamily: 'Lora',
-      isGoogleFont: true,
-      cjkFamily: 'Noto Serif SC',
-    ),
-    FontOption(
-      id: 'pairNunitoWenKai',
-      labelZh: 'Nunito × 霞鹜文楷（温暖人文）',
-      labelEn: 'Nunito + LXGW WenKai',
-      fontFamily: 'Nunito',
-      isGoogleFont: true,
-      cjkFamily: 'LXGW WenKai TC',
-    ),
-    // v1.6.0: two more tasteful pairings (Google-hosted, zero bundle cost).
-    FontOption(
-      id: 'pairPlexNoto',
-      labelZh: 'IBM Plex Sans × 思源黑体（工程理性）',
-      labelEn: 'IBM Plex Sans + Noto Sans SC',
-      fontFamily: 'IBM Plex Sans',
-      isGoogleFont: true,
-      cjkFamily: 'Noto Sans SC',
-    ),
-    FontOption(
-      id: 'pairOutfitMiSans',
-      labelZh: 'Outfit × MiSans（现代几何）',
-      labelEn: 'Outfit + MiSans',
-      fontFamily: 'Outfit',
-      isGoogleFont: true,
-      cjkFamily: 'MiSans',
-    ),
-    // v1.7.0: three more quality CN+EN pairings (Google-hosted, zero bundle
-    // cost). Inter pairs with the bundled MiSans; the other two use the
-    // downloadable Noto Sans SC.
+    // v1.7.0: three quality CN+EN pairings (Google-hosted Latin half, zero
+    // bundle cost). Inter pairs with the bundled MiSans; the other two use
+    // the downloadable Noto Sans SC.
     FontOption(
       id: 'interMisans',
       labelZh: 'Inter × MiSans（经典均衡）',
@@ -132,91 +70,7 @@ class AppFonts {
     ),
   ];
 
-  /// Common system fonts available on Windows / macOS
-  static const List<FontOption> systemFonts = [
-    // Windows
-    FontOption(
-      id: 'sys_segoe',
-      labelZh: 'Segoe UI (Windows 界面)',
-      labelEn: 'Segoe UI',
-      fontFamily: 'Segoe UI',
-    ),
-    FontOption(
-      id: 'sys_yahei',
-      labelZh: '微软雅黑',
-      labelEn: 'Microsoft YaHei',
-      fontFamily: 'Microsoft YaHei',
-    ),
-    FontOption(
-      id: 'sys_simsun',
-      labelZh: '宋体',
-      labelEn: 'SimSun',
-      fontFamily: 'SimSun',
-    ),
-    FontOption(
-      id: 'sys_simhei',
-      labelZh: '黑体',
-      labelEn: 'SimHei',
-      fontFamily: 'SimHei',
-    ),
-    FontOption(
-      id: 'sys_consolas',
-      labelZh: 'Consolas (等宽)',
-      labelEn: 'Consolas',
-      fontFamily: 'Consolas',
-    ),
-    FontOption(
-      id: 'sys_calibri',
-      labelZh: 'Calibri',
-      labelEn: 'Calibri',
-      fontFamily: 'Calibri',
-    ),
-    FontOption(
-      id: 'sys_cambria',
-      labelZh: 'Cambria (衬线)',
-      labelEn: 'Cambria',
-      fontFamily: 'Cambria',
-    ),
-    FontOption(
-      id: 'sys_arial',
-      labelZh: 'Arial',
-      labelEn: 'Arial',
-      fontFamily: 'Arial',
-    ),
-    FontOption(
-      id: 'sys_timesnewroman',
-      labelZh: 'Times New Roman',
-      labelEn: 'Times New Roman',
-      fontFamily: 'Times New Roman',
-    ),
-    FontOption(
-      id: 'sys_couriernew',
-      labelZh: 'Courier New (等宽)',
-      labelEn: 'Courier New',
-      fontFamily: 'Courier New',
-    ),
-    // macOS
-    FontOption(
-      id: 'sys_pingfang',
-      labelZh: '苹方 (macOS 中文)',
-      labelEn: 'PingFang SC',
-      fontFamily: 'PingFang SC',
-    ),
-    FontOption(
-      id: 'sys_helvetica',
-      labelZh: 'Helvetica Neue',
-      labelEn: 'Helvetica Neue',
-      fontFamily: 'Helvetica Neue',
-    ),
-    FontOption(
-      id: 'sys_menlo',
-      labelZh: 'Menlo (macOS 等宽)',
-      labelEn: 'Menlo',
-      fontFamily: 'Menlo',
-    ),
-  ];
-
-  static List<FontOption> get all => [...presets, ...systemFonts];
+  static List<FontOption> get all => [...presets];
 
   /// The out-of-the-box font (used until the user picks one).
   ///

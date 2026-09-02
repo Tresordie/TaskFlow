@@ -13,11 +13,12 @@ import 'package:taskflow/providers/font_provider.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('AppFonts preset curation (v1.4.22)', () {
-    test('removed Latin-only / mono / display fonts are gone', () {
-      // v1.4.99: pairing presets intentionally reuse Latin families (Inter,
-      // Lora, Nunito) as the LATIN half of a Chinese-English pair, so the
-      // curation rule applies to STANDALONE presets only.
+  group('AppFonts preset curation (v1.4.22 → v1.8.0 cull)', () {
+    test('standalone presets carry no Latin-only / mono / display fonts', () {
+      // v1.8.0: the only standalone preset left is 'system' (fontFamily
+      // null) — every downloadable font lives in one of the three pairing
+      // presets, so this curation rule is trivially satisfied but kept as a
+      // guard against reintroducing bare Latin-only options.
       final families = AppFonts.presets
           .where((f) => f.cjkFamily == null)
           .map((f) => f.fontFamily)
@@ -36,21 +37,28 @@ void main() {
       }
     });
 
-    test('v1.4.24/25: serif/regular-script/ZCOOL fonts removed', () {
-      // Standalone-only check (see v1.4.99 note above): Noto Serif SC and
-      // LXGW WenKai TC now exist ONLY as the CJK half of pairing presets.
-      final families = AppFonts.presets
+    test('v1.8.0: Noto Sans SC exists only as a pairing CJK half', () {
+      // v1.8.0 (user request): the standalone Noto Sans SC preset was
+      // removed along with the serif/script/ZCOOL options — the family now
+      // appears solely as the CJK half of jakartaNoto / lexendNoto.
+      final standalone = AppFonts.presets
           .where((f) => f.cjkFamily == null)
           .map((f) => f.fontFamily)
           .toSet();
-      // Removed per user request (v1.4.24: serif + regular script;
-      // v1.4.25: ZCOOL families).
-      expect(families.contains('Noto Serif SC'), isFalse);
-      expect(families.contains('LXGW WenKai TC'), isFalse);
-      expect(families.contains('ZCOOL XiaoWei'), isFalse);
-      expect(families.contains('ZCOOL QingKe HuangYou'), isFalse);
-      // Noto Sans SC stays as the curated mixed CN/EN preset.
-      expect(families.contains('Noto Sans SC'), isTrue);
+      expect(standalone.contains('Noto Sans SC'), isFalse);
+      final pairingHalves = AppFonts.presets
+          .map((f) => f.cjkFamily)
+          .whereType<String>()
+          .toSet();
+      expect(pairingHalves, contains('Noto Sans SC'));
+      // The v1.4.24/25 removals stay removed everywhere.
+      expect(AppFonts.presets.where((f) => f.fontFamily == 'Noto Serif SC'),
+          isEmpty);
+      expect(
+          AppFonts.presets.where((f) => f.cjkFamily == 'LXGW WenKai TC'),
+          isEmpty);
+      expect(AppFonts.presets.where((f) => f.fontFamily == 'ZCOOL XiaoWei'),
+          isEmpty);
     });
 
     test('every preset id is unique and non-empty', () {

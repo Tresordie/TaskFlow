@@ -259,7 +259,11 @@ class _ActivityTaskItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final priorityColor = AppColors.priorityColor(task.priority.index);
-    final isCompleted = task.status == TaskStatus.completed;
+    // v1.8.0: archived renders like completed (green + strikethrough), same
+    // as the Today board's TaskCard — the missing archived check made the
+    // Activity page the odd one out.
+    final isCompleted = task.status == TaskStatus.completed ||
+        task.status == TaskStatus.archived;
 
     return GestureDetector(
       onTap: () => context.push('/task/${task.id}'),

@@ -463,7 +463,10 @@ class _DayTaskItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final priorityColor = AppColors.priorityColor(task.priority.index);
-    final isCompleted = task.status == TaskStatus.completed;
+    // v1.8.0: archived renders like completed (green + strikethrough), same
+    // as the Today board's TaskCard.
+    final isCompleted = task.status == TaskStatus.completed ||
+        task.status == TaskStatus.archived;
 
     return GestureDetector(
       onTap: () => context.push('/task/${task.id}'),
@@ -561,7 +564,10 @@ class _DuePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isCompleted = task.status == TaskStatus.completed;
+    // v1.8.0: archived due pills render like completed (green), matching
+    // the day list and the Today board.
+    final isCompleted = task.status == TaskStatus.completed ||
+        task.status == TaskStatus.archived;
     final accent = isCompleted ? AppColors.success : AppColors.warning;
 
     return Container(

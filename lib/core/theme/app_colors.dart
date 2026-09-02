@@ -170,57 +170,6 @@ class AppColors {
     primaryGhost: Color(0xFF35404D),
   );
 
-  // ─── Espresso (深咖啡, v1.7.0) ───
-  // Dark-roast brown surfaces with warm parchment text and a caramel-amber
-  // accent. Reads like a dim café after dark — warmth without glare, for
-  // evening sessions that feel cozy rather than cold.
-  static const ThemePalette espresso = ThemePalette(
-    bg: Color(0xFF201B17),
-    surface: Color(0xFF2A241F),
-    card: Color(0xFF37302A),
-    border: Color(0xFF463D35),
-    textPrimary: Color(0xFFF1E9E0),
-    textSecondary: Color(0xFFCDBDAD),
-    primary: Color(0xFFDBA159),
-    primaryLight: Color(0xFFE7BA7E),
-    primaryDark: Color(0xFFAE7A3E),
-    primaryGhost: Color(0xFF3A312A),
-  );
-
-  // ─── Deep Sea (深海蓝, v1.7.0) ───
-  // Petrol-blue abyss surfaces with a calm lagoon-teal accent — the dark
-  // counterpart of Celadon. Cooler and more chromatic than Nord Night,
-  // enveloping without ever going pitch black.
-  static const ThemePalette deepSea = ThemePalette(
-    bg: Color(0xFF152229),
-    surface: Color(0xFF1C2D36),
-    card: Color(0xFF263B46),
-    border: Color(0xFF314954),
-    textPrimary: Color(0xFFE2EEF1),
-    textSecondary: Color(0xFFA9C2CA),
-    primary: Color(0xFF54B8AC),
-    primaryLight: Color(0xFF7FCBC2),
-    primaryDark: Color(0xFF3A8A80),
-    primaryGhost: Color(0xFF243A44),
-  );
-
-  // ─── Aubergine (墨紫, v1.7.0) ───
-  // Charcoal-plum surfaces with a misty violet accent. Deep and elegant —
-  // the dark sibling of Dusty Rose, built for low-light focus with a hint
-  // of luxury.
-  static const ThemePalette aubergine = ThemePalette(
-    bg: Color(0xFF1F1C26),
-    surface: Color(0xFF272330),
-    card: Color(0xFF322D3D),
-    border: Color(0xFF413A4E),
-    textPrimary: Color(0xFFEBE7F2),
-    textSecondary: Color(0xFFB6ADC6),
-    primary: Color(0xFFA78BC9),
-    primaryLight: Color(0xFFBFA8DA),
-    primaryDark: Color(0xFF8168A6),
-    primaryGhost: Color(0xFF332D40),
-  );
-
   // ─── Warm Sand (暖沙, v1.6.0) ───
   // A warm paper-like light theme: soft sand canvas, deep umber text and a
   // caramel accent. Reads like a well-lit notebook — gentler than the cool

@@ -39,6 +39,13 @@ class AiConfigNotifier extends StateNotifier<AiConfig> {
   static const _kApiKey = 'settings.ai.apiKey';
   static const _kModel = 'settings.ai.model';
 
+  /// v1.8.0: false until [_restore] has landed. The restore is async while
+  /// the notifier is created lazily on first read — the Settings card must
+  /// not latch the empty default it sees before this turns true, or the
+  /// fields would stay blank (and the next autosave could overwrite the
+  /// stored config with blanks).
+  bool restored = false;
+
   AiConfigNotifier() : super(const AiConfig()) {
     _restore();
   }
@@ -47,6 +54,7 @@ class AiConfigNotifier extends StateNotifier<AiConfig> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedModel = prefs.getString(_kModel);
+      restored = true;
       state = AiConfig(
         baseUrl: prefs.getString(_kBaseUrl) ?? '',
         apiKey: prefs.getString(_kApiKey) ?? '',
@@ -58,6 +66,7 @@ class AiConfigNotifier extends StateNotifier<AiConfig> {
       );
     } catch (_) {
       // Best-effort.
+      restored = true;
     }
   }
 

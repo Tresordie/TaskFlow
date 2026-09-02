@@ -997,6 +997,12 @@ class _AiConfigCardState extends ConsumerState<_AiConfigCard> {
 
   void _ensureLoaded() {
     if (_loaded) return;
+    // v1.8.0: the notifier restores asynchronously and is created lazily on
+    // the first read — when Settings is the first page to touch it, the
+    // state here is still the empty default. Never latch that; bail out and
+    // let the ref.watch rebuild below retry once _restore() has landed, so
+    // the last-used config auto-fills the fields.
+    if (!ref.read(aiConfigProvider.notifier).restored) return;
     final config = ref.read(aiConfigProvider);
     _baseUrlController.text = config.baseUrl;
     _apiKeyController.text = config.apiKey;
