@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-09-02 · 当前版本 **v1.9.2**（已发版：Timeline 排序反转为**最新在最上、久远在底下**（createdAt 降序）；253 测试）
+> 最后更新：2026-09-18 · 当前版本 **v1.9.3**（已发版：Reports 报告总结优化——In Progress 一句话/进度明细近一周聚焦/下期计划只含未完成不分解；254 测试）
 
 ---
 
@@ -107,7 +107,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
   - 块级 Markdown（Reports 预览等）→ `AppMarkdownBody`（MarkdownBody + 自定义扩展，**无 InlineHtmlSyntax**；`<br>` 由窄义 `BrSyntax` 支持，仅限 br 标签，见 8.11/8.21）。
   - 输入区 → `MarkdownEditorField`（Write/Preview 切换，预览就是 SelectableMarkdownBody，WYSIWYG）。
   - 两链共用：语法注册集中在 `lib/core/markdown/gfm_extensions.dart`（`GfmExtensions.blockSyntaxes`/`inlineSyntaxes()`/`prepare()`）；`prepare` 管线 = flattenDisplayMath（多行 `$$` 并一行）→ normalizeMultilineTableRows（AI 断行单元格合并 `<br>`）→ hardenMarkdownLineBreaks（可选，表格行/`> [!TYPE]` 起始行/`$$` 行豁免）。
-- **报告生成**：`report_service.dart` —— `formatTaskData` 把任务描述（截断 2000 字）+ **全部执行日志**（期内条目与近 10 天条目为主体完整投喂，超 10 天的旧条目标注 `(older than 10 days — context only)`，旧文本每任务上限 12000 字符）喂给 AI；推理模型走流式 `_chatStream`（180 秒块间隔超时，不限总时长）；AI 失败回退确定性模板。输出 5 章节；v1.5.6 起仪表盘 Headline 为 `<br>` 列表（≤3 条）、执行摘要无 sub-step 比例、进度明细聚焦近 10 天日志。
+- **报告生成**：`report_service.dart` —— `formatTaskData` 把任务描述（截断 2000 字）+ **全部执行日志**（期内条目与近 7 天条目为主体完整投喂，超一周的旧条目标注 `(older than 7 days — context only)`，旧文本每任务上限 12000 字符）喂给 AI；推理模型走流式 `_chatStream`（180 秒块间隔超时，不限总时长）；AI 失败回退确定性模板。输出 5 章节；v1.5.6 起仪表盘 Headline 为 `<br>` 列表（≤3 条）、执行摘要无 sub-step 比例；**v1.9.3 报告总结优化（用户三需求）**：① 执行摘要 In Progress 每任务一行=加粗标题+" — "+一句话总结（无缩进要点）；② 进度明细近因聚焦改为**近一周（7 天）**，更早条目压缩为"早期背景："一句历史总结，详情条目对任务做详细描述；③ 下期计划只含未完成任务（计划中/进行中/阻塞逾期）、**每任务一行禁止分解**为子任务行。
 - **同步**：`sync_service.dart` —— Google Drive 文件夹镜像。`Sync Now` 两阶段：PHASE 1 Pull（快照合并 + 拉取缺失附件）→ PHASE 2 Push（本地快照 + 附件推回）。附件复制并行 4 路、失败即 `attrib +P` 钉住触发 Drive 下载、轮内 3 秒后重试。启动时路径自愈合（盘符变化自动重定位）。
 - **扩展 Markdown（v1.5.0）**：两侧渲染器支持脚注（`[^1]`+定义附录）、上标 `^x^`/下标 `~x~`（0.7× 小字号，保整篇可选）；SelectableMarkdownBody 的 `==高亮==`/`++下划线++`/`<font>` 样式不再丢失。**关键顺序**：自定义 rich 语法必须排在 `StrikethroughSyntax` 之前（包的删除线会贪婪吞单 `~`，见 8.14）。Mermaid 扩展仍不做（9.12）；**LaTeX 已在 v1.5.3 落地**（用户重提后解除）。
 - **GFM 四能力（v1.5.3）**：① 表格：AppMarkdownBody 走 flutter_markdown 0.7.7 原生 Table（表头加粗/主题色边框/单元格 padding 由 styleSheet merge 注入），可选链渲染为等宽对齐纯文本列（CJK 双宽计宽，`table_support.displayWidth/padCell`）；② 任务清单 `- [ ]`/`- [x]`：自定义语法把 `<input>` 提升到 `<li>` 首子节点（包默认插在 `p` 里会被 flutter_markdown 丢弃），AppMarkdownBody 经 `checkboxBuilder` 渲染 ☐/☑，可选链用字形替换项目符号（☑ 主题色，只读无交互）；③ GFM Alerts：`GfmAlertSyntax`（大小写敏感，区别于包内 `AlertBlockSyntax`），输出 `div.markdown-alert-*` + `data-alert`/`data-source` 属性；AppMarkdownBody 用 `_DivDispatchBuilder` 渲染主题化容器（左色条+淡背景+大写类型标签，内容经嵌套 AppMarkdownBody 重渲染——flutter_markdown 的 builder 拿不到已构建子节点，只能靠 data-source 重建），可选链降级为着色类型标签 + `│ ` 槽线文本；普通 `>` 引用行为不变；五色语义色集中在 `AppColors.alertAccent/alertBackground`（亮/暗双套，禁散落硬编码）；④ LaTeX：仅 `$...$` 与 `$$...$$`（不解析 `\( \)`/`\[ \]`），严格定界防货币误判（开 `$` 后非空白、闭 `$` 前非空白、负向环视避 `$$`），多行 `$$` 块由 `flattenDisplayMath` 展平；AppMarkdownBody 用 `Math.tex`（失败回退原文红斜体）；可选链行内/块级均以 `WidgetSpan` 嵌入（**已知降级：公式不参与文字选区、复制时丢失**）；流式期间不完整公式不匹配语法而显示原文，流结束后重解析自动渲染，无需特判。
@@ -136,6 +136,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 
 | 日期/版本 | 决策 | 理由 |
 |---|---|---|
+| v1.9.3 | 报告总结优化三件套：① 执行摘要 In Progress=每任务一行（加粗标题+" — "+一句话总结，删缩进要点）；② 进度明细近因聚焦 10 天→**7 天（近一周）**，超一周日志压成"早期背景："一句历史总结，详情条目=任务详细描述；③ 下期计划**只含未完成任务**（计划/进行/阻塞逾期）且**每任务一行禁止分解**（删"可分解为多个行动行"指令）。改动面：`formatTaskData` recentCut 10→7 天+标签、中英 AI 提示词（输出模板/分节规则/质量自检）、回退模板 toMarkdown/toHtml 的 In Progress 小节；契约测试同步（253→254） | 用户三需求（In Progress 一句话总结；详细描述+近一周重点+超一周一句话历史；计划只针对未完成任务、不细化）。整周报告期（start=end−7d）下"近期但期外"分档为空集，契约测试改用 07-15→07-20 短周期构造该分档 |
 | v1.9.2 | Timeline `_filterTasks` 排序升序→**降序**（最新在最上、久远在底下）；`isLast` 竖线逻辑不动（isLast=最底最旧一条，链条自上而下仍连贯） | 用户读时间线的习惯是自上而下从最近看起 |
 | v1.9.1 | Timeline `_TimelineItem` 左侧时间列 52px 单行 HH:mm → **96px 两行堆叠（yyyy-MM-dd 上、HH:mm 下）**，样式沿用 labelSmall+lightTextSecondary | 范围模式下多天任务同列只有时刻无日期，无法辨认归属日；96px 按 labelSmall 11px×140% 缩放 ×10 字符留足余量 |
 | v1.9.0 | 用户两需求：①删除"系统默认"预设，**Inter×MiSans 成为应用默认字体**（defaultFont 改指 interMisans；旧 'system' 持久化 id 经未知 id 路径安全迁移到默认；预设仅剩 3 配对；离线首启 Inter 下载失败由 MiSans→HarmonyOS 回退链兜底）；②Timeline `_TimelineItem` 任务标题补 completed/archived 画线+变淡（此前完全无画线，与 Today TaskCard 不一致；状态点/徽标保持真实状态色不动） | 用户明确"Inter×MiSans 设为系统默认"；画线对齐以 Today 看板为基准，状态徽标保留信息量 |
@@ -225,6 +226,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
+- ✅ v1.9.3（已发版）：Reports 报告总结优化——In Progress 一句话总结、进度明细近一周（7 天）聚焦+超一周一句话历史、下期计划只含未完成任务且不分解；254 测试全过（+1 契约）、双推 `5001225`、包体 35.9MB
 - ✅ v1.9.2（已发版）：Timeline 排序反转为最新在最上；253 测试全过、双推 `2704819`、包体 35.6MB
 - ✅ v1.9.1（已发版）：Timeline 时间列改日期+时间两行（yyyy-MM-dd/HH:mm）；253 测试全过、双推 `26aa546`、包体 35.6MB
 - ✅ v1.9.0（已发版）：删"系统默认"预设、Inter×MiSans 设为应用默认（预设仅剩 3 配对）+ Timeline 任务标题画线对齐 Today；253 测试全过、双推 `23344f1`、包体 35.6MB
@@ -241,10 +243,10 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 - ✅ v1.5.8：AI Prompts 打磨（可调大小/Settings 字体/质感）；✅ v1.5.7：AI Prompts 页面
 - ✅ v1.5.6：报告打磨（Headline 列表/去 sub-steps/10 天聚焦）
 - ✅ v1.5.5-3：alerts GitHub 风格/LaTeX TextScaler/表格 WidgetSpan/GFM 四能力
-- 双远程同步至 `2704819`（v1.9.2）
+- 双远程同步至 `5001225`（v1.9.3）
 
 **进行中**：
-- 用户实机验证 v1.9.2：Timeline 最新任务在最上。应用已在运行（v1.9.2 exe）。
+- 用户实机验证 v1.9.3：Reports 页重新生成 AI 报告，检查 In Progress 一句话、进度明细近一周聚焦、下期计划不分解三项新格式。应用已在运行（v1.9.3 exe）。
 - 本仓库由旧工作区迁至 `F:\gitee\taskflow\TaskFlow` 后首次构建：`build/` 内旧 CMake 缓存指向旧路径导致 "does not match the source" 报错，删 `build/` 重来即愈；`windows/flutter/ephemeral/.plugin_symlinks` 陈旧符号链接致 errno 183，同删即愈。
 
 **待办/已知局限**：
@@ -290,3 +292,4 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | 2026-09-02 | 接班模型（本会话，v1.8.0→v1.9.0 默认字体+Timeline 画线轮） | 待定 | 用户两需求：①删"系统默认"预设，Inter×MiSans 设为应用默认（defaultFont→interMisans，旧 'system' id 未知即回退默认天然迁移；预设 4→3）；②Timeline `_TimelineItem` 标题补 completed/archived lineThrough+0.4 变淡（含 decorationColor），状态点/徽标不动；契约测试同步（defaultFont 断言、ids 白名单、'system' 入 removed 清单，共 253）；提交 `23344f1` 双推一次成功；打包 v1.9.0 35.6MB；exe 已启动 |
 | 2026-09-02 | 接班模型（本会话，v1.9.0→v1.9.1 时间列日期轮） | 待定 | 用户需求：Timeline 左侧只有时间希望有日期 → `_TimelineItem` 时间列 52px 单行 HH:mm 改 96px 两行（yyyy-MM-dd 上/HH:mm 下，IntrinsicHeight 内 Column 天然取内容高，行间 2px）；宽度按 140% 字号缩放最坏情况（labelSmall 11px→15.4px×10 字符≈92px）留余量；纯展示改动无契约测试变更（253 不变）；提交 `26aa546` 双推一次成功；打包 v1.9.1 35.6MB；exe 已启动 |
 | 2026-09-02 | 接班模型（本会话，v1.9.1→v1.9.2 时间线倒序轮） | 待定 | 用户需求：Timeline 上面是最近时间、下面为久远时间 → `_filterTasks` 排序比较器翻转（createdAt 降序），isLast 竖线逻辑不动；纯展示改动无契约测试变更（253 不变）；提交 `2704819` 双推一次成功；打包 v1.9.2 35.6MB；exe 已启动 |
+| 2026-09-18 | 接班模型（本会话，v1.9.2→v1.9.3 报告总结优化轮） | 待定 | 用户三需求：①执行摘要 In Progress 每任务一行=加粗标题+" — "+一句话总结（中英提示词输出模板+分节规则+回退模板 toMarkdown/toHtml 同步，取 AI 摘要首行为该句）；②进度明细近因聚焦 10→7 天（formatTaskData recentCut+context-only 标签+中英提示词，超一周压成"早期背景："一句历史总结、详情条目改为任务详细描述）；③下期计划只含未完成任务且每任务一行禁止分解（删中英"可分解为多个行动行"指令，任务列模板去"分解后的子任务"措辞）；新增 In Progress 单行契约测试+更新 7 天分档契约（253→254，踩坑：整周报告期 start=end−7d 时"近期但期外"分档为空集，测试改用 07-15→07-20 短周期构造）；analyze 0 error、254 测试全过；提交 `5001225` 双推一次成功；打包 v1.9.3 35.9MB（DLL+使用说明已在 Release 目录未重做）；exe 已启动 |
