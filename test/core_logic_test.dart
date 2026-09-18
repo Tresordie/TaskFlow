@@ -482,6 +482,32 @@ void main() {
       expect(html, contains('>Closed after PVT sign-off</li>'));
     });
 
+    test('In Progress renders ONE line with a single-sentence summary '
+        '(v1.9.3)', () {
+      final data = sampleWeekly();
+      final target = data.inProgress.first; // PDA data sync (Cosmo)
+      final md = ReportService(TaskRepository()).toMarkdown(
+        data,
+        aiSummaries: {target: 'Vendor quote still pending\nBlocking PDA build'},
+      );
+      // The task's In-Progress bullet carries the FIRST summary line
+      // inline after the bold title …
+      expect(md,
+          contains('- **PDA data sync** — #Cosmo — Vendor quote still pending'));
+      // … and no indented sub-bullets for it in the Executive Summary.
+      expect(md, isNot(contains('  - Vendor quote still pending')));
+      expect(md, isNot(contains('  - Blocking PDA build')));
+
+      final html = ReportService(TaskRepository()).toHtml(
+        data,
+        aiSummaries: {target: 'Vendor quote still pending\nBlocking PDA build'},
+      );
+      expect(
+          html,
+          contains('<strong>PDA data sync</strong>'
+              ' — #Cosmo — Vendor quote still pending</li>'));
+    });
+
     test('exported HTML keeps literal tildes (no accidental strikethrough) '
         '(v1.5.9)', () {
       const src = 'Vout ~ 5V and temp ~ stable, both fine.\n\n'
@@ -508,7 +534,7 @@ void main() {
       expect(html, isNot(contains('</strong> — 1/2 sub-steps')));
     });
 
-    test('formatTaskData splits logs at the 10-day recency line (v1.5.6)',
+    test('formatTaskData splits logs at the 7-day recency line (v1.9.3)',
         () {
       final t = Task()
         ..uid = 'x'
@@ -522,7 +548,7 @@ void main() {
             ..type = EntryType.note,
           ExecutionEntry()
             ..uid = 'l2'
-            ..timestamp = DateTime(2026, 7, 12)
+            ..timestamp = DateTime(2026, 7, 14)
             ..content = 'recent outside period'
             ..type = EntryType.note,
           ExecutionEntry()
@@ -533,7 +559,10 @@ void main() {
         ];
       final data = ReportData(
         period: ReportPeriod.weekly,
-        start: DateTime(2026, 7, 13),
+        // v1.9.3: the 7-day recency window equals the weekly length, so a
+        // "recent but outside the period" band only exists for periods
+        // shorter than 7 days — start on 07-15 so 07-14 lands in it.
+        start: DateTime(2026, 7, 15),
         end: DateTime(2026, 7, 20),
         completed: const [],
         inProgress: [t],
@@ -549,32 +578,38 @@ void main() {
       );
       final txt = ReportService(TaskRepository()).formatTaskData(data);
 
-      // In-period and recent (last 10 days) entries stay in full …
+      // In-period and recent (last 7 days) entries stay in full …
       expect(txt, contains('[07-16] note: in period entry'));
-      expect(txt, contains('[2026-07-12] note: recent outside period'));
+      expect(txt, contains('[2026-07-14] note: recent outside period'));
       // … the old entry carries the context-only label …
       expect(txt,
-          contains('(older than 10 days — context only): ancient history'));
+          contains('(older than 7 days — context only): ancient history'));
       // … and the recent one does NOT.
       expect(txt,
           isNot(contains('context only): recent outside period')));
       expect(txt,
-          contains('3 entries total, 1 in period, 2 within the last 10 days'));
+          contains('3 entries total, 1 in period, 2 within the last 7 days'));
     });
 
-    test('full-report prompt encodes headline list + 10-day focus '
-        '(v1.5.6)', () {
+    test('full-report prompt encodes headline list + 7-day focus + '
+        'one-line In Progress (v1.9.3)', () {
       final en = ReportService.fullReportPrompt(ReportLanguage.english);
       expect(en, contains('{headline 1}<br>{headline 2}<br>{headline 3}'));
-      expect(en, contains('LAST 10 DAYS'));
+      expect(en, contains('LAST 7 DAYS'));
       expect(en, contains('Earlier context: '));
       expect(en, isNot(contains('- **{Task title}** — {x}/{y} sub-steps')));
-      expect(en, contains('older than 10 days — context only'));
+      expect(en, contains('older than 7 days — context only'));
+      // v1.9.3: In Progress is ONE line — title + single-sentence summary.
+      expect(en, contains("- **{Task title}** — {ONE-sentence summary"));
+      expect(en, contains('ONE row per task'));
+      expect(en, isNot(contains('decompose it into multiple rows')));
 
       final zh = ReportService.fullReportPrompt(ReportLanguage.chinese);
       expect(zh, contains('{要点1}<br>{要点2}<br>{要点3}'));
-      expect(zh, contains('近 10 天'));
+      expect(zh, contains('近一周（7 天）'));
       expect(zh, contains('早期背景：'));
+      expect(zh, contains('- **{任务标题}** — {一句话总结任务当前状态}'));
+      expect(zh, contains('禁止把任务分解为多个子任务行'));
     });
 
     test('multi-line AI summaries render as a content list in Details', () {

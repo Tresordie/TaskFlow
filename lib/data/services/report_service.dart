@@ -523,17 +523,17 @@ class ReportService {
         b.writeln('Description: $dd');
       }
       // v1.4.88: the AI reads EVERY log entry of the task — not only the
-      // ones inside the reporting period. v1.5.6 refines the split: entries
-      // from the LAST 10 DAYS (relative to the period end) are the summary's
-      // focus and are fed in full; entries older than 10 days are explicitly
-      // labeled "context only" so the model condenses them into a single
-      // background sentence instead of detailing them (user request). The
-      // older-context text is still capped (12000 chars per task) only to
-      // keep pathological histories from blowing up the prompt.
+      // ones inside the reporting period. v1.9.3 refines the split: entries
+      // from the LAST 7 DAYS / one week (relative to the period end) are the
+      // summary's focus and are fed in full; entries older than one week are
+      // explicitly labeled "context only" so the model condenses them into a
+      // single history sentence instead of detailing them (user request).
+      // The older-context text is still capped (12000 chars per task) only
+      // to keep pathological histories from blowing up the prompt.
       final entries = [...t.executionLog]
         ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
       if (entries.isNotEmpty) {
-        final recentCut = d.end.subtract(const Duration(days: 10));
+        final recentCut = d.end.subtract(const Duration(days: 7));
         final inPeriodCount = entries
             .where((e) =>
                 !e.timestamp.isBefore(d.start) &&
@@ -542,7 +542,7 @@ class ReportService {
         final recentCount = entries.where((e) => !e.timestamp.isBefore(recentCut)).length;
         b.writeln('Execution Log (${entries.length} entries total, '
             '$inPeriodCount in period, $recentCount within the last '
-            '10 days):');
+            '7 days):');
         var earlierChars = 0;
         var earlierTruncated = false;
         for (final e in entries) {
@@ -553,7 +553,7 @@ class ReportService {
           if (inPeriod) {
             b.writeln('  [${f.format(e.timestamp)}] ${e.type.name}: $content');
           } else if (!e.timestamp.isBefore(recentCut)) {
-            // Recent (last 10 days) but outside the period — still focus
+            // Recent (last 7 days) but outside the period — still focus
             // material, fed in full.
             b.writeln('  [${fr.format(e.timestamp)}] ${e.type.name}: $content');
           } else {
@@ -565,7 +565,7 @@ class ReportService {
             }
             earlierChars += content.length;
             b.writeln('  [${fr.format(e.timestamp)}] ${e.type.name} '
-                '(older than 10 days — context only): $content');
+                '(older than 7 days — context only): $content');
           }
         }
       } else {
@@ -596,12 +596,12 @@ class ReportService {
       'PROCESSING RULES — before generating output you MUST:\n'
       '1. Read and comprehend every task\'s description AND its ENTIRE '
       'Execution Log — every entry, including the ones labeled '
-      '"(older than 10 days — context only)" from before the recent '
+      '"(older than 7 days — context only)" from before the recent '
       'window. Do not skim or skip entries. Summaries must be based on a '
       'genuine UNDERSTANDING of the logs (what was done, why, what was '
       'decided, what the results were) — not on surface copying. Entries '
-      'from the last 10 days drive the summary; older context-only '
-      'entries provide background that explains them.\n'
+      'from the last 7 days (one week) drive the summary; older '
+      'context-only entries provide background that explains them.\n'
       '2. Classify each task under its Project.\n'
       '3. Synthesize — distill raw notes into concise, meaningful '
       'summaries, but NEVER over-compress technical content. Technical '
@@ -652,9 +652,8 @@ class ReportService {
       '  - {summary fact 1}\n'
       '  - {summary fact 2}\n\n'
       '### 🚧 In Progress (Watch)\n'
-      '- **{Task title}**\n'
-      '  - {summary fact 1}\n'
-      '  - {summary fact 2}\n\n'
+      '- **{Task title}** — {ONE-sentence summary of the task\'s current '
+      'state}\n\n'
       '### ⚠️ Risks / Blockers\n'
       '- **{Task title}** — overdue (due {MM-DD}, {Px}) or blocked since '
       '{MM-DD}\n'
@@ -673,7 +672,7 @@ class ReportService {
       '## 4. Plan for Next Period\n\n'
       '| Project | Task | Due | Priority |\n'
       '|:-----:|:-----|:---:|:--------:|\n'
-      '| {Project} | {Task or decomposed sub-task} | {MM-DD or —} | '
+      '| {Project} | {Task} | {MM-DD or —} | '
       '{P0–P3} |\n\n'
       '---\n\n'
       '## 5. Asks / Decisions Needed\n'
@@ -702,9 +701,11 @@ class ReportService {
       'task\'s summary is STRUCTURED: 1–3 indented "  - " fact bullets '
       'under the title, one fact per bullet, focusing on OUTCOME and '
       'significance. No paragraphs, no merged multi-fact bullets.\n'
-      '- In Progress: bullet line = bold task title ONLY (no sub-step '
-      'ratio); the structured indented bullets state what advanced this '
-      'period and what remains.\n'
+      '- In Progress (v1.9.3): exactly ONE line per task — bold task '
+      'title, then " — " and a SINGLE sentence summarizing the task\'s '
+      'current state (what the task is and where it stands right now). '
+      'NO indented sub-bullets, no sub-step ratio, no multi-bullet '
+      'structure in this subsection.\n'
       '- Risks / Blockers: overdue tasks and tasks with blocked log '
       'entries. MUST include reason/root cause; state schedule impact '
       'if any.\n'
@@ -721,13 +722,13 @@ class ReportService {
       'line between two task blocks.\n'
       '- Status icons: 🟩 Completed, 🟨 In Progress, 🟥 Blocked/overdue, '
       '⬜ Planned.\n'
-      '- RECENCY FOCUS (v1.5.6): detail items MUST center on the '
-      'Execution Log entries from the LAST 10 DAYS (in-period entries '
-      'and recent entries are the core). Entries labeled "(older than '
-      '10 days — context only)" must be condensed into AT MOST ONE '
-      'background sentence, placed as the LAST bullet of the task, '
-      'prefixed "Earlier context: ". Never detail old entries '
-      'bullet-by-bullet.\n'
+      '- RECENCY FOCUS (v1.9.3): detail items give a DETAILED description '
+      'of the task and MUST center on the Execution Log entries from the '
+      'LAST 7 DAYS / one week (in-period entries and recent entries are '
+      'the core). Entries labeled "(older than 7 days — context only)" '
+      'must be condensed into AT MOST ONE history sentence, placed as '
+      'the LAST bullet of the task, prefixed "Earlier context: ". Never '
+      'detail old entries bullet-by-bullet.\n'
       '- Detail items (MANDATORY for ALL tasks regardless of status): '
       'summarize from your understanding of the task description AND '
       'its Execution Log (recent entries in full, older ones as the '
@@ -743,23 +744,23 @@ class ReportService {
       'exempt — their items must contain a full summary of what was '
       'done, how, and the outcome. NEVER dismiss a task that has '
       'content: if a task has a description or ANY Execution Log entry '
-      '(even one older than 10 days), you MUST summarize it. The '
+      '(even one older than 7 days), you MUST summarize it. The '
       'fallback "No execution logs in the reporting period" is ONLY '
       'allowed when the task has literally NO description AND NO log '
       'entries at all.\n\n'
       '4. Plan for Next Period (MANDATORY — never omit):\n'
       '- This section is REQUIRED in every report. If there are no '
       'upcoming tasks, still include the section header with a note.\n'
-      '- Include: Planned tasks, In Progress tasks (remaining work), and '
-      'Blocked/overdue tasks (unblock steps).\n'
+      '- Include ONLY uncompleted tasks (v1.9.3): Planned tasks, In '
+      'Progress tasks (remaining work), and Blocked/overdue tasks '
+      '(unblock steps). NEVER include completed tasks.\n'
+      '- ONE row per task (v1.9.3) — NEVER decompose a task into '
+      'multiple rows or sub-task steps; the Task column carries the '
+      'task title as-is.\n'
       '- Grouping (STRICT): rows MUST be grouped into contiguous blocks '
       'by Project — all tasks of one project appear together before '
       'moving to the next; NEVER interleave rows from different '
-      'projects. Within each block, order by priority (P0 first). Task '
-      'decomposition: if your understanding of the Execution Log '
-      'suggests a task should be broken into smaller actionable steps, '
-      'decompose it into multiple rows — each a concrete, completable '
-      'action.\n'
+      'projects. Within each block, order by priority (P0 first).\n'
       '- Due date: use the task\'s due date if set; otherwise "—".\n'
       '- Priority: P0 = critical path / blocks other work / imminent '
       'deadline; P1 = important, complete next period; P2 = planned but '
@@ -784,18 +785,20 @@ class ReportService {
       'bullets.\n'
       '- All summaries use nested bullet hierarchy — zero flat '
       'paragraphs anywhere.\n'
-      '- Executive Summary: each task = title bullet + 1–3 indented fact '
-      'bullets; no sub-step ratios anywhere.\n'
+      '- Executive Summary: Achievements tasks = title bullet + 1–3 '
+      'indented fact bullets; In Progress tasks = ONE line each (bold '
+      'title — single-sentence summary); no sub-step ratios anywhere.\n'
       '- Status Dashboard Headline cells are <br>-separated lists of up '
       'to 3 headlines — never one long line.\n'
       '- Progress Details: every task is a bold header line + "- " '
       'bullet list, exactly one item per line, max 5 items per task; no '
-      'tables and no <br> in this section; entries older than 10 days '
+      'tables and no <br> in this section; entries older than 7 days '
       'appear only as the single "Earlier context:" sentence.\n'
       '- Technical key points are complete and specific — nothing '
       'over-compressed.\n'
       '- Status Dashboard progress fractions arithmetically correct.\n'
-      '- Plan rows form contiguous per-project blocks (no interleaving), '
+      '- Plan rows: uncompleted tasks only, one row per task (no '
+      'decomposition), contiguous per-project blocks (no interleaving), '
       'ordered by priority within each block.\n'
       '- The report reads as a coherent narrative a director can scan '
       'in under 2 minutes.\n'
@@ -810,10 +813,10 @@ class ReportService {
       '阻塞和结果的 Note 条目。\n\n'
       '处理规则——生成输出前必须：\n'
       '1. 通读并理解每个任务的描述（description）以及其全部执行日志——'
-      '包括标注为"(older than 10 days — context only)"的超出近 10 天'
-      '窗口的条目，不得跳过任何条目。总结必须建立在对日志的真正理解'
+      '包括标注为"(older than 7 days — context only)"的超出近一周'
+      '（7 天）窗口的条目，不得跳过任何条目。总结必须建立在对日志的真正理解'
       '之上（做了什么、为什么、决策是什么、结果如何），而非表面摘抄；'
-      '近 10 天内的条目是总结的主体，更早的仅作背景（context only）'
+      '近一周（7 天）内的条目是总结的主体，更早的仅作背景（context only）'
       '帮助解释近期进展。\n'
       '2. 将每个任务归类到其项目下。\n'
       '3. 综合提炼——将原始日志提炼为简洁、有意义的总结，但技术'
@@ -851,9 +854,7 @@ class ReportService {
       '  - {要点1}\n'
       '  - {要点2}\n\n'
       '### 🚧 进行中（关注）\n'
-      '- **{任务标题}**\n'
-      '  - {要点1}\n'
-      '  - {要点2}\n\n'
+      '- **{任务标题}** — {一句话总结任务当前状态}\n\n'
       '### ⚠️ 风险与阻塞\n'
       '- **{任务标题}** — 逾期（截止 {MM-DD}，{Px}）或阻塞自 {MM-DD}\n'
       '  - {1–2 句总结：根因与影响}\n'
@@ -870,7 +871,7 @@ class ReportService {
       '## 4. 下期计划\n\n'
       '| 项目 | 任务 | 截止 | 优先级 |\n'
       '|:-----:|:-----|:---:|:--------:|\n'
-      '| {项目} | {任务或分解后的子任务} | {MM-DD 或 —} | {P0–P3} |\n\n'
+      '| {项目} | {任务} | {MM-DD 或 —} | {P0–P3} |\n\n'
       '---\n\n'
       '## 5. 需决策事项\n'
       '- {需要外部输入、升级或跨团队决策的事项}\n'
@@ -886,36 +887,39 @@ class ReportService {
       '2. 执行摘要：成果仅含已完成任务。要点行只含加粗任务标题与完成'
       '日期，禁止附子步骤比例等任何指标；任务总结必须结构化——标题下'
       '以 1–3 条缩进 "  - " 事实要点呈现，一条一个事实，聚焦结果与意义，'
-      '禁止写成段落、禁止合并多事实；进行中条目要点行仅加粗标题'
-      '（无子步骤比例），缩进要点说明本期推进与剩余工作；风险含逾期'
-      '任务和阻塞日志条目，必须说明根因与进度影响。\n\n'
+      '禁止写成段落、禁止合并多事实；进行中条目（v1.9.3）=每任务严格'
+      '一行——加粗标题后接" — "与一句话总结（任务是什么、当前进展到'
+      '什么状态），禁止缩进子要点、禁止子步骤比例、禁止多条要点；'
+      '风险含逾期任务和阻塞日志条目，必须说明根因与进度影响。\n\n'
       '3. 进度明细：按项目分组（H3）。版式（严格）：每个任务是一段'
       '内容清单而非表格——一行加粗标题"**{状态图标} {任务标题}** — '
       '{状态}"，紧跟其详情条目，每条用 "- " 列表项呈现，严格一条'
       '一行、逐条换行，禁止多条挤在一行、禁止使用 <br> 或表格，'
       '任务块之间空一行。状态图标 🟩已完成 🟨进行中 🟥阻塞/逾期 '
-      '⬜计划中；近因聚焦（v1.5.6）：详情条目必须以近 10 天内的执行'
-      '日志为主体（期内条目与近期条目是核心）；标注为'
-      '"(older than 10 days — context only)"的更早条目必须压缩为'
-      '至多一句背景说明，置于该任务要点列表的最后一条，以'
-      '"早期背景："开头，禁止把旧日志逐条展开；'
+      '⬜计划中；近因聚焦（v1.9.3）：详情条目须对任务做详细描述，'
+      '且必须以近一周（7 天）内的执行日志为主体（期内条目与近期条目'
+      '是核心）；标注为"(older than 7 days — context only)"的更早'
+      '条目必须压缩为至多一句历史总结，置于该任务要点列表的'
+      '最后一条，以"早期背景："开头，禁止把旧日志逐条展开；'
       '详情条目（对所有状态的任务都必填）基于对任务描述与执行日志'
-      '（近 10 天条目完整展开、更早条目并入那句背景）的理解综合总结'
+      '（近 7 天条目完整展开、更早条目并入那句背景）的理解综合总结'
       '——已完成、进行中、阻塞、计划中任务一视同仁，每任务最多 5 条'
       '（早期背景句计入 5 条），每条=一个独立事实；技术要点不得被'
       '压缩掉：料号、固件版本、参数、测量值、测试条件、日期、供应商、'
       '结果、根因必须完整具体；已完成任务不可豁免，其条目必须完整'
       '总结做了什么、如何做、结果如何；禁止轻易略过有内容的任务：'
-      '只要任务有描述或任何执行日志（即使超过 10 天）就必须总结；'
+      '只要任务有描述或任何执行日志（即使超过一周）就必须总结；'
       '仅当任务既无描述也无任何日志时，才写"报告期内无执行日志；'
       '{简要状态}"。\n\n'
       '4. 下期计划（必填，禁止省略）：每份报告都必须有此章节；'
-      '即使没有后续任务，也要保留标题并加说明。含计划中、进行中'
-      '（剩余工作）、阻塞（解除步骤）的任务。分组（严格）：行必须'
+      '即使没有后续任务，也要保留标题并加说明。只包含未完成任务'
+      '（v1.9.3）：计划中、进行中（剩余工作）、阻塞/逾期（解除步骤）'
+      '的任务，禁止把已完成任务列入计划。每个任务只占一行（v1.9.3）'
+      '——禁止把任务分解为多个子任务行，任务列保持任务标题原样。'
+      '分组（严格）：行必须'
       '按项目连续成块——同一项目的任务全部排在一起再进入下一个'
       '项目，禁止不同项目的行交叉混排；每个项目块内按优先级排序'
-      '（P0 在前）。可根据日志理解将任务分解为多个具体可完成的'
-      '行动行。\n\n'
+      '（P0 在前）。\n\n'
       '5. 需决策事项（必填，禁止省略）：每份报告都必须有此章节；'
       '若无需决策事项，写"本期无"，但章节标题必须保留。从阻塞、'
       '待确认、跨团队依赖或未解决问题中提取；每项须可执行：'
@@ -923,14 +927,16 @@ class ReportService {
       '质量自检：5 个章节（状态仪表盘、执行摘要、进度明细、下期计划、'
       '需决策事项）全部齐备；每个任务至少出现在一个章节；技术术语、'
       '物料编号、缩写、测量值原样保留不得改写；每个要点只讲一个事实、'
-      '不合并多事实；所有总结用嵌套列表层级、全报告零平铺段落；'
-      '摘要为标题要点+1–3 条缩进事实要点的结构化列表、要点行不带'
+      '不合并多事实；已完成事项用嵌套列表层级（标题要点+1–3 条缩进'
+      '事实要点）、全报告零平铺段落；进行中每任务严格一行（加粗标题'
+      '—一句话总结）；要点行不带'
       '子步骤比例；状态仪表盘要点格为'
       '<br> 分隔的至多 3 条列表；进度明细每个任务=加粗标题行+"- "清单，'
-      '严格一条一行，最多 5 条，本节禁止表格与 <br>，超过 10 天的'
+      '严格一条一行，最多 5 条，本节禁止表格与 <br>，超过一周（7 天）的'
       '旧日志只以"早期背景："一句出现；技术要点完整具体、'
       '不过度压缩；进度分数算术正确；'
-      '下期计划按项目连续成块不交叉、块内按优先级排序；'
+      '下期计划只含未完成任务、每任务一行不分解、按项目连续成块不交叉、'
+      '块内按优先级排序；'
       '报告应连贯、可在 2 分钟内扫读完毕。'
       '仅输出 Markdown 报告本身，不要额外说明或代码围栏。';
 
@@ -999,13 +1005,14 @@ class ReportService {
       b.writeln('- ${l.noneThisPeriod}');
     } else {
       for (final t in d.inProgress) {
-        // v1.5.6: bullet line = bold title only — the sub-step ratio is
-        // gone from the Executive Summary (user request).
+        // v1.9.3: ONE line per task — bold title followed by a
+        // single-sentence summary (the first AI summary line); no
+        // indented bullet structure in this subsection (user request).
+        final lines = _summaryLines(t, aiSummaries);
+        final sentence =
+            lines.isNotEmpty ? ' — ${_mdEscape(lines.first)}' : '';
         b.writeln(
-            '- **${_mdEscape(_title(t, aiTitles))}**${_tagSuffix(t, aiTerms)}');
-        for (final line in _summaryLines(t, aiSummaries)) {
-          b.writeln('  - ${_mdEscape(line)}');
-        }
+            '- **${_mdEscape(_title(t, aiTitles))}**${_tagSuffix(t, aiTerms)}$sentence');
       }
     }
     b.writeln();
@@ -1576,18 +1583,12 @@ $bodyOpen$innerHead''');
     } else {
       b.write('<ul class="sum" style="$sumUlS">');
       for (final t in d.inProgress) {
-        // v1.5.6: title only — no sub-step ratio (mirrors the markdown).
-        b.write(
-            '<li style="$sumLiS"><strong>${esc(_title(t, aiTitles))}</strong>${esc(_tagSuffix(t, aiTerms))}');
+        // v1.9.3: ONE line per task — bold title + single-sentence
+        // summary (first AI summary line), mirroring the markdown.
         final lines = _summaryLines(t, aiSummaries);
-        if (lines.isNotEmpty) {
-          b.write('<ul class="sub" style="$subUlS">');
-          for (final line in lines) {
-            b.write('<li style="$subLiS">${esc(line)}</li>');
-          }
-          b.write('</ul>');
-        }
-        b.write('</li>');
+        final sentence = lines.isNotEmpty ? ' — ${esc(lines.first)}' : '';
+        b.write(
+            '<li style="$sumLiS"><strong>${esc(_title(t, aiTitles))}</strong>${esc(_tagSuffix(t, aiTerms))}$sentence</li>');
       }
       b.write('</ul>');
     }
