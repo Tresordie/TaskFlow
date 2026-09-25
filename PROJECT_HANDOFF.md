@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-09-18 · 当前版本 **v1.9.3**（已发版：Reports 报告总结优化——In Progress 一句话/进度明细近一周聚焦/下期计划只含未完成不分解；254 测试）
+> 最后更新：2026-09-25 · 当前版本 **v1.10.0**（已发版：Today 页看板化改版——KPI 统计卡 + 四列看板（拖拽跨列改状态）；264 测试）
 
 ---
 
@@ -136,6 +136,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 
 | 日期/版本 | 决策 | 理由 |
 |---|---|---|
+| v1.10.0 | **Today 页看板化改版**（对标 translate_tool 的 todolist 看板）：① `TaskBoardScreen` 重写为 **4 张 KPI 统计卡**（Today's Progress 带渐变进度条/To Do+逾期数/In Progress+高优先数/Done+完成率，KPI 统计口径=全量任务不受筛选影响）+ **固定四列看板**（To Do/In Progress/Done/Blocked，列头=状态色图标块+计数徽章+"+"列内快速添加，列顶状态色发丝线，空列呼吸虚线框）；② 卡片重写（task_card_widget.dart）：左侧 3px 优先级色条（完成变绿）、标题+hover 操作（完成切换/编辑/删除）、两行截断描述、meta 胶囊链（截止日期逾期红/今日主题色、优先级、子任务 n/m、项目/标签用户色）；③ **拖拽跨列改状态**（整列是 DragTarget，卡片 DragTarget 转子任务优先级更高、两者共存），Archived 归入 Done 列（全应用 completed‖archived 约定）；④ 顶栏快捷筛选 pills（All/Due Today/High Priority，StateProvider 本地态）；⑤ 数据层：`task_providers.dart` 新增 `buildKanbanColumns`/`sortKanbanTasks`/`applyBoardQuickFilter`/`buildKanbanBoardData` 纯函数 + `kanbanBoardProvider`（10 项契约测试 kanban_board_test.dart）；⑥ `createTask`/`buildNewTask` 加可选 `status` 参数（默认 planned，既有调用零改动）；⑦ 删除被孤立的 Group-by 体系（TaskGroupMode 枚举/taskGroupModeProvider/groupedTasksByModeProvider），Today 页不再用 WheelForward（其他页保留）；列内排序=截止日期升序（无日期沉底）→优先级→创建时间降序 | 用户需求"Today 页做成类似 translate_tool 的任务清单页"；statusColor 仍是列色唯一事实源；保留快速添加栏与外部筛选横幅（Activity 页联动） |
 | v1.9.3 | 报告总结优化三件套：① 执行摘要 In Progress=每任务一行（加粗标题+" — "+一句话总结，删缩进要点）；② 进度明细近因聚焦 10 天→**7 天（近一周）**，超一周日志压成"早期背景："一句历史总结，详情条目=任务详细描述；③ 下期计划**只含未完成任务**（计划/进行/阻塞逾期）且**每任务一行禁止分解**（删"可分解为多个行动行"指令）。改动面：`formatTaskData` recentCut 10→7 天+标签、中英 AI 提示词（输出模板/分节规则/质量自检）、回退模板 toMarkdown/toHtml 的 In Progress 小节；契约测试同步（253→254） | 用户三需求（In Progress 一句话总结；详细描述+近一周重点+超一周一句话历史；计划只针对未完成任务、不细化）。整周报告期（start=end−7d）下"近期但期外"分档为空集，契约测试改用 07-15→07-20 短周期构造该分档 |
 | v1.9.2 | Timeline `_filterTasks` 排序升序→**降序**（最新在最上、久远在底下）；`isLast` 竖线逻辑不动（isLast=最底最旧一条，链条自上而下仍连贯） | 用户读时间线的习惯是自上而下从最近看起 |
 | v1.9.1 | Timeline `_TimelineItem` 左侧时间列 52px 单行 HH:mm → **96px 两行堆叠（yyyy-MM-dd 上、HH:mm 下）**，样式沿用 labelSmall+lightTextSecondary | 范围模式下多天任务同列只有时刻无日期，无法辨认归属日；96px 按 labelSmall 11px×140% 缩放 ×10 字符留足余量 |
@@ -226,6 +227,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
+- ✅ v1.10.0（已发版）：Today 页看板化改版——4 张 KPI 统计卡 + 四列看板（To Do/In Progress/Done/Blocked，拖拽跨列改状态、列内"+"快速添加、快捷筛选 pills）；保留拖卡片转子任务交互与快速添加栏；Archived 归入 Done 列；264 测试全过（+10 看板契约）
 - ✅ v1.9.3（已发版）：Reports 报告总结优化——In Progress 一句话总结、进度明细近一周（7 天）聚焦+超一周一句话历史、下期计划只含未完成任务且不分解；254 测试全过（+1 契约）、双推 `5001225`、包体 35.9MB
 - ✅ v1.9.2（已发版）：Timeline 排序反转为最新在最上；253 测试全过、双推 `2704819`、包体 35.6MB
 - ✅ v1.9.1（已发版）：Timeline 时间列改日期+时间两行（yyyy-MM-dd/HH:mm）；253 测试全过、双推 `26aa546`、包体 35.6MB

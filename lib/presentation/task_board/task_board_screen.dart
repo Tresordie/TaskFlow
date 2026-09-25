@@ -1,288 +1,206 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
-import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
 import '../shared/suggestion_field.dart';
-import '../shared/wheel_forward.dart';
-import 'task_card_widget.dart';
+import 'kanban_column.dart';
 
-class TaskBoardScreen extends ConsumerWidget {
+/// v1.10.0: Today page redesigned as a translate_tool-inspired kanban —
+/// four KPI stat cards, quick-filter pills in the header, and a fixed
+/// four-column board (To Do / In Progress / Done / Blocked). Dragging a
+/// card onto a column changes its status; dragging it onto another card
+/// still converts it into a sub-step. Archived tasks render in the Done
+/// column (app-wide `completed || archived` convention).
+class TaskBoardScreen extends ConsumerStatefulWidget {
   const TaskBoardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final groupedTasks = ref.watch(groupedTasksByModeProvider);
+  ConsumerState<TaskBoardScreen> createState() => _TaskBoardScreenState();
+}
+
+class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
+  // Column currently showing its inline quick-add field (null = none).
+  TaskStatus? _addingColumnStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    final board = ref.watch(kanbanBoardProvider);
     final tasksAsync = ref.watch(taskListProvider);
     final filter = ref.watch(taskFilterProvider);
-    final groupMode = ref.watch(taskGroupModeProvider);
+    final quickFilter = ref.watch(boardQuickFilterProvider);
     final today = DateFormat('EEEE, MMM d').format(DateTime.now());
     final theme = Theme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Forward mouse-wheel events over the fixed header / quick-add area
-        // to the task list below, so the page scrolls even when the pointer
-        // isn't directly over the list.
-        WheelForward(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header with themed accent bar
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(28, 28, 28, 20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      theme.colorScheme.primary.withOpacity(0.06),
-                      theme.colorScheme.surface,
-                    ],
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 4,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Today',
-                          style: theme.textTheme.headlineLarge,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16),
-                      child: Text(
-                        today,
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn(duration: 300.ms),
+        _buildHeader(theme, today, quickFilter),
 
-              // Active filter banner (set e.g. by tapping an Activity stat card)
-              if (filter.isActive)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 12, 28, 0),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: theme.colorScheme.primary.withOpacity(0.25),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.filter_alt,
-                            size: 16, color: theme.colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _describeFilter(filter),
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                        ),
-                        InkWell(
-                          onTap: () => ref
-                              .read(taskFilterProvider.notifier)
-                              .state = TaskFilter(),
-                          borderRadius: BorderRadius.circular(6),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            child: Text(
-                              'Clear',
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w700,
-                                color: theme.colorScheme.primary,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+        // Active filter banner (set e.g. by tapping an Activity stat card)
+        if (filter.isActive) _buildFilterBanner(theme, filter),
 
-              // Quick Add Bar (enhanced with priority + due date)
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                child: _QuickAddBar(),
-              ),
-
-              // Group-by selector
-              Padding(
-                padding: const EdgeInsets.fromLTRB(28, 0, 28, 6),
-                child: Row(
-                  children: [
-                    Icon(Icons.group_work_outlined,
-                        size: 14,
-                        color: theme.colorScheme.onSurface.withOpacity(0.45)),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Group by:',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: theme.colorScheme.onSurface.withOpacity(0.55),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ...TaskGroupMode.values.map((mode) {
-                      final isActive = groupMode == mode;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 5),
-                        child: GestureDetector(
-                          onTap: () => ref
-                              .read(taskGroupModeProvider.notifier)
-                              .state = mode,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isActive
-                                  ? theme.colorScheme.primary.withOpacity(0.12)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: isActive
-                                    ? theme.colorScheme.primary.withOpacity(0.5)
-                                    : theme.colorScheme.outline
-                                        .withOpacity(0.3),
-                              ),
-                            ),
-                            child: Text(
-                              mode.label,
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: isActive
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                                color: isActive
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.onSurface
-                                        .withOpacity(0.6),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              ),
-            ],
-          ),
+        // Quick Add Bar (creates into the To Do column)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(28, 12, 28, 4),
+          child: _QuickAddBar(),
         ),
 
-        // Task list grouped by selected mode
         Expanded(
           child: tasksAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
-            data: (_) {
-              final hasTasks =
-                  groupedTasks.values.any((list) => list.isNotEmpty);
-              if (!hasTasks) {
-                return _EmptyState();
-              }
-              return ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 28),
-                children: [
-                  for (final entry in groupedTasks.entries)
-                    if (entry.value.isNotEmpty) ...[
-                      _GroupSectionHeader(
-                        label: entry.key,
-                        color: _groupColor(groupMode, entry.key, ref, theme),
-                      ),
-                      const SizedBox(height: 8),
-                      ...entry.value.asMap().entries.map(
-                            (e) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: TaskCard(task: e.value),
-                            )
-                                .animate()
-                                .fadeIn(
-                                  duration: 260.ms,
-                                  delay: (80 + e.key * 40).ms,
-                                )
-                                .slideY(
-                                  begin: 0.06,
-                                  end: 0,
-                                  duration: 260.ms,
-                                  delay: (80 + e.key * 40).ms,
-                                  curve: Curves.easeOut,
-                                ),
-                          ),
-                      const SizedBox(height: 16),
-                    ],
-                ],
-              );
-            },
+            data: (_) => _buildBody(theme, board, filter, quickFilter),
           ),
         ),
       ],
     );
   }
 
-  /// Resolves the color for a group header so it matches how the same
-  /// attribute is colored on the task detail page (priority / status use
-  /// their fixed colors; project / tag use the user-assigned color, or a
-  /// muted tone when none is set).
-  Color _groupColor(
-      TaskGroupMode mode, String label, WidgetRef ref, ThemeData theme) {
-    final fallback = theme.colorScheme.primary;
-    final muted = theme.brightness == Brightness.dark
-        ? AppColors.darkBorder
-        : AppColors.lightTextSecondary;
+  // ─── Header ───────────────────────────────────────────────────────────────
 
-    switch (mode) {
-      case TaskGroupMode.priority:
-        final p = Priority.values.where((p) => p.label == label).firstOrNull;
-        return p == null ? fallback : AppColors.priorityColor(p.index);
+  Widget _buildHeader(
+      ThemeData theme, String today, BoardQuickFilter quickFilter) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(28, 24, 28, 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary.withOpacity(0.06),
+            theme.colorScheme.surface,
+          ],
+        ),
+      ),
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('Today', style: theme.textTheme.headlineLarge),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.only(left: 16),
+                child: Text(today, style: theme.textTheme.bodyMedium),
+              ),
+            ],
+          ),
+          const Spacer(),
+          _buildQuickFilterPills(theme, quickFilter),
+        ],
+      ),
+    ).animate().fadeIn(duration: 300.ms);
+  }
 
-      case TaskGroupMode.status:
-        final s = TaskStatus.values.where((s) => s.label == label).firstOrNull;
-        return s == null ? fallback : AppColors.statusColor(s);
+  /// Segmented quick-filter pills (All / Due Today / High Priority),
+  /// translate_tool-style inset segmented control.
+  Widget _buildQuickFilterPills(ThemeData theme, BoardQuickFilter current) {
+    final palette = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: palette.onSurface.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final f in BoardQuickFilter.values)
+            GestureDetector(
+              onTap: () =>
+                  ref.read(boardQuickFilterProvider.notifier).state = f,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: current == f ? palette.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  f.label,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: current == f ? FontWeight.w600 : FontWeight.w400,
+                    color: current == f
+                        ? Colors.white
+                        : palette.onSurface.withOpacity(0.6),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
-      case TaskGroupMode.project:
-        if (label == 'No Project') return muted;
-        return ref.read(colorSettingsProvider).projectColor(label) ?? muted;
-
-      case TaskGroupMode.tag:
-        if (label == 'No Tag') return muted;
-        return ref.read(colorSettingsProvider).tagColor(label) ?? muted;
-
-      case TaskGroupMode.none:
-        return fallback;
-    }
+  Widget _buildFilterBanner(ThemeData theme, TaskFilter filter) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 12, 28, 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: theme.colorScheme.primary.withOpacity(0.25),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.filter_alt,
+                size: 16, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _describeFilter(filter),
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ),
+            InkWell(
+              onTap: () =>
+                  ref.read(taskFilterProvider.notifier).state = TaskFilter(),
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Text(
+                  'Clear',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   String _describeFilter(TaskFilter f) {
@@ -295,7 +213,254 @@ class TaskBoardScreen extends ConsumerWidget {
     if (f.tag != null && f.tag!.isNotEmpty) parts.add('Tag: ${f.tag}');
     return parts.isEmpty ? 'Filtered' : 'Filtered · ${parts.join(' · ')}';
   }
+
+  // ─── Body: KPI cards + board ──────────────────────────────────────────────
+
+  Widget _buildBody(ThemeData theme, KanbanBoardData board, TaskFilter filter,
+      BoardQuickFilter quickFilter) {
+    final boardVisible = board.columns.any((c) => c.tasks.isNotEmpty);
+    final showEmptyState = !boardVisible &&
+        !filter.isActive &&
+        quickFilter == BoardQuickFilter.all;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildKpiRow(theme, board),
+        Expanded(
+          child: showEmptyState
+              ? _EmptyState()
+              : _buildBoard(theme, board),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKpiRow(ThemeData theme, KanbanBoardData board) {
+    final palette = theme.colorScheme;
+    final cards = [
+      _KpiCardData(
+        label: "TODAY'S PROGRESS",
+        value: '${(board.todayProgressPct * 100).round()}%',
+        sub: board.dueTodayTotal == 0
+            ? 'Nothing due today'
+            : '${board.dueTodayDone} of ${board.dueTodayTotal} due today done',
+        accent: palette.primary,
+        progress: board.todayProgressPct,
+      ),
+      _KpiCardData(
+        label: 'TO DO',
+        value: '${board.plannedCount}',
+        sub: board.overdueCount > 0
+            ? '${board.overdueCount} overdue'
+            : 'Nothing overdue',
+        subColor:
+            board.overdueCount > 0 ? AppColors.error : null,
+        accent: AppColors.statusColor(TaskStatus.planned),
+      ),
+      _KpiCardData(
+        label: 'IN PROGRESS',
+        value: '${board.inProgressCount}',
+        sub: '${board.highPriorityInProgress} high priority',
+        accent: AppColors.info,
+      ),
+      _KpiCardData(
+        label: 'DONE',
+        value: '${board.doneCount}',
+        sub: '${(board.completionPct * 100).round()}% completion',
+        accent: AppColors.success,
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 8, 28, 4),
+      child: Row(
+        children: [
+          for (final (i, data) in cards.indexed) ...[
+            if (i > 0) const SizedBox(width: 12),
+            Expanded(child: _KpiCard(data: data, palette: palette)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBoard(ThemeData theme, KanbanBoardData board) {
+    return LayoutBuilder(builder: (context, constraints) {
+      const gap = 14.0;
+      // Columns share the width equally once it fits; below 4×252px the
+      // board scrolls horizontally instead of squeezing the cards.
+      final colWidth = max(252.0, (constraints.maxWidth - gap * 3) / 4);
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(28, 6, 28, 14),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints:
+                BoxConstraints(minWidth: constraints.maxWidth),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final (i, col) in board.columns.indexed) ...[
+                  if (i > 0) const SizedBox(width: gap),
+                  SizedBox(width: colWidth, child: _buildColumn(col)),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _buildColumn(KanbanColumnData col) {
+    final (title, icon, accent) = kanbanColumnVisualFor(col.status);
+    return KanbanColumn(
+      key: ValueKey('kanban-col-${col.status.name}'),
+      data: col,
+      title: title,
+      icon: icon,
+      accent: accent,
+      isAdding: _addingColumnStatus == col.status,
+      onStartAdd: () => setState(() => _addingColumnStatus = col.status),
+      onCancelAdd: () => setState(() => _addingColumnStatus = null),
+    );
+  }
 }
+
+// ─── KPI stat cards ──────────────────────────────────────────────────────────
+
+class _KpiCardData {
+  final String label;
+  final String value;
+  final String sub;
+  final Color accent;
+  final Color? subColor;
+  final double? progress;
+
+  const _KpiCardData({
+    required this.label,
+    required this.value,
+    required this.sub,
+    required this.accent,
+    this.subColor,
+    this.progress,
+  });
+}
+
+class _KpiCard extends StatelessWidget {
+  final _KpiCardData data;
+  final ColorScheme palette;
+
+  const _KpiCard({required this.data, required this.palette});
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = palette.onSurface.withOpacity(0.5);
+    return Container(
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: palette.outline.withOpacity(0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Left accent bar (translate_tool's KPI ::before).
+          Positioned(
+            left: 0,
+            top: 12,
+            bottom: 12,
+            child: Container(
+              width: 3,
+              decoration: BoxDecoration(
+                color: data.accent,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 11, 12, 11),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  data.label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                    color: muted,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  data.value,
+                  style: TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                    color: palette.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  data.sub,
+                  style: TextStyle(
+                      fontSize: 11, color: data.subColor ?? muted),
+                ),
+                if (data.progress != null) ...[
+                  const SizedBox(height: 8),
+                  _progressBar(data.progress!, palette),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _progressBar(double progress, ColorScheme palette) {
+    final clamped = progress.clamp(0.0, 1.0);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(3),
+      child: Stack(
+        children: [
+          Container(
+            height: 6,
+            color: palette.outline.withOpacity(0.25),
+          ),
+          TweenAnimationBuilder<double>(
+            tween: Tween(end: clamped),
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, _) => FractionallySizedBox(
+              widthFactor: value,
+              alignment: Alignment.centerLeft,
+              child: Container(
+                height: 6,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [palette.primary, palette.secondary],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Quick add bar (unchanged behaviour, creates planned tasks) ─────────────
 
 class _QuickAddBar extends ConsumerStatefulWidget {
   @override
@@ -699,41 +864,7 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
   }
 }
 
-class _GroupSectionHeader extends StatelessWidget {
-  final String label;
-  final Color? color;
-
-  const _GroupSectionHeader({required this.label, this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final c = color ?? theme.colorScheme.primary;
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: c,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: c,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// ─── Empty state ─────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
   @override
@@ -767,7 +898,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Add a task above to get started',
+            'Add a task above or press + on a column to get started',
             style: theme.textTheme.bodyMedium,
           ),
         ],

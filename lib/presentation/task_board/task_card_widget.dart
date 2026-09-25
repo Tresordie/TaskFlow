@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
+import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
 import '../shared/edit_task_dialog.dart';
-import '../shared/task_date_meta.dart';
-import '../shared/task_tag_project_meta.dart';
 
+/// v1.10.0: kanban-style task card for the Today board (translate_tool-
+/// inspired): a 3px priority bar on the left edge, title with hover actions
+/// (done-toggle / edit / delete), a two-line truncated description and a
+/// row of pill-shaped meta chips. Dropping another task onto this card
+/// still converts it into a sub-step (pre-existing board interaction).
 class TaskCard extends ConsumerStatefulWidget {
   final Task task;
 
@@ -27,9 +32,12 @@ class _TaskCardState extends ConsumerState<TaskCard> {
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
-    final priorityColor = AppColors.priorityColor(task.priority.index);
-    final isCompleted =
+    final isDone =
         task.status == TaskStatus.completed || task.status == TaskStatus.archived;
+    final priorityColor = AppColors.priorityColor(task.priority.index);
+    // Completed cards switch their accent bar to green, like translate_tool's
+    // `.is-done` cards.
+    final barColor = isDone ? AppColors.success : priorityColor;
     final theme = Theme.of(context);
     final palette = theme.colorScheme;
 
@@ -83,7 +91,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
           childWhenDragging: Opacity(
             opacity: 0.35,
             child: Container(
-              height: 56,
+              height: 64,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
@@ -113,7 +121,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                     ]
                   : null,
             ),
-            child: _buildCard(theme, palette, task, priorityColor, isCompleted),
+            child: _buildCard(theme, palette, task, barColor, isDone),
           ),
         );
       },
@@ -121,7 +129,10 @@ class _TaskCardState extends ConsumerState<TaskCard> {
   }
 
   Widget _buildCard(ThemeData theme, ColorScheme palette, Task task,
-      Color priorityColor, bool isCompleted) {
+      Color barColor, bool isDone) {
+    final colorSettings = ref.watch(colorSettingsProvider);
+    final muted = palette.onSurface.withOpacity(0.5);
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -131,172 +142,282 @@ class _TaskCardState extends ConsumerState<TaskCard> {
         onTapDown: (_) => setState(() => _isPressed = true),
         onTapUp: (_) => setState(() => _isPressed = false),
         onTapCancel: () => setState(() => _isPressed = false),
-        child: AnimatedContainer(
+        child: AnimatedOpacity(
           duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.all(16),
-          transform: _isPressed
-              ? (Matrix4.identity()..scale(0.985))
-              : _isHovered
-                  ? (Matrix4.identity()..translate(0.0, -2.0))
-                  : Matrix4.identity(),
-          decoration: BoxDecoration(
-            color: palette.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isCompleted
-                  ? AppColors.success.withOpacity(0.3)
-                  : _isHovered
-                      ? priorityColor.withOpacity(0.45)
-                      : palette.outline.withOpacity(0.6),
-            ),
-            boxShadow: _isHovered
-                ? [
-                    BoxShadow(
-                      color: priorityColor.withOpacity(0.10),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ]
-                : [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 5,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-          ),
-          child: Row(
-            children: [
-              // Status checkbox with animation
-              GestureDetector(
-                onTap: () => _toggleStatus(),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutBack,
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isCompleted ? AppColors.success : priorityColor,
-                      width: 2,
-                    ),
-                    color: isCompleted ? AppColors.success : Colors.transparent,
-                  ),
-                  child: isCompleted
-                      ? const Icon(Icons.check, size: 13, color: Colors.white)
-                      : null,
-                ),
+          opacity: isDone ? 0.78 : 1.0,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            transform: _isPressed
+                ? (Matrix4.identity()..scale(0.985))
+                : _isHovered
+                    ? (Matrix4.identity()..translate(0.0, -2.0))
+                    : Matrix4.identity(),
+            decoration: BoxDecoration(
+              color: palette.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isDone
+                    ? AppColors.success.withOpacity(0.3)
+                    : _isHovered
+                        ? barColor.withOpacity(0.45)
+                        : palette.outline.withOpacity(0.6),
               ),
-              const SizedBox(width: 14),
-
-              // Task content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      task.title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        decoration:
-                            isCompleted ? TextDecoration.lineThrough : null,
-                        color: isCompleted
-                            ? palette.onSurface.withOpacity(0.4)
-                            : null,
+              boxShadow: _isHovered
+                  ? [
+                      BoxShadow(
+                        color: barColor.withOpacity(0.10),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      task.status.label,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.statusColor(task.status),
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    if (task.project.trim().isNotEmpty ||
-                        task.tags.isNotEmpty) ...[
-                      TaskTagProjectMeta(task: task),
-                      const SizedBox(height: 4),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 5,
+                        offset: const Offset(0, 2),
+                      ),
                     ],
-                    TaskDateMeta(task: task),
-                  ],
+            ),
+            child: Stack(
+              children: [
+                // Content (bottom of the stack).
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 11, 12, 11),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        task.title,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontSize: 13.5,
+                          decoration: isDone
+                              ? TextDecoration.lineThrough
+                              : null,
+                          color: isDone
+                              ? palette.onSurface.withOpacity(0.4)
+                              : null,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (task.description != null &&
+                          task.description!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 5),
+                        Text(
+                          task.description!,
+                          style: TextStyle(
+                              fontSize: 11.5,
+                              height: 1.35,
+                              color: muted),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      if (_hasMetaChips(task)) ...[
+                        const SizedBox(height: 7),
+                        Wrap(
+                          spacing: 5,
+                          runSpacing: 4,
+                          children: [
+                            if (task.dueDate != null)
+                              _dueChip(theme, palette, task, muted),
+                            _chip(
+                              icon: null,
+                              label: task.priority.shortLabel,
+                              color: AppColors.priorityColor(
+                                  task.priority.index),
+                              background: AppColors
+                                  .priorityColor(task.priority.index)
+                                  .withOpacity(0.10),
+                            ),
+                            if (task.subSteps.isNotEmpty)
+                              _chip(
+                                icon: Icons.checklist,
+                                label:
+                                    '${task.subSteps.where((s) => s.completed).length}/${task.subSteps.length}',
+                                color: muted,
+                                background:
+                                    palette.outline.withOpacity(0.10),
+                              ),
+                            if (task.project.trim().isNotEmpty)
+                              _chip(
+                                icon: Icons.folder_outlined,
+                                label: task.project.trim(),
+                                color: colorSettings
+                                        .projectColor(task.project.trim()) ??
+                                    muted,
+                                background:
+                                    palette.outline.withOpacity(0.10),
+                              ),
+                            for (final tag in task.tags)
+                              _chip(
+                                icon: null,
+                                dotColor:
+                                    colorSettings.tagColor(tag) ?? muted,
+                                label: tag,
+                                color: muted,
+                                background:
+                                    palette.outline.withOpacity(0.10),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-              ),
-
-              // Right column: actions + priority + progress
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  // Quick actions (revealed on hover): edit + delete
-                  AnimatedOpacity(
+                // Hover actions (top-right, overlaying the title tail like
+                // translate_tool's kb-actions).
+                Positioned(
+                  right: 6,
+                  top: 5,
+                  child: AnimatedOpacity(
                     opacity: _isHovered ? 1.0 : 0.0,
                     duration: const Duration(milliseconds: 150),
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: _openEditDialog,
-                            child: Icon(
-                              Icons.edit_outlined,
-                              size: 15,
-                              color: palette.onSurface.withOpacity(0.55),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: _confirmDelete,
-                            child: Icon(
-                              Icons.delete_outline,
-                              size: 15,
-                              color: AppColors.error.withOpacity(0.8),
-                            ),
-                          ),
-                        ],
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _actionIcon(
+                          icon: isDone ? Icons.undo : Icons.check,
+                          tooltip: isDone ? 'Move to To Do' : 'Mark done',
+                          color: isDone
+                              ? muted
+                              : AppColors.success.withOpacity(0.9),
+                          onTap: _toggleStatus,
+                        ),
+                        const SizedBox(width: 8),
+                        _actionIcon(
+                          icon: Icons.edit_outlined,
+                          tooltip: 'Edit',
+                          color: muted,
+                          onTap: _openEditDialog,
+                        ),
+                        const SizedBox(width: 8),
+                        _actionIcon(
+                          icon: Icons.delete_outline,
+                          tooltip: 'Delete',
+                          color: AppColors.error.withOpacity(0.8),
+                          onTap: _confirmDelete,
+                        ),
+                      ],
                     ),
                   ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: priorityColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      task.priority.shortLabel,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: priorityColor,
-                      ),
-                    ),
-                  ),
-                  if (task.subSteps.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      '${task.subSteps.where((s) => s.completed).length}/${task.subSteps.length}',
-                      style: theme.textTheme.labelSmall,
-                    ),
-                  ],
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  bool _hasMetaChips(Task task) =>
+      task.dueDate != null ||
+      task.subSteps.isNotEmpty ||
+      task.project.trim().isNotEmpty ||
+      task.tags.isNotEmpty;
+
+  /// Due-date chip: red when overdue, theme-primary when due today.
+  Widget _dueChip(
+      ThemeData theme, ColorScheme palette, Task task, Color muted) {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final due = task.dueDate!;
+    final isOverdue = due.isBefore(todayStart) && !_isDoneTask(task);
+    final isToday = _isSameDay(due, now);
+
+    final color = isOverdue
+        ? AppColors.error
+        : isToday
+            ? palette.primary
+            : muted;
+    final background = isOverdue
+        ? AppColors.error.withOpacity(0.12)
+        : isToday
+            ? palette.primary.withOpacity(0.12)
+            : palette.outline.withOpacity(0.10);
+
+    final differsFromCurrentYear = due.year != now.year;
+    final label = DateFormat('MMM d').format(due) +
+        (differsFromCurrentYear ? ', ${due.year}' : '');
+
+    return _chip(
+      icon: Icons.event,
+      label: isOverdue ? '$label · Overdue' : label,
+      color: color,
+      background: background,
+      bold: isOverdue,
+    );
+  }
+
+  bool _isDoneTask(Task t) =>
+      t.status == TaskStatus.completed || t.status == TaskStatus.archived;
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  Widget _chip({
+    required String label,
+    required Color color,
+    required Color background,
+    IconData? icon,
+    Color? dotColor,
+    bool bold = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 10, color: color),
+            const SizedBox(width: 3),
+          ],
+          if (dotColor != null) ...[
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                  color: dotColor, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 3),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _actionIcon({
+    required IconData icon,
+    required String tooltip,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      waitDuration: const Duration(milliseconds: 400),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Icon(icon, size: 15, color: color),
       ),
     );
   }

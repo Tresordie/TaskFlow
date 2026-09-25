@@ -83,6 +83,9 @@ class TaskRepository {
     DateTime? dueDate,
     String project = '',
     required int sortOrder,
+    // v1.10.0: kanban column "+" creates a task directly in that column's
+    // status; defaults to planned so every existing caller is unchanged.
+    TaskStatus status = TaskStatus.planned,
   }) {
     // Defensive copies: snapshot before any async gap can interleave
     // with caller-side mutation (see [createTask]).
@@ -94,7 +97,7 @@ class TaskRepository {
       ..title = title
       ..description = description
       ..priority = priority
-      ..status = TaskStatus.planned
+      ..status = status
       ..createdAt = DateTime.now()
       ..updatedAt = DateTime.now().millisecondsSinceEpoch
       ..dueDate = dueDate
@@ -119,6 +122,7 @@ class TaskRepository {
     List<String> subSteps = const [],
     DateTime? dueDate,
     String project = '',
+    TaskStatus status = TaskStatus.planned,
   }) async {
     // Build synchronously at the entry point — BEFORE the first await —
     // so the defensive copies inside [buildNewTask] are taken while the
@@ -132,6 +136,7 @@ class TaskRepository {
       subSteps: subSteps,
       dueDate: dueDate,
       project: project,
+      status: status,
       sortOrder: 0, // placeholder, patched below
     );
 

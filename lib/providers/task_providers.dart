@@ -69,68 +69,198 @@ final groupedTasksProvider = Provider<Map<Priority, List<Task>>>((ref) {
   return grouped;
 });
 
-// ─── Group-by mode ───────────────────────────────────────────────────────────
+// ─── Kanban board (v1.10.0: Today page redesign) ────────────────────────────
 
-enum TaskGroupMode {
-  priority('Priority'),
-  status('Status'),
-  project('Project'),
-  tag('Tag'),
-  none('None');
+/// Quick filter pills shown in the Today board header.
+enum BoardQuickFilter {
+  all('All'),
+  dueToday('Due Today'),
+  highPriority('High Priority');
 
   final String label;
-  const TaskGroupMode(this.label);
+  const BoardQuickFilter(this.label);
 }
 
-final taskGroupModeProvider =
-    StateProvider<TaskGroupMode>((ref) => TaskGroupMode.priority);
+final boardQuickFilterProvider =
+    StateProvider<BoardQuickFilter>((ref) => BoardQuickFilter.all);
 
-/// Generic grouping: returns an ordered map of group-label → tasks.
-final groupedTasksByModeProvider = Provider<Map<String, List<Task>>>((ref) {
-  final tasks = ref.watch(filteredTaskListProvider);
-  final mode = ref.watch(taskGroupModeProvider);
+/// One kanban column: a representative status plus the tasks bucketed into
+/// it (the Done column holds both completed and archived — the app-wide
+/// `completed || archived` "is done" convention).
+class KanbanColumnData {
+  final TaskStatus status;
+  final List<Task> tasks;
 
-  switch (mode) {
-    case TaskGroupMode.none:
-      return {'All Tasks': tasks};
+  const KanbanColumnData({required this.status, required this.tasks});
+}
 
-    case TaskGroupMode.priority:
-      final grouped = <String, List<Task>>{};
-      for (final p in Priority.values) {
-        final list = tasks.where((t) => t.priority == p).toList();
-        if (list.isNotEmpty) grouped[p.label] = list;
-      }
-      return grouped;
+/// Everything the Today kanban needs: the four columns plus the global
+/// KPI numbers for the stat cards (computed over ALL tasks, ignoring
+/// filters — mirroring translate_tool's stat panel behaviour).
+class KanbanBoardData {
+  final List<KanbanColumnData> columns;
+  final int dueTodayTotal;
+  final int dueTodayDone;
+  final int overdueCount;
+  final int plannedCount;
+  final int inProgressCount;
+  final int highPriorityInProgress;
+  final int doneCount;
+  final int totalCount;
 
-    case TaskGroupMode.status:
-      final grouped = <String, List<Task>>{};
-      for (final s in TaskStatus.values) {
-        final list = tasks.where((t) => t.status == s).toList();
-        if (list.isNotEmpty) grouped[s.label] = list;
-      }
-      return grouped;
+  const KanbanBoardData({
+    required this.columns,
+    required this.dueTodayTotal,
+    required this.dueTodayDone,
+    required this.overdueCount,
+    required this.plannedCount,
+    required this.inProgressCount,
+    required this.highPriorityInProgress,
+    required this.doneCount,
+    required this.totalCount,
+  });
 
-    case TaskGroupMode.project:
-      final grouped = <String, List<Task>>{};
-      for (final task in tasks) {
-        final key = (task.project.isEmpty) ? 'No Project' : task.project;
-        (grouped[key] ??= []).add(task);
-      }
-      return grouped;
+  double get todayProgressPct =>
+      dueTodayTotal == 0 ? 0 : dueTodayDone / dueTodayTotal;
 
-    case TaskGroupMode.tag:
-      final grouped = <String, List<Task>>{};
-      for (final task in tasks) {
-        if (task.tags.isEmpty) {
-          (grouped['No Tag'] ??= []).add(task);
-        } else {
-          for (final tag in task.tags) {
-            (grouped[tag] ??= []).add(task);
-          }
-        }
-      }
-      return grouped;
+  double get completionPct => totalCount == 0 ? 0 : doneCount / totalCount;
+}
+
+bool _isSameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
+
+bool _isDone(Task t) =>
+    t.status == TaskStatus.completed || t.status == TaskStatus.archived;
+
+/// The Done column's bucket key: completed and archived share one column.
+TaskStatus _columnKeyOf(Task t) => _isDone(t) ? TaskStatus.completed : t.status;
+
+/// Column-internal order: earliest due date first (no due date sinks to the
+/// bottom), then priority P0→P3, then newest created first.
+List<Task> sortKanbanTasks(List<Task> tasks) {
+  final sorted = List<Task>.of(tasks);
+  sorted.sort((a, b) {
+    final aDue = a.dueDate;
+    final bDue = b.dueDate;
+    if (aDue == null && bDue != null) return 1;
+    if (aDue != null && bDue == null) return -1;
+    if (aDue != null && bDue != null) {
+      final cmp = aDue.compareTo(bDue);
+      if (cmp != 0) return cmp;
+    }
+    final pri = a.priority.index.compareTo(b.priority.index);
+    if (pri != 0) return pri;
+    return b.createdAt.compareTo(a.createdAt);
+  });
+  return sorted;
+}
+
+/// Applies the quick filter pills on top of the externally-set TaskFilter.
+List<Task> applyBoardQuickFilter(
+    List<Task> tasks, BoardQuickFilter filter, DateTime now) {
+  switch (filter) {
+    case BoardQuickFilter.all:
+      return tasks;
+    case BoardQuickFilter.dueToday:
+      return tasks.where((t) => t.dueDate != null && _isSameDay(t.dueDate!, now)).toList();
+    case BoardQuickFilter.highPriority:
+      return tasks
+          .where((t) =>
+              t.priority == Priority.p0Critical ||
+              t.priority == Priority.p1High)
+          .toList();
   }
+}
+
+/// Buckets [tasks] into the four fixed columns and sorts each column.
+List<KanbanColumnData> buildKanbanColumns(List<Task> tasks) {
+  final byKey = <TaskStatus, List<Task>>{
+    for (final s in const [
+      TaskStatus.planned,
+      TaskStatus.inProgress,
+      TaskStatus.completed,
+      TaskStatus.blocked,
+    ])
+      s: <Task>[],
+  };
+  for (final t in tasks) {
+    byKey[_columnKeyOf(t)]!.add(t);
+  }
+  return [
+    for (final entry in byKey.entries)
+      KanbanColumnData(
+          status: entry.key, tasks: sortKanbanTasks(entry.value)),
+  ];
+}
+
+/// Pure computation of the whole board payload so it is unit-testable
+/// without Isar. [filteredTasks] already went through [TaskFilter];
+/// [allTasks] is the unfiltered set used for the KPI cards.
+KanbanBoardData buildKanbanBoardData({
+  required List<Task> allTasks,
+  required List<Task> filteredTasks,
+  required BoardQuickFilter quickFilter,
+  required DateTime now,
+}) {
+  final todayStart =
+      DateTime(now.year, now.month, now.day);
+
+  var dueTodayTotal = 0;
+  var dueTodayDone = 0;
+  var overdueCount = 0;
+  for (final t in allTasks) {
+    final due = t.dueDate;
+    if (due != null && _isSameDay(due, now)) {
+      dueTodayTotal++;
+      if (_isDone(t)) dueTodayDone++;
+    }
+    if (due != null &&
+        due.isBefore(todayStart) &&
+        !_isDone(t) &&
+        t.status != TaskStatus.blocked) {
+      overdueCount++;
+    }
+  }
+
+  var highPriorityInProgress = 0;
+  for (final t in allTasks) {
+    if (t.status == TaskStatus.inProgress &&
+        (t.priority == Priority.p0Critical || t.priority == Priority.p1High)) {
+      highPriorityInProgress++;
+    }
+  }
+
+  final plannedCount =
+      allTasks.where((t) => t.status == TaskStatus.planned).length;
+  final inProgressCount =
+      allTasks.where((t) => t.status == TaskStatus.inProgress).length;
+  final doneCount = allTasks.where(_isDone).length;
+
+  return KanbanBoardData(
+    columns:
+        buildKanbanColumns(applyBoardQuickFilter(filteredTasks, quickFilter, now)),
+    dueTodayTotal: dueTodayTotal,
+    dueTodayDone: dueTodayDone,
+    overdueCount: overdueCount,
+    plannedCount: plannedCount,
+    inProgressCount: inProgressCount,
+    highPriorityInProgress: highPriorityInProgress,
+    doneCount: doneCount,
+    totalCount: allTasks.length,
+  );
+}
+
+final kanbanBoardProvider = Provider<KanbanBoardData>((ref) {
+  final tasksAsync = ref.watch(taskListProvider);
+  final all = tasksAsync.valueOrNull ?? const <Task>[];
+  final filtered = ref.watch(filteredTaskListProvider);
+  final quick = ref.watch(boardQuickFilterProvider);
+  return buildKanbanBoardData(
+    allTasks: all,
+    filteredTasks: filtered,
+    quickFilter: quick,
+    now: DateTime.now(),
+  );
 });
 
 // ─── Autocomplete suggestions ────────────────────────────────────────────────
@@ -228,6 +358,8 @@ class TaskListNotifier extends StateNotifier<AsyncValue<List<Task>>> {
     List<String> subSteps = const [],
     DateTime? dueDate,
     String project = '',
+    // v1.10.0: kanban column "+" creates the task in that column's status.
+    TaskStatus status = TaskStatus.planned,
   }) async {
     await _repo.createTask(
       title: title,
@@ -237,6 +369,7 @@ class TaskListNotifier extends StateNotifier<AsyncValue<List<Task>>> {
       subSteps: subSteps,
       dueDate: dueDate,
       project: project,
+      status: status,
     );
     await loadTasks();
   }
