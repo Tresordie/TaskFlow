@@ -217,64 +217,59 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                       if (task.description != null &&
                           task.description!.trim().isNotEmpty) ...[
                         const SizedBox(height: 5),
+                        // v1.12.0: three-line preview content (reference
+                        // kanban cards show the description prominently).
                         Text(
                           task.description!,
                           style: TextStyle(
-                              fontSize: 11.5,
-                              height: 1.35,
+                              fontSize: 12,
+                              height: 1.45,
                               color: muted),
-                          maxLines: 2,
+                          maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
-                      if (_hasMetaChips(task)) ...[
-                        const SizedBox(height: 7),
-                        Wrap(
-                          spacing: 5,
-                          runSpacing: 4,
-                          children: [
-                            if (task.dueDate != null)
-                              _dueChip(theme, palette, task, muted),
+                      const SizedBox(height: 7),
+                      Wrap(
+                        spacing: 5,
+                        runSpacing: 4,
+                        children: [
+                          _chip(
+                            icon: null,
+                            label: task.priority.shortLabel,
+                            color: AppColors.priorityColor(
+                                task.priority.index),
+                            background: AppColors
+                                .priorityColor(task.priority.index)
+                                .withOpacity(0.10),
+                          ),
+                          if (task.dueDate != null)
+                            _dueChip(theme, palette, task, muted),
+                          if (task.project.trim().isNotEmpty)
+                            _chip(
+                              icon: Icons.folder_outlined,
+                              label: task.project.trim(),
+                              color: colorSettings
+                                      .projectColor(task.project.trim()) ??
+                                  muted,
+                              background:
+                                  palette.outline.withOpacity(0.10),
+                            ),
+                          for (final tag in task.tags)
                             _chip(
                               icon: null,
-                              label: task.priority.shortLabel,
-                              color: AppColors.priorityColor(
-                                  task.priority.index),
-                              background: AppColors
-                                  .priorityColor(task.priority.index)
-                                  .withOpacity(0.10),
+                              dotColor:
+                                  colorSettings.tagColor(tag) ?? muted,
+                              label: tag,
+                              color: muted,
+                              background:
+                                  palette.outline.withOpacity(0.10),
                             ),
-                            if (task.subSteps.isNotEmpty)
-                              _chip(
-                                icon: Icons.checklist,
-                                label:
-                                    '${task.subSteps.where((s) => s.completed).length}/${task.subSteps.length}',
-                                color: muted,
-                                background:
-                                    palette.outline.withOpacity(0.10),
-                              ),
-                            if (task.project.trim().isNotEmpty)
-                              _chip(
-                                icon: Icons.folder_outlined,
-                                label: task.project.trim(),
-                                color: colorSettings
-                                        .projectColor(task.project.trim()) ??
-                                    muted,
-                                background:
-                                    palette.outline.withOpacity(0.10),
-                              ),
-                            for (final tag in task.tags)
-                              _chip(
-                                icon: null,
-                                dotColor:
-                                    colorSettings.tagColor(tag) ?? muted,
-                                label: tag,
-                                color: muted,
-                                background:
-                                    palette.outline.withOpacity(0.10),
-                              ),
-                          ],
-                        ),
+                        ],
+                      ),
+                      if (_hasStats(task)) ...[
+                        const SizedBox(height: 8),
+                        _buildStatsRow(palette, task, muted),
                       ],
                     ],
                   ),
@@ -324,11 +319,84 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     );
   }
 
-  bool _hasMetaChips(Task task) =>
-      task.dueDate != null ||
-      task.subSteps.isNotEmpty ||
-      task.project.trim().isNotEmpty ||
-      task.tags.isNotEmpty;
+  /// v1.12.0: bottom stats row (reference kanban cards) — attachment count,
+  /// execution-log entry count, and sub-task progress ring.
+  bool _hasStats(Task task) {
+    final attachCount =
+        task.executionLog.fold<int>(0, (n, e) => n + e.attachments.length);
+    return attachCount > 0 ||
+        task.executionLog.isNotEmpty ||
+        task.subSteps.isNotEmpty;
+  }
+
+  Widget _buildStatsRow(ColorScheme palette, Task task, Color muted) {
+    final attachCount =
+        task.executionLog.fold<int>(0, (n, e) => n + e.attachments.length);
+    final items = <Widget>[
+      if (attachCount > 0)
+        _stat(icon: Icons.attach_file, label: '$attachCount', color: muted),
+      if (task.executionLog.isNotEmpty)
+        _stat(
+            icon: Icons.chat_bubble_outline,
+            label: '${task.executionLog.length}',
+            color: muted),
+      if (task.subSteps.isNotEmpty) _progressStat(palette, task),
+    ];
+    return Wrap(
+      spacing: 10,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: items,
+    );
+  }
+
+  Widget _stat({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 11.5, color: color),
+        const SizedBox(width: 3),
+        Text(
+          label,
+          style: TextStyle(
+              fontSize: 10.5, fontWeight: FontWeight.w500, color: color),
+        ),
+      ],
+    );
+  }
+
+  /// Sub-task progress as a mini ring + percentage, green at 100%.
+  Widget _progressStat(ColorScheme palette, Task task) {
+    final done = task.subSteps.where((s) => s.completed).length;
+    final value = done / task.subSteps.length;
+    final color = value >= 1.0 ? AppColors.success : palette.primary;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 12,
+          height: 12,
+          child: CircularProgressIndicator(
+            value: value,
+            strokeWidth: 2,
+            strokeCap: StrokeCap.round,
+            color: color,
+            backgroundColor: palette.outline.withOpacity(0.35),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          '${(value * 100).round()}%',
+          style: TextStyle(
+              fontSize: 10.5, fontWeight: FontWeight.w600, color: color),
+        ),
+      ],
+    );
+  }
 
   /// Due-date chip: red when overdue, theme-primary when due today.
   Widget _dueChip(
