@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-09-26 · 当前版本 **v1.12.0**（已发版：看板卡片预览内容升级——描述 3 行预览 + 底部统计行（附件数/日志数/子任务进度环）；267 测试）
+> 最后更新：2026-09-26 · 当前版本 **v1.12.1**（已发版：看板卡片新增最近一条日志的引用式预览块（类型着色图标 + 2 行内容）；267 测试）
 
 ---
 
@@ -136,6 +136,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 
 | 日期/版本 | 决策 | 理由 |
 |---|---|---|
+| v1.12.1 | 看板卡片新增**最近日志预览块**（用户需求：卡片可预览最近一次 notes 内容）：位置=描述之下、chips 之上；内容=executionLog 按 timestamp 取最新一条（`reduce` 求最新，不信任列表顺序），浅灰底圆角块 + 类型着色小图标（note=主题色便签/pass=绿勾/fail=红叉/blocked=橙 blocking）+ 内容最多 2 行省略。新增 `_latestEntry`/`_notePreview` | 引用式预览与描述视觉区分（描述=任务本身、note=最新进展）；图标色传达日志类型避免整块上色过度；Border(left)+borderRadius 组合在 Flutter 有非均匀边滤断言，故弃用左彩条改用着色图标 |
 | v1.12.0 | 看板卡片**预览内容升级**（用户参考外部看板截图要求卡片展示预览内容）：① 描述预览 2 行→**3 行**（12px/height 1.45）；② 新增**底部统计行**（有内容才显示，Wrap 布局）：📎 附件数（=executionLog 各条 attachments 总和）、💬 日志条数（executionLog.length，类比截图的评论数）、**子任务进度环**（12px CircularProgressIndicator + 百分比，<100% 主题色、=100% 绿色，取代原 n/m chip）；③ 优先级 P0-P3 徽章**常显**（原先是"无其他 meta 就整行隐藏"）；删除被孤立的 `_hasMetaChips`。卡片结构=标题→描述→chips（优先级/截止/项目/标签）→统计行 | 映射：截图的 💬评论→TaskFlow 的执行日志、📎附件→日志内附件、◔进度环→子任务完成度；统计行条件显示避免空卡噪音；环形进度用 CircularProgressIndicator(determininate) 零自绘 |
 | v1.11.3 | Today 看板浅色主题二次修（用户双截图对比：深色好看、浅色仍难看）：根因=浅色主题 `bg` 只比白深 3~5%（freshGreen #F0FAF4/celadon #EEF4F1），v1.11.1 的「bg 画布→白 62% 玻璃列→纯白卡」三层几乎无明度差。修复（**全部走 isDark 分支，深色零改动**）：① 浅色画布向 `palette.border` 加深——canvas=alphaBlend(border 38%, bg)、底部渐变到 52%（保持主题色相，如 freshGreen≈#DFF0E7）；② 玻璃列提实=white 72% 叠 canvas，列顶洗底 4%→6%（顶部 35%）；③ 浅色阴影加强：列 black 5%·blur10、卡 7%·blur9、KPI 7%·blur9，KPI 角部洗底 7%→9%，空列虚线框 border 0.45→0.6 | 三层阶梯必须有真实明度差（深色天然成立：#1E1E2E→#2A2A3C→#45475A）；向 border 混合而非向黑混合可保主题色相；全部调色走 alphaBlend 实色避免透明度叠加发灰 |
 | v1.11.2 | 修 Today 看板**最右列被裁切**（用户截图：Blocked 列右侧被推出可视区）：根因=`_buildBoard` 的 LayoutBuilder 在左右 28px Padding **外侧**取 `maxWidth`，列宽均分与 ConstrainedBox minWidth 都按含边距全宽算，内容恒比可视区宽 56px（水平可滚但看不出该滚）。修复=LayoutBuilder 移入 Padding 内侧，`available` 为扣边距后的真实宽度再均分。同类布局校验：KPI 行/工具栏的 LayoutBuilder 均已在 Padding 内侧，无同款问题 | Padding 会收缩子级约束但不会改 LayoutBuilder 已取到的值；「取宽用的 LayoutBuilder 必须与消费宽度的布局同层或更内层」 |
@@ -232,6 +233,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
+- ✅ v1.12.1（已发版）：看板卡片新增最近日志预览块（类型着色图标 + 2 行内容，位于描述与 chips 之间）；267 测试全过
 - ✅ v1.12.0（已发版）：看板卡片预览内容升级——描述 3 行预览、底部统计行（📎 附件数/💬 日志数/子任务进度环）、优先级徽章常显；267 测试全过、双推 `fbe9051`、包体 35.9MB
 - ✅ v1.11.3（已发版）：Today 看板浅色主题二次修——画布向 border 加深（38%→52% 渐变）、玻璃列提实 white 72%、浅色阴影/洗底加强；深色主题零改动；267 测试全过、双推 `d14785c`、包体 35.9MB
 - ✅ v1.11.2（已发版）：修 Today 看板最右列被裁切（LayoutBuilder 移入内边距内侧按真实宽度均分列宽）；267 测试全过、双推 `d91be36`、包体 35.9MB（注：`outputs/` 中旧版解包目录已被用户清理，后续打包的使用说明.txt 从 Release 目录沿用，首次打包需从 v1.11.1+ 的 zip 或存档取回）

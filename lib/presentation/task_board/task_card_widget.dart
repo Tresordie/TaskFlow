@@ -229,6 +229,11 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
+                      // v1.12.1: latest execution-log note preview.
+                      if (_latestEntry(task) != null) ...[
+                        const SizedBox(height: 6),
+                        _notePreview(palette, _latestEntry(task)!, muted),
+                      ],
                       const SizedBox(height: 7),
                       Wrap(
                         spacing: 5,
@@ -315,6 +320,48 @@ class _TaskCardState extends ConsumerState<TaskCard> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// The most recent execution-log entry, or null when there is none.
+  ExecutionEntry? _latestEntry(Task task) {
+    if (task.executionLog.isEmpty) return null;
+    return task.executionLog.reduce(
+        (a, b) => a.timestamp.isAfter(b.timestamp) ? a : b);
+  }
+
+  /// v1.12.1: latest execution-log note preview — a quote-style block with
+  /// a type-colored icon (note / pass / fail / blocked) and up to two lines
+  /// of the entry content.
+  Widget _notePreview(ColorScheme palette, ExecutionEntry entry, Color muted) {
+    final (icon, color) = switch (entry.type) {
+      EntryType.note => (Icons.sticky_note_2_outlined, palette.primary),
+      EntryType.pass => (Icons.check_circle, AppColors.success),
+      EntryType.fail => (Icons.cancel, AppColors.error),
+      EntryType.blocked => (Icons.block, AppColors.warning),
+    };
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(7, 5, 7, 5),
+      decoration: BoxDecoration(
+        color: palette.outline.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 11.5, color: color),
+          const SizedBox(width: 5),
+          Expanded(
+            child: Text(
+              entry.content,
+              style: TextStyle(fontSize: 11, height: 1.35, color: muted),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }
