@@ -83,7 +83,7 @@ test/
 - Task CRUD with priority levels (P0-P3) and status tracking
 - Execution log: timestamped entries with type (Note/Pass/Fail/Blocked), Markdown + LaTeX rendering, edit/delete entries, file & image attachments
 - Sub-step checklists within tasks
-- Today board, Timeline, Calendar and Activity (heatmap) views
+- Today kanban dashboard, Timeline, Calendar and Activity (heatmap) views
 - Quick-add bar with priority + due date
 - 18 color themes — muted lights (Celadon / Ink Blue / Dusty Rose) plus the earlier palette and Catppuccin sets; 3 curated CN/EN font pairings with **Inter × MiSans as the app default** (Plus Jakarta Sans × Noto Sans SC and Lexend × Noto Sans SC selectable); global font-size scaling (80–140%)
 - Responsive: sidebar on desktop, bottom nav on mobile
@@ -129,6 +129,14 @@ test/
 - **Tab / Shift+Tab**: Tab inserts two spaces AT the caret (only the content after the cursor shifts right); with a multi-line selection the whole block is (de)indented and stays selected for repeated presses; Shift+Tab removes the line's leading indentation
 - Preview fidelity with `workreport.html`: paragraph leading indentation is preserved in rendering (NBSP hardening), and under-indented sub-items are normalized to nest under their parent list item (indent-based nesting semantics)
 - **All saved records** (work-log entries, AI summaries, execution-log notes, task descriptions, parsed-task descriptions, report preview, summary history) render as Markdown preview, are **mouse drag-selectable as a whole document**, and offer right-click **“Copy as Markdown”** to grab the original Markdown source
+
+### Phase 8 — Kanban Today dashboard
+- Today page redesigned as a translate_tool-inspired kanban: four KPI stat cards (Today's Progress with animated bar / To Do + overdue / In Progress + high priority / Done + completion rate) over a fixed four-column board
+- Board dimensions: **Status** (To Do / In Progress / Done / Blocked), **Project** (one column per project in use) and **Priority** (P0–P3) — drag a card onto a column to apply that attribute; the per-column “+” creates a task that inherits it
+- Quick-filter pills (All / Due Today / High Priority); drag a card onto another card to convert it into a sub-step; archived tasks render in the Done column
+- Rich task cards: 3-line description preview, latest execution-log note preview (type-colored icon: note / pass / fail / blocked), meta chips (priority / due date / project / tags), stats row (attachments / log entries / sub-task progress ring)
+- Ambient backdrop with drifting accent orbs; light themes use the “paper” recipe (tinted canvas + pure-white cards + glassy columns), dark themes keep the palette ladder
+- 13 kanban contract tests (column bucketing / in-column ordering / quick filters / KPI math)
 
 ## Data locations
 
