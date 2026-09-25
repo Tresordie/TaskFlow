@@ -4,7 +4,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
-import '../../providers/theme_provider.dart';
 import 'task_card_widget.dart';
 
 /// v1.10.0 / v1.11.0: one kanban column of the Today board
@@ -20,6 +19,9 @@ class KanbanColumn extends ConsumerStatefulWidget {
   final String title;
   final IconData icon;
   final Color accent;
+  /// Glassy column surface (between canvas and cards), resolved by the
+  /// screen per brightness.
+  final Color backgroundColor;
   final bool isAdding;
   final VoidCallback onStartAdd;
   final VoidCallback onCancelAdd;
@@ -32,6 +34,7 @@ class KanbanColumn extends ConsumerStatefulWidget {
     required this.title,
     required this.icon,
     required this.accent,
+    required this.backgroundColor,
     required this.isAdding,
     required this.onStartAdd,
     required this.onCancelAdd,
@@ -68,7 +71,6 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final palette = theme.colorScheme;
-    final appPalette = ref.watch(themeModeProvider).palette;
     final accent = widget.accent;
     final muted = palette.onSurface.withOpacity(0.5);
 
@@ -81,21 +83,21 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOut,
           decoration: BoxDecoration(
-            color: appPalette.bg,
-            // Soft accent wash fading down the column — gives each column a
-            // quiet color identity without hurting card contrast.
+            color: widget.backgroundColor,
+            // Faint accent identity confined to the top of the column — a
+            // full-height wash reads muddy on light themes.
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              stops: const [0, 0.55],
+              stops: const [0, 0.3],
               colors: [
-                accent.withOpacity(0.05),
+                accent.withOpacity(0.04),
                 accent.withOpacity(0.0),
               ],
             ),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: isOver ? accent : palette.outline.withOpacity(0.4),
+              color: isOver ? accent : palette.outline.withOpacity(0.5),
               width: isOver ? 1.5 : 1,
             ),
             boxShadow: isOver
@@ -106,7 +108,13 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
                       offset: const Offset(0, 4),
                     ),
                   ]
-                : const [],
+                : [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
           ),
           child: Stack(
             children: [

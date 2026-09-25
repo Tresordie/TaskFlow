@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-09-25 · 当前版本 **v1.11.0**（已发版：Today 看板视觉质感升级 + 维度切换（Status/Project/Priority，拖拽跨列=改对应属性）；267 测试）
+> 最后更新：2026-09-25 · 当前版本 **v1.11.1**（已发版：Today 看板浅色主题「纸感」修复——bg 画布+纯白卡片+玻璃列，去页头色带/整列洗底；267 测试）
 
 ---
 
@@ -136,6 +136,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 
 | 日期/版本 | 决策 | 理由 |
 |---|---|---|
+| v1.11.1 | Today 看板浅色主题修复（用户截图反馈黛蓝等浅色主题下"不美观没质感"）：根因=浅色主题 `surface`/`card`/`bg` 三色差过小（如 inkBlue #FAFBFD/#F2F6FA/#EFF3F8），再叠 v1.11.0 的大面积元素——页头 6% 主色渐变带、整列 5% 强调色洗底、KPI surface 渐变——全部糊在一起。修复=**「纸感」配方**：① 页面画布统一用 `palette.bg`（灰蓝底），② 浅色主题卡片（任务卡/KPI/快速添加栏）一律**纯白** `Colors.white`（深色仍用 palette.card），③ 列改「玻璃」=浅色 white 62% / 深色 card 40% 叠加 bg 的实色混合，④ **删页头渐变带**（改平铺标题）、整列洗底缩到顶部 30%·4%、列/卡边框加深（outline 0.5~0.7）+ 阴影加强（black 5%），彩色只留小元素（左色条/图标章/徽章/发丝线/hover）。KanbanColumn 增加 backgroundColor 参数（屏幕层按亮度解析），kanban_column 不再依赖 themeModeProvider | 层次感=中性面保持中性、彩色只做小面积点缀；白卡+边框+阴影在灰蓝画布上才有 translate_tool Paper 主题的「浮起」感；全 18 主题按亮度分支自动生效 |
 | v1.11.0 | Today 看板两轮迭代（用户需求：更美观有质感 + Dashboard 可按 Project/Status 等方式展示）：① **维度切换**——新增 `BoardDimension`（Status/Project/Priority）+ `boardDimensionProvider`，工具栏（快速筛选 pills 居左 + 维度分段控件居右，窄窗 <760px 纵向堆叠防溢出）切换，`KanbanColumnData` 泛化为 key+tasks（status=状态名/priority=索引/project=项目名，''=No Project）；**拖拽跨列=改对应属性**（状态→updateStatus、优先级/项目→updateTask），列头"+"新建同样按维度继承属性，切维度淡入过渡（AnimatedSwitcher+Positioned.fill 布局器）；Project 列按字母序（No Project 殿后）、空集也保底一列，优先级列固定 P0-P3 恒显；② **质感升级**——页面级环境层：整页 surface→primary 2.5% 纵向渐变 + 3 颗 14s 往返漂移的径向光晕（primary/secondary/success，4-7% 透明度，IgnorePointer）；KPI 卡：accent 向右下 7% 渐变底、右上 accent 图标章、左色条改渐变、hover 上浮+发光；看板列：圆角 18、列内 accent 5%→0 纵向渐变洗底、列头图标块 26px 渐变底、列表加 Scrollbar；卡片左色条改纵向渐变。10 项看板契约测试扩到 13 项（新增 priority/project 分桶+空集保底） | "质感"=低饱和环境层+微渐变+hover 微交互，不动整体视觉语言；Tag 维度刻意不做（任务可属多标签→同卡多列+拖拽语义歧义），如用户后续要再扩展 |
 | v1.10.0 | **Today 页看板化改版**（对标 translate_tool 的 todolist 看板）：① `TaskBoardScreen` 重写为 **4 张 KPI 统计卡**（Today's Progress 带渐变进度条/To Do+逾期数/In Progress+高优先数/Done+完成率，KPI 统计口径=全量任务不受筛选影响）+ **固定四列看板**（To Do/In Progress/Done/Blocked，列头=状态色图标块+计数徽章+"+"列内快速添加，列顶状态色发丝线，空列呼吸虚线框）；② 卡片重写（task_card_widget.dart）：左侧 3px 优先级色条（完成变绿）、标题+hover 操作（完成切换/编辑/删除）、两行截断描述、meta 胶囊链（截止日期逾期红/今日主题色、优先级、子任务 n/m、项目/标签用户色）；③ **拖拽跨列改状态**（整列是 DragTarget，卡片 DragTarget 转子任务优先级更高、两者共存），Archived 归入 Done 列（全应用 completed‖archived 约定）；④ 顶栏快捷筛选 pills（All/Due Today/High Priority，StateProvider 本地态）；⑤ 数据层：`task_providers.dart` 新增 `buildKanbanColumns`/`sortKanbanTasks`/`applyBoardQuickFilter`/`buildKanbanBoardData` 纯函数 + `kanbanBoardProvider`（10 项契约测试 kanban_board_test.dart）；⑥ `createTask`/`buildNewTask` 加可选 `status` 参数（默认 planned，既有调用零改动）；⑦ 删除被孤立的 Group-by 体系（TaskGroupMode 枚举/taskGroupModeProvider/groupedTasksByModeProvider），Today 页不再用 WheelForward（其他页保留）；列内排序=截止日期升序（无日期沉底）→优先级→创建时间降序 | 用户需求"Today 页做成类似 translate_tool 的任务清单页"；statusColor 仍是列色唯一事实源；保留快速添加栏与外部筛选横幅（Activity 页联动） |
 | v1.9.3 | 报告总结优化三件套：① 执行摘要 In Progress=每任务一行（加粗标题+" — "+一句话总结，删缩进要点）；② 进度明细近因聚焦 10 天→**7 天（近一周）**，超一周日志压成"早期背景："一句历史总结，详情条目=任务详细描述；③ 下期计划**只含未完成任务**（计划/进行/阻塞逾期）且**每任务一行禁止分解**（删"可分解为多个行动行"指令）。改动面：`formatTaskData` recentCut 10→7 天+标签、中英 AI 提示词（输出模板/分节规则/质量自检）、回退模板 toMarkdown/toHtml 的 In Progress 小节；契约测试同步（253→254） | 用户三需求（In Progress 一句话总结；详细描述+近一周重点+超一周一句话历史；计划只针对未完成任务、不细化）。整周报告期（start=end−7d）下"近期但期外"分档为空集，契约测试改用 07-15→07-20 短周期构造该分档 |
@@ -228,6 +229,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
+- ✅ v1.11.1（已发版）：Today 看板浅色主题「纸感」修复——bg 灰蓝画布 + 纯白卡片 + 玻璃列，删页头色带、整列洗底缩到顶部，边框/阴影加强；267 测试全过
 - ✅ v1.11.0（已发版）：Today 看板视觉质感升级（环境光晕/KPI 渐变卡+图标章/列渐变洗底/滚动条）+ 维度切换 Status/Project/Priority（拖拽跨列=改对应属性、列头"+"按维度继承）；267 测试全过（+3 契约）、双推 `f954ea3`、包体 35.9MB
 - ✅ v1.10.0（已发版）：Today 页看板化改版——4 张 KPI 统计卡 + 四列看板（To Do/In Progress/Done/Blocked，拖拽跨列改状态、列内"+"快速添加、快捷筛选 pills）；保留拖卡片转子任务交互与快速添加栏；Archived 归入 Done 列；264 测试全过（+10 看板契约）、双推 `0351600`、包体 35.9MB
 - ✅ v1.9.3（已发版）：Reports 报告总结优化——In Progress 一句话总结、进度明细近一周（7 天）聚焦+超一周一句话历史、下期计划只含未完成任务且不分解；254 测试全过（+1 契约）、双推 `5001225`、包体 35.9MB

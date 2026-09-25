@@ -8,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
+import '../../providers/theme_provider.dart';
 import '../shared/suggestion_field.dart';
 import 'kanban_column.dart';
 
@@ -39,13 +40,23 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     final colorSettings = ref.watch(colorSettingsProvider);
     final today = DateFormat('EEEE, MMM d').format(DateTime.now());
     final theme = Theme.of(context);
+    final appPalette = ref.watch(themeModeProvider).palette;
+    // v1.11.1: light themes get pure-white cards on the theme's bg canvas
+    // (the "paper" recipe) so they actually pop; dark themes keep the
+    // palette's card color.
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark ? appPalette.card : Colors.white;
+    // Glassy column surface between the canvas and the cards.
+    final columnColor = isDark
+        ? Color.alphaBlend(appPalette.card.withOpacity(0.40), appPalette.bg)
+        : Color.alphaBlend(Colors.white.withOpacity(0.62), appPalette.bg);
 
     return Stack(
       children: [
-        // Ambient decorative backdrop (soft color wash + drifting orbs),
-        // behind all content and ignoring the pointer.
+        // Ambient decorative backdrop (canvas tint + drifting orbs), behind
+        // all content and ignoring the pointer.
         Positioned.fill(
-          child: IgnorePointer(child: _buildBackdrop(theme)),
+          child: IgnorePointer(child: _buildBackdrop(theme, appPalette)),
         ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,8 +77,8 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                 loading: () =>
                     const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(child: Text('Error: $e')),
-                data: (_) => _buildBody(
-                    theme, board, filter, quickFilter, dimension, colorSettings),
+                data: (_) => _buildBody(theme, board, filter, quickFilter,
+                    dimension, colorSettings, cardColor, columnColor),
               ),
             ),
           ],
@@ -78,9 +89,10 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
 
   // ─── Ambient backdrop ─────────────────────────────────────────────────────
 
-  /// Soft page wash plus three slowly drifting color orbs — the quiet
-  /// "texture" layer behind the board (translate_tool's ambient orbs).
-  Widget _buildBackdrop(ThemeData theme) {
+  /// Neutral canvas (the theme's bg tint) plus three slowly drifting color
+  /// orbs — the quiet "texture" layer behind the board
+  /// (translate_tool's ambient orbs).
+  Widget _buildBackdrop(ThemeData theme, ThemePalette appPalette) {
     final palette = theme.colorScheme;
 
     Widget orb(Color color, double size, double opacity) {
@@ -104,22 +116,8 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
 
     return Stack(
       children: [
-        // Whole-page wash: surface fading into a faint primary tint.
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  palette.surface,
-                  Color.alphaBlend(
-                      palette.primary.withOpacity(0.025), palette.surface),
-                ],
-              ),
-            ),
-          ),
-        ),
+        // The canvas: cards pop against this in light themes.
+        Positioned.fill(child: ColoredBox(color: appPalette.bg)),
         Positioned(top: -140, right: -100, child: orb(palette.primary, 460, 0.07)),
         Positioned(top: 300, left: -160, child: orb(palette.secondary, 420, 0.05)),
         Positioned(bottom: -160, right: 160, child: orb(AppColors.success, 380, 0.04)),
@@ -129,20 +127,11 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
 
   // ─── Header ───────────────────────────────────────────────────────────────
 
+  /// Flat header on the canvas — no full-width gradient band, which read as
+  /// a muddy smear on light themes.
   Widget _buildHeader(ThemeData theme, String today) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(28, 24, 28, 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            theme.colorScheme.primary.withOpacity(0.06),
-            theme.colorScheme.surface,
-          ],
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 22, 28, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -239,7 +228,9 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
       TaskFilter filter,
       BoardQuickFilter quickFilter,
       BoardDimension dimension,
-      ColorSettings colorSettings) {
+      ColorSettings colorSettings,
+      Color cardColor,
+      Color columnColor) {
     final boardVisible = board.columns.any((c) => c.tasks.isNotEmpty);
     final showEmptyState = !boardVisible &&
         !filter.isActive &&
@@ -248,7 +239,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildKpiRow(theme, board),
+        _buildKpiRow(theme, board, cardColor),
         _buildToolbar(theme, quickFilter, dimension),
         Expanded(
           child: showEmptyState
@@ -269,8 +260,8 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                   ),
                   child: KeyedSubtree(
                     key: ValueKey('board-${dimension.name}'),
-                    child:
-                        _buildBoard(theme, board, dimension, colorSettings),
+                    child: _buildBoard(
+                        theme, board, dimension, colorSettings, columnColor),
                   ),
                 ),
         ),
@@ -402,7 +393,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
 
   // ─── KPI stat cards ───────────────────────────────────────────────────────
 
-  Widget _buildKpiRow(ThemeData theme, KanbanBoardData board) {
+  Widget _buildKpiRow(ThemeData theme, KanbanBoardData board, Color cardColor) {
     final palette = theme.colorScheme;
     final cards = [
       _KpiCardData(
@@ -447,7 +438,9 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
         children: [
           for (final (i, data) in cards.indexed) ...[
             if (i > 0) const SizedBox(width: 12),
-            Expanded(child: _KpiCard(data: data, palette: palette)),
+            Expanded(
+                child: _KpiCard(
+                    data: data, palette: palette, cardColor: cardColor)),
           ],
         ],
       ),
@@ -457,7 +450,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
   // ─── Board ────────────────────────────────────────────────────────────────
 
   Widget _buildBoard(ThemeData theme, KanbanBoardData board,
-      BoardDimension dimension, ColorSettings colorSettings) {
+      BoardDimension dimension, ColorSettings colorSettings, Color columnColor) {
     return LayoutBuilder(builder: (context, constraints) {
       const gap = 14.0;
       // Columns share the width equally once it fits; below 4×252px the
@@ -476,7 +469,8 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                   if (i > 0) const SizedBox(width: gap),
                   SizedBox(
                     width: colWidth,
-                    child: _buildColumn(col, dimension, colorSettings),
+                    child: _buildColumn(
+                        col, dimension, colorSettings, columnColor),
                   ),
                 ],
               ],
@@ -488,7 +482,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
   }
 
   Widget _buildColumn(KanbanColumnData col, BoardDimension dimension,
-      ColorSettings colorSettings) {
+      ColorSettings colorSettings, Color columnColor) {
     final (title, icon, accent) =
         _columnVisual(col, dimension, colorSettings);
     return KanbanColumn(
@@ -497,6 +491,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
       title: title,
       icon: icon,
       accent: accent,
+      backgroundColor: columnColor,
       isAdding: _addingColumnKey == col.key,
       onStartAdd: () => setState(() => _addingColumnKey = col.key),
       onCancelAdd: () => setState(() => _addingColumnKey = null),
@@ -608,8 +603,13 @@ class _KpiCardData {
 class _KpiCard extends StatefulWidget {
   final _KpiCardData data;
   final ColorScheme palette;
+  final Color cardColor;
 
-  const _KpiCard({required this.data, required this.palette});
+  const _KpiCard({
+    required this.data,
+    required this.palette,
+    required this.cardColor,
+  });
 
   @override
   State<_KpiCard> createState() => _KpiCardState();
@@ -634,20 +634,20 @@ class _KpiCardState extends State<_KpiCard> {
             ? (Matrix4.identity()..translate(0.0, -2.0))
             : Matrix4.identity(),
         decoration: BoxDecoration(
-          // Subtle accent-tinted wash toward the bottom-right corner — the
-          // "texture" layer on top of the flat surface color.
+          // Pure card color with a subtle accent-tinted wash toward the
+          // bottom-right corner — the "texture" layer.
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              palette.surface,
+              widget.cardColor,
               Color.alphaBlend(
-                  data.accent.withOpacity(0.07), palette.surface),
+                  data.accent.withOpacity(0.07), widget.cardColor),
             ],
           ),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: palette.outline.withOpacity(_hovered ? 0.7 : 0.5),
+            color: palette.outline.withOpacity(_hovered ? 0.8 : 0.6),
           ),
           boxShadow: _hovered
               ? [
@@ -657,15 +657,15 @@ class _KpiCardState extends State<_KpiCard> {
                     offset: const Offset(0, 6),
                   ),
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 6,
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
-                    blurRadius: 5,
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 7,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -811,27 +811,35 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Pure white card in light themes so it pops off the bg canvas.
+    final cardColor = theme.brightness == Brightness.dark
+        ? ref.watch(themeModeProvider).palette.card
+        : Colors.white;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOut,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: cardColor,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: _expanded
               ? theme.colorScheme.primary.withOpacity(0.4)
-              : theme.colorScheme.outline.withOpacity(0.5),
+              : theme.colorScheme.outline.withOpacity(0.55),
         ),
-        boxShadow: _expanded
-            ? [
-                BoxShadow(
-                  color: theme.colorScheme.primary.withOpacity(0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-            : [],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 7,
+            offset: const Offset(0, 2),
+          ),
+          if (_expanded)
+            BoxShadow(
+              color: theme.colorScheme.primary.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
       ),
       child: Column(
         children: [

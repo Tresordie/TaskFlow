@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
+import '../../providers/theme_provider.dart';
 import '../shared/edit_task_dialog.dart';
 
 /// v1.10.0: kanban-style task card for the Today board (translate_tool-
@@ -132,6 +133,11 @@ class _TaskCardState extends ConsumerState<TaskCard> {
       Color barColor, bool isDone) {
     final colorSettings = ref.watch(colorSettingsProvider);
     final muted = palette.onSurface.withOpacity(0.5);
+    // v1.11.1: pure white in light themes so cards pop off the bg canvas;
+    // dark themes keep the palette card color.
+    final cardColor = theme.brightness == Brightness.dark
+        ? ref.watch(themeModeProvider).palette.card
+        : Colors.white;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -154,14 +160,14 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                     ? (Matrix4.identity()..translate(0.0, -2.0))
                     : Matrix4.identity(),
             decoration: BoxDecoration(
-              color: palette.surface,
+              color: cardColor,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isDone
                     ? AppColors.success.withOpacity(0.3)
                     : _isHovered
                         ? barColor.withOpacity(0.45)
-                        : palette.outline.withOpacity(0.6),
+                        : palette.outline.withOpacity(0.7),
               ),
               boxShadow: _isHovered
                   ? [
@@ -171,15 +177,15 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                         offset: const Offset(0, 6),
                       ),
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 8,
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 10,
                         offset: const Offset(0, 3),
                       ),
                     ]
                   : [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
-                        blurRadius: 5,
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 7,
                         offset: const Offset(0, 2),
                       ),
                     ],
