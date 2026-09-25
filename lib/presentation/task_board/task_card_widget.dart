@@ -232,7 +232,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                       // v1.12.1: latest execution-log note preview.
                       if (_latestEntry(task) != null) ...[
                         const SizedBox(height: 6),
-                        _notePreview(palette, _latestEntry(task)!, muted),
+                        _notePreview(palette, _latestEntry(task)!),
                       ],
                       const SizedBox(height: 7),
                       Wrap(
@@ -332,9 +332,9 @@ class _TaskCardState extends ConsumerState<TaskCard> {
   }
 
   /// v1.12.1: latest execution-log note preview — a quote-style block with
-  /// a type-colored icon (note / pass / fail / blocked) and up to two lines
-  /// of the entry content.
-  Widget _notePreview(ColorScheme palette, ExecutionEntry entry, Color muted) {
+  /// a type-colored icon and up to three lines of the entry content.
+  /// v1.12.2: larger font + darker color so the preview is readable.
+  Widget _notePreview(ColorScheme palette, ExecutionEntry entry) {
     final (icon, color) = switch (entry.type) {
       EntryType.note => (Icons.sticky_note_2_outlined, palette.primary),
       EntryType.pass => (Icons.check_circle, AppColors.success),
@@ -343,21 +343,26 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     };
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(7, 5, 7, 5),
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
       decoration: BoxDecoration(
-        color: palette.outline.withOpacity(0.08),
+        color: palette.outline.withOpacity(0.10),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 11.5, color: color),
-          const SizedBox(width: 5),
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 6),
           Expanded(
             child: Text(
               entry.content,
-              style: TextStyle(fontSize: 11, height: 1.35, color: muted),
-              maxLines: 2,
+              style: TextStyle(
+                fontSize: 12.5,
+                height: 1.4,
+                fontWeight: FontWeight.w500,
+                color: palette.onSurface.withOpacity(0.78),
+              ),
+              maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
           ),
