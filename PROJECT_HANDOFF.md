@@ -227,7 +227,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
-- ✅ v1.10.0（已发版）：Today 页看板化改版——4 张 KPI 统计卡 + 四列看板（To Do/In Progress/Done/Blocked，拖拽跨列改状态、列内"+"快速添加、快捷筛选 pills）；保留拖卡片转子任务交互与快速添加栏；Archived 归入 Done 列；264 测试全过（+10 看板契约）
+- ✅ v1.10.0（已发版）：Today 页看板化改版——4 张 KPI 统计卡 + 四列看板（To Do/In Progress/Done/Blocked，拖拽跨列改状态、列内"+"快速添加、快捷筛选 pills）；保留拖卡片转子任务交互与快速添加栏；Archived 归入 Done 列；264 测试全过（+10 看板契约）、双推 `0351600`、包体 35.9MB
 - ✅ v1.9.3（已发版）：Reports 报告总结优化——In Progress 一句话总结、进度明细近一周（7 天）聚焦+超一周一句话历史、下期计划只含未完成任务且不分解；254 测试全过（+1 契约）、双推 `5001225`、包体 35.9MB
 - ✅ v1.9.2（已发版）：Timeline 排序反转为最新在最上；253 测试全过、双推 `2704819`、包体 35.6MB
 - ✅ v1.9.1（已发版）：Timeline 时间列改日期+时间两行（yyyy-MM-dd/HH:mm）；253 测试全过、双推 `26aa546`、包体 35.6MB
