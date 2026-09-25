@@ -135,7 +135,8 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     final muted = palette.onSurface.withOpacity(0.5);
     // v1.11.1: pure white in light themes so cards pop off the bg canvas;
     // dark themes keep the palette card color.
-    final cardColor = theme.brightness == Brightness.dark
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark
         ? ref.watch(themeModeProvider).palette.card
         : Colors.white;
 
@@ -184,8 +185,8 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                     ]
                   : [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 7,
+                        color: Colors.black.withOpacity(isDark ? 0.05 : 0.07),
+                        blurRadius: isDark ? 7 : 9,
                         offset: const Offset(0, 2),
                       ),
                     ],

@@ -41,22 +41,35 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     final today = DateFormat('EEEE, MMM d').format(DateTime.now());
     final theme = Theme.of(context);
     final appPalette = ref.watch(themeModeProvider).palette;
-    // v1.11.1: light themes get pure-white cards on the theme's bg canvas
+    // v1.11.1: light themes get pure-white cards on a tinted canvas
     // (the "paper" recipe) so they actually pop; dark themes keep the
     // palette's card color.
     final isDark = theme.brightness == Brightness.dark;
     final cardColor = isDark ? appPalette.card : Colors.white;
+    // v1.11.3: deepen the light canvas toward the theme border so the
+    // three-layer ladder (canvas → glass column → white card) has real
+    // tonal steps — pale bg alone left everything washed out. Dark themes
+    // keep the palette bg the user likes.
+    final canvasColor = isDark
+        ? appPalette.bg
+        : Color.alphaBlend(appPalette.border.withOpacity(0.38), appPalette.bg);
+    final canvasDeepColor = isDark
+        ? appPalette.bg
+        : Color.alphaBlend(appPalette.border.withOpacity(0.52), appPalette.bg);
     // Glassy column surface between the canvas and the cards.
     final columnColor = isDark
         ? Color.alphaBlend(appPalette.card.withOpacity(0.40), appPalette.bg)
-        : Color.alphaBlend(Colors.white.withOpacity(0.62), appPalette.bg);
+        : Color.alphaBlend(Colors.white.withOpacity(0.72), canvasColor);
 
     return Stack(
       children: [
         // Ambient decorative backdrop (canvas tint + drifting orbs), behind
         // all content and ignoring the pointer.
         Positioned.fill(
-          child: IgnorePointer(child: _buildBackdrop(theme, appPalette)),
+          child: IgnorePointer(
+            child: _buildBackdrop(
+                theme, appPalette, canvasColor, canvasDeepColor, isDark),
+          ),
         ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,10 +102,11 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
 
   // ─── Ambient backdrop ─────────────────────────────────────────────────────
 
-  /// Neutral canvas (the theme's bg tint) plus three slowly drifting color
-  /// orbs — the quiet "texture" layer behind the board
-  /// (translate_tool's ambient orbs).
-  Widget _buildBackdrop(ThemeData theme, ThemePalette appPalette) {
+  /// Neutral canvas (deepened toward the theme border on light themes)
+  /// plus three slowly drifting color orbs — the quiet "texture" layer
+  /// behind the board (translate_tool's ambient orbs).
+  Widget _buildBackdrop(ThemeData theme, ThemePalette appPalette,
+      Color canvasColor, Color canvasDeepColor, bool isDark) {
     final palette = theme.colorScheme;
 
     Widget orb(Color color, double size, double opacity) {
@@ -116,8 +130,22 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
 
     return Stack(
       children: [
-        // The canvas: cards pop against this in light themes.
-        Positioned.fill(child: ColoredBox(color: appPalette.bg)),
+        // The canvas: cards pop against this. Light themes get a subtle
+        // vertical deepening for extra depth.
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: isDark ? canvasColor : null,
+              gradient: isDark
+                  ? null
+                  : LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [canvasColor, canvasDeepColor],
+                    ),
+            ),
+          ),
+        ),
         Positioned(top: -140, right: -100, child: orb(palette.primary, 460, 0.07)),
         Positioned(top: 300, left: -160, child: orb(palette.secondary, 420, 0.05)),
         Positioned(bottom: -160, right: 160, child: orb(AppColors.success, 380, 0.04)),
@@ -395,6 +423,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
 
   Widget _buildKpiRow(ThemeData theme, KanbanBoardData board, Color cardColor) {
     final palette = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final cards = [
       _KpiCardData(
         label: "TODAY'S PROGRESS",
@@ -440,7 +469,10 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
             if (i > 0) const SizedBox(width: 12),
             Expanded(
                 child: _KpiCard(
-                    data: data, palette: palette, cardColor: cardColor)),
+                    data: data,
+                    palette: palette,
+                    cardColor: cardColor,
+                    isDark: isDark)),
           ],
         ],
       ),
@@ -608,11 +640,13 @@ class _KpiCard extends StatefulWidget {
   final _KpiCardData data;
   final ColorScheme palette;
   final Color cardColor;
+  final bool isDark;
 
   const _KpiCard({
     required this.data,
     required this.palette,
     required this.cardColor,
+    required this.isDark,
   });
 
   @override
@@ -626,6 +660,7 @@ class _KpiCardState extends State<_KpiCard> {
   Widget build(BuildContext context) {
     final data = widget.data;
     final palette = widget.palette;
+    final isDark = widget.isDark;
     final muted = palette.onSurface.withOpacity(0.5);
 
     return MouseRegion(
@@ -646,7 +681,8 @@ class _KpiCardState extends State<_KpiCard> {
             colors: [
               widget.cardColor,
               Color.alphaBlend(
-                  data.accent.withOpacity(0.07), widget.cardColor),
+                  data.accent.withOpacity(isDark ? 0.07 : 0.09),
+                  widget.cardColor),
             ],
           ),
           borderRadius: BorderRadius.circular(16),
@@ -668,8 +704,8 @@ class _KpiCardState extends State<_KpiCard> {
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 7,
+                    color: Colors.black.withOpacity(isDark ? 0.05 : 0.07),
+                    blurRadius: isDark ? 7 : 9,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -816,7 +852,8 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     // Pure white card in light themes so it pops off the bg canvas.
-    final cardColor = theme.brightness == Brightness.dark
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark
         ? ref.watch(themeModeProvider).palette.card
         : Colors.white;
 
@@ -833,8 +870,8 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 7,
+            color: Colors.black.withOpacity(isDark ? 0.05 : 0.07),
+            blurRadius: isDark ? 7 : 9,
             offset: const Offset(0, 2),
           ),
           if (_expanded)

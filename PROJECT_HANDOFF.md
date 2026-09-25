@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-09-25 · 当前版本 **v1.11.2**（已发版：修 Today 看板最右列被裁切——LayoutBuilder 移入内边距内侧按真实宽度均分列宽；267 测试）
+> 最后更新：2026-09-25 · 当前版本 **v1.11.3**（已发版：Today 看板浅色主题二次修——画布向 border 加深拉开三层阶梯，深色主题不动；267 测试）
 
 ---
 
@@ -136,6 +136,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 
 | 日期/版本 | 决策 | 理由 |
 |---|---|---|
+| v1.11.3 | Today 看板浅色主题二次修（用户双截图对比：深色好看、浅色仍难看）：根因=浅色主题 `bg` 只比白深 3~5%（freshGreen #F0FAF4/celadon #EEF4F1），v1.11.1 的「bg 画布→白 62% 玻璃列→纯白卡」三层几乎无明度差。修复（**全部走 isDark 分支，深色零改动**）：① 浅色画布向 `palette.border` 加深——canvas=alphaBlend(border 38%, bg)、底部渐变到 52%（保持主题色相，如 freshGreen≈#DFF0E7）；② 玻璃列提实=white 72% 叠 canvas，列顶洗底 4%→6%（顶部 35%）；③ 浅色阴影加强：列 black 5%·blur10、卡 7%·blur9、KPI 7%·blur9，KPI 角部洗底 7%→9%，空列虚线框 border 0.45→0.6 | 三层阶梯必须有真实明度差（深色天然成立：#1E1E2E→#2A2A3C→#45475A）；向 border 混合而非向黑混合可保主题色相；全部调色走 alphaBlend 实色避免透明度叠加发灰 |
 | v1.11.2 | 修 Today 看板**最右列被裁切**（用户截图：Blocked 列右侧被推出可视区）：根因=`_buildBoard` 的 LayoutBuilder 在左右 28px Padding **外侧**取 `maxWidth`，列宽均分与 ConstrainedBox minWidth 都按含边距全宽算，内容恒比可视区宽 56px（水平可滚但看不出该滚）。修复=LayoutBuilder 移入 Padding 内侧，`available` 为扣边距后的真实宽度再均分。同类布局校验：KPI 行/工具栏的 LayoutBuilder 均已在 Padding 内侧，无同款问题 | Padding 会收缩子级约束但不会改 LayoutBuilder 已取到的值；「取宽用的 LayoutBuilder 必须与消费宽度的布局同层或更内层」 |
 | v1.11.1 | Today 看板浅色主题修复（用户截图反馈黛蓝等浅色主题下"不美观没质感"）：根因=浅色主题 `surface`/`card`/`bg` 三色差过小（如 inkBlue #FAFBFD/#F2F6FA/#EFF3F8），再叠 v1.11.0 的大面积元素——页头 6% 主色渐变带、整列 5% 强调色洗底、KPI surface 渐变——全部糊在一起。修复=**「纸感」配方**：① 页面画布统一用 `palette.bg`（灰蓝底），② 浅色主题卡片（任务卡/KPI/快速添加栏）一律**纯白** `Colors.white`（深色仍用 palette.card），③ 列改「玻璃」=浅色 white 62% / 深色 card 40% 叠加 bg 的实色混合，④ **删页头渐变带**（改平铺标题）、整列洗底缩到顶部 30%·4%、列/卡边框加深（outline 0.5~0.7）+ 阴影加强（black 5%），彩色只留小元素（左色条/图标章/徽章/发丝线/hover）。KanbanColumn 增加 backgroundColor 参数（屏幕层按亮度解析），kanban_column 不再依赖 themeModeProvider | 层次感=中性面保持中性、彩色只做小面积点缀；白卡+边框+阴影在灰蓝画布上才有 translate_tool Paper 主题的「浮起」感；全 18 主题按亮度分支自动生效 |
 | v1.11.0 | Today 看板两轮迭代（用户需求：更美观有质感 + Dashboard 可按 Project/Status 等方式展示）：① **维度切换**——新增 `BoardDimension`（Status/Project/Priority）+ `boardDimensionProvider`，工具栏（快速筛选 pills 居左 + 维度分段控件居右，窄窗 <760px 纵向堆叠防溢出）切换，`KanbanColumnData` 泛化为 key+tasks（status=状态名/priority=索引/project=项目名，''=No Project）；**拖拽跨列=改对应属性**（状态→updateStatus、优先级/项目→updateTask），列头"+"新建同样按维度继承属性，切维度淡入过渡（AnimatedSwitcher+Positioned.fill 布局器）；Project 列按字母序（No Project 殿后）、空集也保底一列，优先级列固定 P0-P3 恒显；② **质感升级**——页面级环境层：整页 surface→primary 2.5% 纵向渐变 + 3 颗 14s 往返漂移的径向光晕（primary/secondary/success，4-7% 透明度，IgnorePointer）；KPI 卡：accent 向右下 7% 渐变底、右上 accent 图标章、左色条改渐变、hover 上浮+发光；看板列：圆角 18、列内 accent 5%→0 纵向渐变洗底、列头图标块 26px 渐变底、列表加 Scrollbar；卡片左色条改纵向渐变。10 项看板契约测试扩到 13 项（新增 priority/project 分桶+空集保底） | "质感"=低饱和环境层+微渐变+hover 微交互，不动整体视觉语言；Tag 维度刻意不做（任务可属多标签→同卡多列+拖拽语义歧义），如用户后续要再扩展 |
@@ -230,6 +231,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
+- ✅ v1.11.3（已发版）：Today 看板浅色主题二次修——画布向 border 加深（38%→52% 渐变）、玻璃列提实 white 72%、浅色阴影/洗底加强；深色主题零改动；267 测试全过
 - ✅ v1.11.2（已发版）：修 Today 看板最右列被裁切（LayoutBuilder 移入内边距内侧按真实宽度均分列宽）；267 测试全过、双推 `d91be36`、包体 35.9MB（注：`outputs/` 中旧版解包目录已被用户清理，后续打包的使用说明.txt 从 Release 目录沿用，首次打包需从 v1.11.1+ 的 zip 或存档取回）
 - ✅ v1.11.1（已发版）：Today 看板浅色主题「纸感」修复——bg 灰蓝画布 + 纯白卡片 + 玻璃列，删页头色带、整列洗底缩到顶部，边框/阴影加强；267 测试全过、双推 `5d0484c`、包体 35.9MB
 - ✅ v1.11.0（已发版）：Today 看板视觉质感升级（环境光晕/KPI 渐变卡+图标章/列渐变洗底/滚动条）+ 维度切换 Status/Project/Priority（拖拽跨列=改对应属性、列头"+"按维度继承）；267 测试全过（+3 契约）、双推 `f954ea3`、包体 35.9MB

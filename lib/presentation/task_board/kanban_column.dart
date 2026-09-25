@@ -71,6 +71,7 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final palette = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final accent = widget.accent;
     final muted = palette.onSurface.withOpacity(0.5);
 
@@ -89,15 +90,15 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              stops: const [0, 0.3],
+              stops: [0, isDark ? 0.3 : 0.35],
               colors: [
-                accent.withOpacity(0.04),
+                accent.withOpacity(isDark ? 0.04 : 0.06),
                 accent.withOpacity(0.0),
               ],
             ),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: isOver ? accent : palette.outline.withOpacity(0.5),
+              color: isOver ? accent : palette.outline.withOpacity(0.55),
               width: isOver ? 1.5 : 1,
             ),
             boxShadow: isOver
@@ -110,8 +111,8 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
                   ]
                 : [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 8,
+                      color: Colors.black.withOpacity(isDark ? 0.03 : 0.05),
+                      blurRadius: isDark ? 8 : 10,
                       offset: const Offset(0, 2),
                     ),
                   ],
@@ -290,7 +291,10 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
         margin: const EdgeInsets.only(top: 2),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: palette.outline.withOpacity(0.45)),
+          border: Border.all(
+            color: palette.outline.withOpacity(
+                theme.brightness == Brightness.dark ? 0.45 : 0.6),
+          ),
         ),
         alignment: Alignment.center,
         child: Column(
