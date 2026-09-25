@@ -451,17 +451,21 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
 
   Widget _buildBoard(ThemeData theme, KanbanBoardData board,
       BoardDimension dimension, ColorSettings colorSettings, Color columnColor) {
-    return LayoutBuilder(builder: (context, constraints) {
-      const gap = 14.0;
-      // Columns share the width equally once it fits; below 4×252px the
-      // board scrolls horizontally instead of squeezing the cards.
-      final colWidth = max(252.0, (constraints.maxWidth - gap * 3) / 4);
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(28, 8, 28, 14),
-        child: SingleChildScrollView(
+    const gap = 14.0;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 8, 28, 14),
+      // LayoutBuilder must sit INSIDE the horizontal padding so the width
+      // already excludes the 28px margins — measuring the outer width made
+      // the row 56px wider than the viewport and clipped the last column.
+      child: LayoutBuilder(builder: (context, constraints) {
+        final available = constraints.maxWidth;
+        // Columns share the width equally once it fits; below 4×252px the
+        // board scrolls horizontally instead of squeezing the cards.
+        final colWidth = max(252.0, (available - gap * 3) / 4);
+        return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            constraints: BoxConstraints(minWidth: available),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -476,9 +480,9 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
               ],
             ),
           ),
-        ),
-      );
-    });
+        );
+      }),
+    );
   }
 
   Widget _buildColumn(KanbanColumnData col, BoardDimension dimension,
