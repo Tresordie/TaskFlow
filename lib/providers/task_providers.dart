@@ -84,14 +84,30 @@ enum BoardQuickFilter {
 final boardQuickFilterProvider =
     StateProvider<BoardQuickFilter>((ref) => BoardQuickFilter.all);
 
-/// One kanban column: a representative status plus the tasks bucketed into
-/// it (the Done column holds both completed and archived — the app-wide
-/// `completed || archived` "is done" convention).
+/// Board dimension (v1.11.0): what the Today kanban columns represent.
+/// Dropping a card onto a column applies that column's attribute (status /
+/// project / priority).
+enum BoardDimension {
+  status('Status'),
+  project('Project'),
+  priority('Priority');
+
+  final String label;
+  const BoardDimension(this.label);
+}
+
+final boardDimensionProvider =
+    StateProvider<BoardDimension>((ref) => BoardDimension.status);
+
+/// One kanban column: a stable [key] identifying the bucket (a status name,
+/// a priority index as string, or a project name with '' = No Project) plus
+/// the tasks bucketed into it. Title / icon / accent are resolved in the UI
+/// layer per [BoardDimension].
 class KanbanColumnData {
-  final TaskStatus status;
+  final String key;
   final List<Task> tasks;
 
-  const KanbanColumnData({required this.status, required this.tasks});
+  const KanbanColumnData({required this.key, required this.tasks});
 }
 
 /// Everything the Today kanban needs: the four columns plus the global
@@ -132,8 +148,10 @@ bool _isSameDay(DateTime a, DateTime b) =>
 bool _isDone(Task t) =>
     t.status == TaskStatus.completed || t.status == TaskStatus.archived;
 
-/// The Done column's bucket key: completed and archived share one column.
-TaskStatus _columnKeyOf(Task t) => _isDone(t) ? TaskStatus.completed : t.status;
+/// The status-mode column key a task belongs to (the Done column holds both
+/// completed and archived — the app-wide `completed || archived` convention).
+String statusColumnKeyOf(Task t) =>
+    _isDone(t) ? TaskStatus.completed.name : t.status.name;
 
 /// Column-internal order: earliest due date first (no due date sinks to the
 /// bottom), then priority P0→P3, then newest created first.
@@ -172,25 +190,61 @@ List<Task> applyBoardQuickFilter(
   }
 }
 
-/// Buckets [tasks] into the four fixed columns and sorts each column.
-List<KanbanColumnData> buildKanbanColumns(List<Task> tasks) {
-  final byKey = <TaskStatus, List<Task>>{
-    for (final s in const [
-      TaskStatus.planned,
-      TaskStatus.inProgress,
-      TaskStatus.completed,
-      TaskStatus.blocked,
-    ])
-      s: <Task>[],
-  };
-  for (final t in tasks) {
-    byKey[_columnKeyOf(t)]!.add(t);
+/// Buckets [tasks] into columns for [dimension] and sorts each column.
+/// Status and Priority always show their fixed columns (even when empty);
+/// Project shows one column per project in use (alphabetical, '' = No
+/// Project last), so the board never goes blank.
+List<KanbanColumnData> buildKanbanColumns(
+    List<Task> tasks, BoardDimension dimension) {
+  switch (dimension) {
+    case BoardDimension.status:
+      final byKey = {
+        for (final s in const [
+          TaskStatus.planned,
+          TaskStatus.inProgress,
+          TaskStatus.completed,
+          TaskStatus.blocked,
+        ])
+          s.name: <Task>[],
+      };
+      for (final t in tasks) {
+        byKey[statusColumnKeyOf(t)]!.add(t);
+      }
+      return [
+        for (final entry in byKey.entries)
+          KanbanColumnData(
+              key: entry.key, tasks: sortKanbanTasks(entry.value)),
+      ];
+
+    case BoardDimension.priority:
+      final byKey = {
+        for (final p in Priority.values) p.index.toString(): <Task>[],
+      };
+      for (final t in tasks) {
+        byKey[t.priority.index.toString()]!.add(t);
+      }
+      return [
+        for (final entry in byKey.entries)
+          KanbanColumnData(
+              key: entry.key, tasks: sortKanbanTasks(entry.value)),
+      ];
+
+    case BoardDimension.project:
+      final names = {for (final t in tasks) t.project};
+      final sorted = names.toList()
+        ..sort((a, b) {
+          if (a.isEmpty != b.isEmpty) return a.isEmpty ? 1 : -1;
+          return a.toLowerCase().compareTo(b.toLowerCase());
+        });
+      if (sorted.isEmpty) sorted.add('');
+      return [
+        for (final name in sorted)
+          KanbanColumnData(
+              key: name,
+              tasks: sortKanbanTasks(
+                  tasks.where((t) => t.project == name).toList())),
+      ];
   }
-  return [
-    for (final entry in byKey.entries)
-      KanbanColumnData(
-          status: entry.key, tasks: sortKanbanTasks(entry.value)),
-  ];
 }
 
 /// Pure computation of the whole board payload so it is unit-testable
@@ -200,6 +254,7 @@ KanbanBoardData buildKanbanBoardData({
   required List<Task> allTasks,
   required List<Task> filteredTasks,
   required BoardQuickFilter quickFilter,
+  required BoardDimension dimension,
   required DateTime now,
 }) {
   final todayStart =
@@ -237,8 +292,8 @@ KanbanBoardData buildKanbanBoardData({
   final doneCount = allTasks.where(_isDone).length;
 
   return KanbanBoardData(
-    columns:
-        buildKanbanColumns(applyBoardQuickFilter(filteredTasks, quickFilter, now)),
+    columns: buildKanbanColumns(
+        applyBoardQuickFilter(filteredTasks, quickFilter, now), dimension),
     dueTodayTotal: dueTodayTotal,
     dueTodayDone: dueTodayDone,
     overdueCount: overdueCount,
@@ -255,10 +310,12 @@ final kanbanBoardProvider = Provider<KanbanBoardData>((ref) {
   final all = tasksAsync.valueOrNull ?? const <Task>[];
   final filtered = ref.watch(filteredTaskListProvider);
   final quick = ref.watch(boardQuickFilterProvider);
+  final dimension = ref.watch(boardDimensionProvider);
   return buildKanbanBoardData(
     allTasks: all,
     filteredTasks: filtered,
     quickFilter: quick,
+    dimension: dimension,
     now: DateTime.now(),
   );
 });

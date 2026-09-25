@@ -2,38 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
 import '../../providers/theme_provider.dart';
 import 'task_card_widget.dart';
 
-/// Display triple for a kanban column: name, header icon and accent color.
-/// Accent colors follow [AppColors.statusColor] (the app-wide single source
-/// of truth for status colors).
-(String, IconData, Color) kanbanColumnVisualFor(TaskStatus status) {
-  switch (status) {
-    case TaskStatus.planned:
-      return ('To Do', Icons.radio_button_unchecked,
-          AppColors.statusColor(TaskStatus.planned));
-    case TaskStatus.inProgress:
-      return ('In Progress', Icons.play_arrow_rounded, AppColors.info);
-    case TaskStatus.completed:
-      return ('Done', Icons.check_circle_outline, AppColors.success);
-    case TaskStatus.blocked:
-      return ('Blocked', Icons.block, AppColors.error);
-    case TaskStatus.archived:
-      // Archived tasks live in the Done column; never a column of its own.
-      return ('Done', Icons.check_circle_outline, AppColors.success);
-  }
-}
-
-/// v1.10.0: one kanban column of the Today board (translate_tool-inspired):
-/// status-tinted header with a count badge and a "+" quick-add button, a
-/// status-colored hairline along the top edge, a breathing empty state, and
-/// drop-anywhere status change. The whole column is a [DragTarget]; the
+/// v1.10.0 / v1.11.0: one kanban column of the Today board
+/// (translate_tool-inspired): status-tinted header with a count badge and a
+/// "+" quick-add button, a colored hairline along the top edge, a soft
+/// accent gradient fading down the column, a breathing empty state, and
+/// drop-anywhere semantics. The whole column is a [DragTarget]; the
 /// per-card drop target (sub-step conversion) takes precedence when the
-/// pointer is over a card.
+/// pointer is over a card. What a drop *means* is decided by the screen
+/// via [onDropTask] (depends on the board dimension).
 class KanbanColumn extends ConsumerStatefulWidget {
   final KanbanColumnData data;
   final String title;
@@ -42,6 +23,8 @@ class KanbanColumn extends ConsumerStatefulWidget {
   final bool isAdding;
   final VoidCallback onStartAdd;
   final VoidCallback onCancelAdd;
+  final ValueChanged<Task> onDropTask;
+  final ValueChanged<String> onSubmitAdd;
 
   const KanbanColumn({
     super.key,
@@ -52,6 +35,8 @@ class KanbanColumn extends ConsumerStatefulWidget {
     required this.isAdding,
     required this.onStartAdd,
     required this.onCancelAdd,
+    required this.onDropTask,
+    required this.onSubmitAdd,
   });
 
   @override
@@ -69,23 +54,12 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
     super.dispose();
   }
 
-  void _changeStatus(Task task) {
-    final isDone = task.status == TaskStatus.completed ||
-        task.status == TaskStatus.archived;
-    final currentKey = isDone ? TaskStatus.completed : task.status;
-    // Dropping a card onto the column it already belongs to (e.g. an
-    // archived task dropped on Done) must not rewrite its status.
-    if (currentKey == widget.data.status) return;
-    ref.read(taskListProvider.notifier).updateStatus(task.id, widget.data.status);
-  }
-
   void _submitAdd() {
     final title = _addController.text.trim();
     if (title.isEmpty) return;
-    ref.read(taskListProvider.notifier).createTask(
-          title: title,
-          status: widget.data.status,
-        );
+    // What the new task inherits from this column depends on the board
+    // dimension — the screen decides (status / priority / project).
+    widget.onSubmitAdd(title);
     _addController.clear();
     _addFocusNode.requestFocus();
   }
@@ -100,7 +74,7 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
 
     return DragTarget<Task>(
       onWillAcceptWithDetails: (_) => true,
-      onAcceptWithDetails: (details) => _changeStatus(details.data),
+      onAcceptWithDetails: (details) => widget.onDropTask(details.data),
       builder: (context, candidateData, rejectedData) {
         final isOver = candidateData.isNotEmpty;
         return AnimatedContainer(
@@ -108,9 +82,20 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
           curve: Curves.easeOut,
           decoration: BoxDecoration(
             color: appPalette.bg,
-            borderRadius: BorderRadius.circular(16),
+            // Soft accent wash fading down the column — gives each column a
+            // quiet color identity without hurting card contrast.
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: const [0, 0.55],
+              colors: [
+                accent.withOpacity(0.05),
+                accent.withOpacity(0.0),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: isOver ? accent : palette.outline.withOpacity(0.45),
+              color: isOver ? accent : palette.outline.withOpacity(0.4),
               width: isOver ? 1.5 : 1,
             ),
             boxShadow: isOver
@@ -125,12 +110,12 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
           ),
           child: Stack(
             children: [
-              // Status-colored hairline along the top edge (translate_tool's
-              // column ::before).
+              // Accent hairline along the top edge (translate_tool's column
+              // ::before).
               Positioned(
                 top: 0,
-                left: 18,
-                right: 18,
+                left: 20,
+                right: 20,
                 child: Container(
                   height: 2,
                   decoration: BoxDecoration(
@@ -169,29 +154,40 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
     return Row(
       children: [
         Container(
-          width: 24,
-          height: 24,
+          width: 26,
+          height: 26,
           decoration: BoxDecoration(
-            color: accent.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: accent.withOpacity(0.25)),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                accent.withOpacity(0.20),
+                accent.withOpacity(0.08),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(color: accent.withOpacity(0.30)),
           ),
-          child: Icon(widget.icon, size: 14, color: accent),
+          child: Icon(widget.icon, size: 15, color: accent),
         ),
         const SizedBox(width: 8),
-        Text(
-          widget.title,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: palette.onSurface,
+        Flexible(
+          child: Text(
+            widget.title,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: palette.onSurface,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
         const SizedBox(width: 6),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
           decoration: BoxDecoration(
-            color: accent.withOpacity(0.10),
+            color: accent.withOpacity(0.12),
             borderRadius: BorderRadius.circular(999),
           ),
           child: Text(
@@ -213,8 +209,7 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
           hoverColor: accent.withOpacity(0.15),
           visualDensity: VisualDensity.compact,
           padding: EdgeInsets.zero,
-          constraints:
-              const BoxConstraints(minWidth: 26, minHeight: 26),
+          constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
         ),
       ],
     );
@@ -306,27 +301,30 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
           .fade(begin: 0.55, end: 1.0, duration: 1800.ms);
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.only(top: 2, bottom: 4),
-      itemCount: widget.data.tasks.length,
-      separatorBuilder: (context, separatorIndex) =>
-          const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final task = widget.data.tasks[index];
-        return TaskCard(key: ValueKey(task.id), task: task)
-            .animate()
-            .fadeIn(
-              duration: 260.ms,
-              delay: (40 * (index < 8 ? index : 8)).ms,
-            )
-            .slideY(
-              begin: 0.06,
-              end: 0,
-              duration: 260.ms,
-              delay: (40 * (index < 8 ? index : 8)).ms,
-              curve: Curves.easeOut,
-            );
-      },
+    return Scrollbar(
+      thumbVisibility: false,
+      child: ListView.separated(
+        padding: const EdgeInsets.only(top: 2, bottom: 4, right: 2),
+        itemCount: widget.data.tasks.length,
+        separatorBuilder: (context, separatorIndex) =>
+            const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final task = widget.data.tasks[index];
+          return TaskCard(key: ValueKey(task.id), task: task)
+              .animate()
+              .fadeIn(
+                duration: 260.ms,
+                delay: (40 * (index < 8 ? index : 8)).ms,
+              )
+              .slideY(
+                begin: 0.06,
+                end: 0,
+                duration: 260.ms,
+                delay: (40 * (index < 8 ? index : 8)).ms,
+                curve: Curves.easeOut,
+              );
+        },
+      ),
     );
   }
 }
