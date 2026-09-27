@@ -143,7 +143,7 @@ test/
 
 ### Phase 9 — Timeline / Calendar / Activity polish
 - **Timeline**: glowing spine — nodes render as surface rings with a colored core and halo, the connecting line is a status-color gradient, and the whole rail sits inside a recessed track
-- **Calendar**: hover-aware day cells, today carries a vertical accent gradient, the selected day floats with an accent shadow, weekend columns are tinted, the month switcher is a floating pill toolbar, and the day panel header gets the accent bar + task-count badge
+- **Calendar**: day cells render as tactile tiles — a top-lit body gradient, specular top sheen, bevel border and layered drop shadow step up through rest → hover → today → selected; today / the selected day carry a circular date badge, the selected day reads as a glossy pressed key with an accent glow, and weekends invert the gradient (recessed wells); the month switcher is a floating pill toolbar and the day panel header gets the accent bar + task-count badge
 - **Activity**: heatmap cells light up with a top-left radial highlight and scale on hover, a Less→More legend explains the intensity scale, and the status stat cards are KPI-styled (semantic accent bar + tinted icon chip + accent value)
 - Task cards across all three pages share the Today card skin (left accent bar, top-lit fill, hover lift + layered shadows) via the shared `TaskListCard` / `HoverLift` components
 - 300-test suite including glass/theme/hover regressions

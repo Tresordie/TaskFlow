@@ -563,10 +563,13 @@ class _DayTaskItem extends StatelessWidget {
   }
 }
 
-/// v1.12.22: one calendar day cell as a hover-aware widget — resting cells
-/// are flat, hovering brightens the border and lifts the cell with a soft
-/// shadow, today gets a vertical accent gradient, and the selected day
-/// carries an accent-tinted shadow so it visibly sits above the grid.
+/// v1.12.26: one calendar day cell as a hover-aware tactile tile — the
+/// cell models a small physical surface with four layers (top-lit body
+/// gradient, specular top sheen, bevel border, layered drop shadow) that
+/// step up in intensity through rest → hover → today → selected. Weekends
+/// invert the gradient so rest-days read as recessed wells, today /
+/// selected carry a circular date badge, and the selected day glows with
+/// an accent-tinted shadow so it visibly sits above the grid.
 class _DayCell extends StatefulWidget {
   final int day;
   final bool isToday;
@@ -599,9 +602,141 @@ class _DayCellState extends State<_DayCell> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final palette = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
+    // ColorScheme.card is unset (= surface), so the app's real "raised
+    // panel" color lives on cardTheme — that's the top-lit stop. In light
+    // themes card ≈ surface (both near-white), so the tile shading is
+    // pushed apart by hand: pure-white top, surface pulled a step toward
+    // the text color at the bottom — a visible top-lit bevel on every
+    // palette.
+    final cardColor = theme.cardTheme.color ?? palette.surface;
+    final tileTop =
+        dark ? cardColor : Color.lerp(cardColor, Colors.white, 0.5)!;
+    final tileBottom = dark
+        ? palette.surface
+        : Color.lerp(palette.surface, palette.onSurface, 0.045)!;
     final day = widget.day;
     final isToday = widget.isToday;
     final isSelected = widget.isSelected;
+
+    // v1.12.26: tactile-tile model. Every cell renders as a small physical
+    // tile whose four layers step up in intensity through rest → hover →
+    // today → selected: a top-lit body gradient (light from above), a
+    // specular top sheen, a bevel border and a layered drop shadow.
+    final Gradient bodyGradient;
+    final Color borderColor;
+    final List<BoxShadow> shadows;
+    final double sheen;
+
+    if (isSelected) {
+      // Glossy pressed-key look: light top → accent → deep bottom edge,
+      // with a primary glow + tight contact shadow lifting it off the grid.
+      bodyGradient = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color.lerp(palette.primary, Colors.white, 0.22)!,
+          palette.primary,
+          Color.lerp(palette.primary, Colors.black, 0.14)!,
+        ],
+        stops: const [0.0, 0.55, 1.0],
+      );
+      borderColor = Color.lerp(palette.primary, Colors.black, 0.18)!;
+      sheen = 0.26;
+      shadows = [
+        BoxShadow(
+          color: palette.primary.withOpacity(0.40),
+          blurRadius: 12,
+          offset: const Offset(0, 4),
+        ),
+        BoxShadow(
+          color: Colors.black.withOpacity(dark ? 0.30 : 0.12),
+          blurRadius: 3,
+          offset: const Offset(0, 1),
+        ),
+      ];
+    } else if (isToday) {
+      bodyGradient = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          palette.primary.withOpacity(0.22),
+          palette.primary.withOpacity(0.06),
+        ],
+      );
+      borderColor = palette.primary.withOpacity(0.55);
+      sheen = 0.12;
+      shadows = [
+        BoxShadow(
+          color: palette.primary.withOpacity(0.28),
+          blurRadius: 9,
+          offset: const Offset(0, 2),
+        ),
+      ];
+    } else if (widget.inRange) {
+      bodyGradient = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          palette.primary.withOpacity(0.16),
+          palette.primary.withOpacity(0.07),
+        ],
+      );
+      borderColor = palette.primary.withOpacity(0.25);
+      sheen = 0.06;
+      shadows = [
+        BoxShadow(
+          color: Colors.black.withOpacity(dark ? 0.28 : 0.07),
+          blurRadius: 4,
+          offset: const Offset(0, 2),
+        ),
+      ];
+    } else if (_hovered) {
+      // Hovering pops the tile up: card body, accent border, real lift.
+      bodyGradient = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [tileTop, tileBottom],
+      );
+      borderColor = palette.primary.withOpacity(0.40);
+      sheen = 0.10;
+      shadows = [
+        BoxShadow(
+          color: Colors.black.withOpacity(dark ? 0.32 : 0.10),
+          blurRadius: 7,
+          offset: const Offset(0, 3),
+        ),
+      ];
+    } else if (widget.isWeekend) {
+      // Inverted gradient = pressed-in well for rest days.
+      bodyGradient = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          palette.onSurface.withOpacity(0.045),
+          palette.onSurface.withOpacity(0.012),
+        ],
+      );
+      borderColor = palette.outline.withOpacity(0.18);
+      sheen = 0.0;
+      shadows = const [];
+    } else {
+      bodyGradient = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [tileTop, tileBottom],
+      );
+      borderColor =
+          palette.outline.withOpacity(dark ? 0.28 : 0.42);
+      sheen = 0.06;
+      shadows = [
+        BoxShadow(
+          color: Colors.black.withOpacity(dark ? 0.28 : 0.07),
+          blurRadius: 4,
+          offset: const Offset(0, 2),
+        ),
+      ];
+    }
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -610,114 +745,127 @@ class _DayCellState extends State<_DayCell> {
         onExit: (_) => setState(() => _hovered = false),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.all(2),
-          padding: const EdgeInsets.fromLTRB(4, 3, 4, 3),
+          margin: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: isSelected
-                ? palette.primary
-                : widget.inRange
-                    ? palette.primary.withOpacity(0.15)
-                    : isToday
-                        ? null
-                        // v1.12.23: weekend columns carry a faint wash so
-                        // the week reads as work-days + rest-days blocks.
-                        : widget.isWeekend
-                            ? palette.onSurface.withOpacity(0.025)
-                            : palette.surface,
-            gradient: (!isSelected && isToday)
-                ? LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      palette.primary.withOpacity(0.14),
-                      palette.primary.withOpacity(0.05),
-                    ],
-                  )
-                : null,
+            gradient: bodyGradient,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isSelected
-                  ? palette.primary
-                  : (isToday || _hovered)
-                      ? palette.primary.withOpacity(isToday ? 0.45 : 0.35)
-                      : palette.outline.withOpacity(0.25),
-            ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: palette.primary.withOpacity(0.30),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ]
-                : _hovered
-                    ? [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                    : null,
+            border: Border.all(color: borderColor),
+            boxShadow: shadows,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Stack(
             children: [
-              // Day number + created-task dots
-              Row(
-                children: [
-                  Text(
-                    '$day',
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: isToday || isSelected
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                      color: isSelected
-                          ? Colors.white
-                          : isToday
-                              ? palette.primary
-                              : palette.onSurface.withOpacity(0.8),
+              // Specular sheen — a white top wash inset 1px so it reads as
+              // light catching the tile's upper bevel; strength scales with
+              // the tile state (max on the selected gloss).
+              Positioned(
+                left: 1,
+                top: 1,
+                right: 1,
+                bottom: 1,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.white.withOpacity(sheen),
+                        Colors.white.withOpacity(0),
+                      ],
+                      stops: const [0.0, 0.55],
                     ),
-                  ),
-                  if (widget.createdCount > 0) ...[
-                    const SizedBox(width: 4),
-                    ...List.generate(
-                      widget.createdCount > 2 ? 2 : widget.createdCount,
-                      (_) => Container(
-                        width: 4,
-                        height: 4,
-                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? Colors.white.withOpacity(0.8)
-                              : palette.primary.withOpacity(0.7),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 2),
-              // Apple-style due-task pills (condensed titles)
-              ...widget.dueTasks.take(3).map(
-                    (t) => Padding(
-                      padding: const EdgeInsets.only(bottom: 1.5),
-                      child: _DuePill(task: t, onSelected: isSelected),
-                    ),
-                  ),
-              if (widget.dueTasks.length > 3)
-                Text(
-                  '+${widget.dueTasks.length - 3} more',
-                  style: TextStyle(
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w600,
-                    color: isSelected
-                        ? Colors.white.withOpacity(0.85)
-                        : palette.onSurface.withOpacity(0.45),
                   ),
                 ),
+              ),
+              Positioned.fill(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(5, 4, 5, 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Day number + created-task dots
+                      Row(
+                        children: [
+                          Container(
+                            width: 22,
+                            height: 22,
+                            alignment: Alignment.center,
+                            // Today / selected carry a circular date badge —
+                            // the Apple-Calendar anchor that makes the day
+                            // number pop off the tile.
+                            decoration: (isToday || isSelected)
+                                ? BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isSelected
+                                        ? Colors.white.withOpacity(0.22)
+                                        : palette.primary.withOpacity(0.14),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? Colors.white.withOpacity(0.45)
+                                          : palette.primary.withOpacity(0.50),
+                                    ),
+                                  )
+                                : null,
+                            child: Text(
+                              '$day',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                height: 1.0,
+                                fontWeight: isToday || isSelected
+                                    ? FontWeight.w800
+                                    : FontWeight.w600,
+                                color: isSelected
+                                    ? Colors.white
+                                    : isToday
+                                        ? palette.primary
+                                        : palette.onSurface
+                                            .withOpacity(_hovered ? 0.95 : 0.8),
+                              ),
+                            ),
+                          ),
+                          if (widget.createdCount > 0) ...[
+                            const SizedBox(width: 4),
+                            ...List.generate(
+                              widget.createdCount > 2 ? 2 : widget.createdCount,
+                              (_) => Container(
+                                width: 4,
+                                height: 4,
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 1),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Colors.white.withOpacity(0.8)
+                                      : palette.primary.withOpacity(0.7),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      // Apple-style due-task pills (condensed titles)
+                      ...widget.dueTasks.take(3).map(
+                            (t) => Padding(
+                              padding: const EdgeInsets.only(bottom: 1.5),
+                              child: _DuePill(task: t, onSelected: isSelected),
+                            ),
+                          ),
+                      if (widget.dueTasks.length > 3)
+                        Text(
+                          '+${widget.dueTasks.length - 3} more',
+                          style: TextStyle(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white.withOpacity(0.85)
+                                : palette.onSurface.withOpacity(0.45),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),

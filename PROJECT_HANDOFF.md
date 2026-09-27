@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-09-27 · 当前版本 **v1.12.25**（Notion 看板主题系+玻璃设置+三页质感精修；12 款主题；300 测试；已发版双推）
+> 最后更新：2026-09-27 · 当前版本 **v1.12.26**（Calendar 日期格实体瓷砖质感；12 款主题；300 测试；已发版双推）
 
 ---
 
@@ -136,6 +136,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 
 | 日期/版本 | 决策 | 理由 |
 |---|---|---|
+| v1.12.26 | **Calendar 日期格实体瓷砖质感**（用户："Calendar页面中日期视觉感，质感以及立体感更强"）：`_DayCell` 重构为**四层质感模型**——①**顶面受光渐变**（浅色主题 card≈surface 渐变不可见，手动拉开：顶部向纯白 lerp 50%、底部向 onSurface lerp 4.5%；深色主题用 cardTheme.color→surface 天然色阶）；②**镜面高光**——Stack 内 Positioned(1) 白色顶部渐变 sheen（inset 1px 不盖边框，圆角随外框 -2），强度 0（周末）→0.05→0.10（hover）→0.12（today）→0.26（选中）；③**斜面边框**+**层叠投影**（选中=primary 光晕 blur12 y4 + 贴地接触影双层）；强度随 静止→hover→today→selected 递进；④**周末反转渐变**（上深下浅=凹陷井）；⑤**今日/选中日 22px 圆形日期徽章**（Apple Calendar 锚点，选中=白 22% 底+白边，今日=primary 14% 底+主色边），数字 13.5px height1.0 w600/w800；格间距 margin 2→3 强化"独立按键"分块；Container padding 移入 Stack 内层 Positioned.fill（sheen 需贴边框）。验证轮：临时 golden 测试（浅色选中+hover / 深色范围模式，FontLoader 加载 Manrope/MiSans）2x 放大逐格目检后删除 | 浅色主题 card 与 surface 都是近白色，靠默认色阶做不出立体感——必须手动构造明暗；sheen 是廉价高光手法（1 个渐变=玻璃瓷釉感）；周末反渐变让工作日/休息日从"色块差异"升级为"凸起/凹陷"触感隐喻；全部状态分支都给 gradient（无 null）让 AnimatedContainer 状态切换时渐变平滑插值；golden 目检 catching 了浅色渐变不可见问题（第一版 card→surface 渐变在 inkBlue 下纯隐形） |
 | v1.12.25 | **删除可可看板 + Calendar/Activity 精修**（用户："①删除主题：可可看板；②Calendar 改进美观/质感/立体感；③Activity 任务状态显示卡的美观/质感/立体感"）：① **cocoaBoard 五处同步删除**（枚举/标签/palette/brightness/调色板+boardTinted 成员），剩 **12 款**（2 浅+3 暗基础+2 看板着色+5 Catppuccin）；② **Calendar**——月份切换器从裸控件改为**居中胶囊工具栏**（surface 底+发丝线+投影，标题 titleMedium w600），日面板头部加**页面级 accent 竖条+主色 10% 圆形计数徽章**（数量从文字行拆出）；③ **Activity `_StatCard` KPI 化**——新增 `accentColor` 参数（Today=primary/Completed=success/Total=info），**左渐变 accent 条**（同 TaskListCard 配方）+ accent 10% 图标章 + **accent 色数值**（w800）+ 10px 大写字距标签；IntrinsicHeight 内置（stretch Row 在页面 Column 的无界子高度下会塌缩，同 v1.12.24 教训）；移除 v1.12.23 遗留的页面级 `_buildLegend`（与网格内 `_HeatLegend` 重复） | 状态卡是"任务状态显示卡"——按语义分色（蓝/绿/蓝）让数值一眼可辨而非全靠主色；IntrinsicHeight 内置进 _StatCard（v1.12.24 教训的肌肉记忆）；旧 _buildLegend 是 v1.12.23 双图例重复的实现遗漏，顺手清除 |
 | v1.12.24 | **修 TaskListCard 无界高度塌缩**（用户截图："Calendar 选定日期，日期中的任务列表没有展示"——右侧日面板只见"3 tasks"标题，列表空白）：根因=TaskListCard 内 `Row(crossAxisAlignment: stretch)` 在 **ListView/无界高度容器**里无法解析高度（Timeline 页正常只因外层早有 IntrinsicHeight），stretch 色条+Expanded 内容塌缩为零、任务卡整体不可见。修复=**IntrinsicHeight 内置进 TaskListCard**（三页共用一处修复）；新增 task_list_card_test.dart 两条回归：ListView 内正常渲染无异常、色条高度>10px（塌缩时仅剩 6px 边距） | stretch Row 的宿主高度必须有界；共享组件的布局前提（宿主有界）要内置进组件而不是依赖每个调用点记得包 IntrinsicHeight；IntrinsicHeight 对文本型列表项的开销可接受；Calendar/Activity 两列表同获益 |
 | v1.12.23 | **三页任务卡升级 Today 皮肤 + 组件级精修第二轮**（用户："①Timeline ②Calendar ③Activity——任务卡与页面的美观/质感/立体感再增强"；v1.12.16 同款 TaskListCard 曾被回退，本次用户连续三轮提"与 Today 类似/立体感"，确认为正向需求重新引入并升级）：① **TaskListCard 重生**——纯白卡底 + **顶面微亮渐变**（white 5% 顶光，微穹顶质感）+ **左侧渐变 accent 条**（向下淡出 30%，Today 卡签名）+ hover 边框 accent 50%；Timeline `_TimelineItem`（statusColor）/Calendar `_DayTaskItem`/Activity `_ActivityTaskItem`（完成绿/优先级色）三处接入，padding 相应调整（左 0 右 14/12/8）；② **Timeline 脊柱轨道槽**——节点+渐变线放进 18px 宽的 outline 8% 圆角凹槽（"刻进页面的轨道"）；③ **Calendar 周末分组**——周六/周日列加 onSurface 2.5% 微着色（工作日/休息日视觉分块）；④ **Activity 统计卡图标底块**（26px 主色 10% 圆角章，对齐 Today KPI）+ **热力图图例**——Less→四格色阶→More（复刻 _HeatCell 配色），网格右下对齐 | 用户三轮重复诉求=明确正需求，重新引入色条（上次回退疑为打包观感而非色条本身）；顶面微亮是廉价高质感手法（1 行渐变）；轨道槽把"线挂在页面上"变"线嵌在页面里"；热力图图例让强度刻度自解释；组件复用避免三页重复 |
@@ -257,6 +258,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
+- ✅ v1.12.26（已发版）：Calendar 日期格实体瓷砖质感（顶面受光渐变+镜面高光+斜面边框+层叠投影四层模型，静止→hover→today→selected 递进；今日/选中圆形日期徽章；周末反渐变凹陷；选中日光泽按键+主色光晕）；300 测试全过
 - ✅ v1.12.25（已发版）：删除可可看板（12 款主题）+ Calendar 月份胶囊工具栏/日面板头部精修 + Activity 状态卡 KPI 化（accent 色条/图标章/accent 数值）+ 清除重复图例；300 测试全过
 - ✅ v1.12.24（已发版）：修 TaskListCard 无界高度塌缩（Calendar/Activity 任务列表空白）——IntrinsicHeight 内置组件；301 测试全过（+2 回归）
 - ✅ v1.12.23（已发版）：三页任务卡升级 Today 皮肤（TaskListCard 重生：白卡+顶面微亮+左渐变色条）+ Timeline 轨道脊柱 + Calendar 周末微着色 + Activity 统计卡图标章/热力图图例；299 测试全过
