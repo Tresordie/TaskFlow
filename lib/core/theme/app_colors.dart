@@ -73,66 +73,6 @@ class AppColors {
       alertAccent(type, brightness)
           .withOpacity(brightness == Brightness.dark ? 0.14 : 0.08);
 
-  // ─── Default (Indigo) Light ───
-  // v1.4.39: textPrimary softened from near-black (1A2233) to a deep blue-
-  // slate (273350) and the background lifted a touch — the old near-black
-  // text on pale grey read as "heavy/dull". Contrast stays comfortably
-  // above WCAG AA while the whole canvas feels lighter and airier.
-  static const ThemePalette indigoLight = ThemePalette(
-    bg: Color(0xFFF7F8FD),
-    surface: Color(0xFFFFFFFF),
-    card: Color(0xFFFFFFFF),
-    border: Color(0xFFDFE3F0),
-    textPrimary: Color(0xFF24304E),
-    textSecondary: Color(0xFF58678C),
-    primary: Color(0xFF6366F1),
-    primaryLight: Color(0xFF818CF8),
-    primaryDark: Color(0xFF4F46E5),
-    primaryGhost: Color(0xFFEDF0FE),
-  );
-
-  // ─── Fresh Green (清新淡绿) ───
-  static const ThemePalette freshGreen = ThemePalette(
-    bg: Color(0xFFF0FAF4),
-    surface: Color(0xFFFFFFFF),
-    card: Color(0xFFFBFFFD),
-    border: Color(0xFFC7E0D3),
-    textPrimary: Color(0xFF1F4D38),
-    textSecondary: Color(0xFF4E7A63),
-    primary: Color(0xFF34A853),
-    primaryLight: Color(0xFF66BB6A),
-    primaryDark: Color(0xFF2E7D42),
-    primaryGhost: Color(0xFFE2F4E7),
-  );
-
-  // ─── Sunset Orange (日落橙) ───
-  static const ThemePalette sunsetOrange = ThemePalette(
-    bg: Color(0xFFFFF6EC),
-    surface: Color(0xFFFFFFFF),
-    card: Color(0xFFFFFCF7),
-    border: Color(0xFFF8CF9F),
-    textPrimary: Color(0xFF542516),
-    textSecondary: Color(0xFF8A6248),
-    primary: Color(0xFFF97316),
-    primaryLight: Color(0xFFFB923C),
-    primaryDark: Color(0xFFEA580C),
-    primaryGhost: Color(0xFFFFEAD0),
-  );
-
-  // ─── Lavender Purple (薰衣草紫) ───
-  static const ThemePalette lavenderPurple = ThemePalette(
-    bg: Color(0xFFFAF4FE),
-    surface: Color(0xFFFFFFFF),
-    card: Color(0xFFFEFBFF),
-    border: Color(0xFFE0C9F8),
-    textPrimary: Color(0xFF46176F),
-    textSecondary: Color(0xFF71608F),
-    primary: Color(0xFFA855F7),
-    primaryLight: Color(0xFFC084FC),
-    primaryDark: Color(0xFF9333EA),
-    primaryGhost: Color(0xFFF1E4FD),
-  );
-
   // ─── Dark ───
   // v1.4.39: the whole dark palette is lifted noticeably — the previous
   // near-black surfaces (0B1120 / 1A2333) and muted text (CBD4E1) read as
@@ -175,33 +115,19 @@ class AppColors {
   // caramel accent. Reads like a well-lit notebook — gentler than the cool
   // indigo default for users who prefer warm neutrals.
   static const ThemePalette warmSand = ThemePalette(
-    bg: Color(0xFFFAF6F0),
-    surface: Color(0xFFFFFFFF),
-    card: Color(0xFFFDFAF5),
-    border: Color(0xFFE8DCC8),
-    textPrimary: Color(0xFF4A3F35),
-    textSecondary: Color(0xFF8A7A66),
-    primary: Color(0xFFA9713B),
-    primaryLight: Color(0xFFC99A6B),
-    primaryDark: Color(0xFF8A5A2B),
-    primaryGhost: Color(0xFFF5EBDD),
-  );
-
-  // ─── Celadon (青瓷, v1.7.0) ───
-  // A porcelain light theme: faint green-white canvas, ink-jade text and a
-  // muted celadon accent. Inspired by Song-dynasty celadon glaze — quiet,
-  // refined and easy on the eyes for all-day reading.
-  static const ThemePalette celadon = ThemePalette(
-    bg: Color(0xFFEEF4F1),
-    surface: Color(0xFFFAFCFB),
-    card: Color(0xFFF4F9F6),
-    border: Color(0xFFD8E5DE),
-    textPrimary: Color(0xFF31423B),
-    textSecondary: Color(0xFF71857C),
-    primary: Color(0xFF3E7C6C),
-    primaryLight: Color(0xFF79AC9D),
-    primaryDark: Color(0xFF2F6355),
-    primaryGhost: Color(0xFFE5F0EB),
+    // v1.12.20: Notion-template retune — warm paper canvas, pure-white
+    // cards, hairline border, ink+warm-gray text, and Notion's muted brown
+    // accent (the tan primary read as muddy against the quieter base).
+    bg: Color(0xFFF8F6F1),
+    surface: Color(0xFFFEFDFB),
+    card: Color(0xFFFFFFFF),
+    border: Color(0xFFE7E3D8),
+    textPrimary: Color(0xFF37352F),
+    textSecondary: Color(0xFF7D786E),
+    primary: Color(0xFF9F6B53),
+    primaryLight: Color(0xFFC29884),
+    primaryDark: Color(0xFF825442),
+    primaryGhost: Color(0xFFF4ECE5),
   );
 
   // ─── Ink Blue (黛蓝, v1.7.0) ───
@@ -209,32 +135,48 @@ class AppColors {
   // porcelain. Cooler and calmer than the indigo default — a scholarly,
   // understated take on blue.
   static const ThemePalette inkBlue = ThemePalette(
-    bg: Color(0xFFEFF3F8),
-    surface: Color(0xFFFAFBFD),
-    card: Color(0xFFF2F6FA),
-    border: Color(0xFFD5DEE9),
+    // v1.12.20: Notion-template retune — quieter porcelain canvas, pure
+    // white cards, hairline border; the muted ink-blue accent is kept
+    // (already Notion-muted).
+    bg: Color(0xFFF5F7F9),
+    surface: Color(0xFFFDFDFE),
+    card: Color(0xFFFFFFFF),
+    border: Color(0xFFE4E8EC),
     textPrimary: Color(0xFF2C3A4D),
-    textSecondary: Color(0xFF64748A),
+    textSecondary: Color(0xFF6E7A87),
     primary: Color(0xFF3F6C99),
     primaryLight: Color(0xFF7FA3C4),
     primaryDark: Color(0xFF31547A),
     primaryGhost: Color(0xFFE4ECF4),
   );
 
-  // ─── Dusty Rose (胭脂, v1.7.0) ───
-  // Grey-toned blush canvas with a muted rose accent — soft without being
-  // sweet. The light sibling of Aubergine, for warmth with restraint.
-  static const ThemePalette dustyRose = ThemePalette(
-    bg: Color(0xFFF6F0F0),
-    surface: Color(0xFFFDFBFB),
-    card: Color(0xFFFAF3F3),
-    border: Color(0xFFEBD9DC),
-    textPrimary: Color(0xFF463640),
-    textSecondary: Color(0xFF8A7480),
-    primary: Color(0xFFA66470),
-    primaryLight: Color(0xFFC598A0),
-    primaryDark: Color(0xFF8A4E5A),
-    primaryGhost: Color(0xFFF3E6E9),
+  // ═════════════ Board-tinted family (v1.12.19) ═════════════
+  // Notion-template-style palettes (user reference screenshots): every
+  // kanban column is tinted by its own semantic accent (see the
+  // boardTinted recipe in TaskBoardScreen / TaskCard) while the page base
+  // stays quiet, so the colorful chips and pills do the talking.
+  //
+  // Contrast: textPrimary on card ≥ 10:1 (AAA); white on primary ≥ 3.5:1
+  // (Material-600 convention, same as the rest of the catalog).
+  //
+  // v1.12.21: the two light members (creamBoard / pearlBoard) were removed
+  // per user request — all light themes are Notion-tuned and board-tinted
+  // now (v1.12.20), so a separate light pair was redundant.
+
+  // ─── Midnight Board (午夜看板, v1.12.19) ───
+  // Cool slate near-black with a deep green accent — the quiet sibling of
+  // the blue-accented 墨板.
+  static const ThemePalette midnightBoard = ThemePalette(
+    bg: Color(0xFF101317),
+    surface: Color(0xFF181C21),
+    card: Color(0xFF20252B),
+    border: Color(0xFF31383F),
+    textPrimary: Color(0xFFE8EAED),
+    textSecondary: Color(0xFF9AA1A9),
+    primary: Color(0xFF4E8A67),
+    primaryLight: Color(0xFF7FB48F),
+    primaryDark: Color(0xFF3D6E50),
+    primaryGhost: Color(0xFF1C2E24),
   );
 
   // ═════════════ Catppuccin (v1.4.96) ═════════════
@@ -251,38 +193,8 @@ class AppColors {
   // Surface ladder per flavour (bg < surface < card, ascending elevation):
   //   light: base → mantle → soft off-white card
   //   dark:  base → surface0 → surface1 (border = surface2).
-
-  // ─── Catppuccin Latte · Lavender (拿铁 · 薰衣草) ───
-  // v1.4.98: clarity fix — the previous mapping put surface darker than bg,
-  // which read as washed-out. Now surface and card sit ABOVE bg (brighter,
-  // near-white) so cards visibly lift off the canvas; border is stronger
-  // and secondary text is crisper.
-  static const ThemePalette catLatteLavender = ThemePalette(
-    bg: Color(0xFFEFF1F5),
-    surface: Color(0xFFF9FAFD),
-    card: Color(0xFFFEFEFF),
-    border: Color(0xFFC8CDE0),
-    textPrimary: Color(0xFF4C4F69),
-    textSecondary: Color(0xFF5A5E73),
-    primary: Color(0xFF7287FD),
-    primaryLight: Color(0xFF8C9BFE),
-    primaryDark: Color(0xFF5C70E9),
-    primaryGhost: Color(0xFFE9ECFE),
-  );
-
-  // ─── Catppuccin Latte · Mauve (拿铁 · 木槿紫) ───
-  static const ThemePalette catLatteMauve = ThemePalette(
-    bg: Color(0xFFEFF1F5),
-    surface: Color(0xFFF9FAFD),
-    card: Color(0xFFFEFEFF),
-    border: Color(0xFFC8CDE0),
-    textPrimary: Color(0xFF4C4F69),
-    textSecondary: Color(0xFF5A5E73),
-    primary: Color(0xFF8839EF),
-    primaryLight: Color(0xFF9F5CF3),
-    primaryDark: Color(0xFF7029CC),
-    primaryGhost: Color(0xFFF1E9FC),
-  );
+  // v1.12.17: both Latte (light) flavours removed per user request — the
+  // kept dark flavours start here.
 
   // ─── Catppuccin Frappé · Mauve (冰沙 · 木槿紫) ───
   static const ThemePalette catFrappeMauve = ThemePalette(
@@ -368,25 +280,47 @@ class AppColors {
     primaryGhost: Color(0xFF333757),
   );
 
+  // ─── Notion Board (墨板, v1.12.18) ───
+  // Notion-template-style near-black kanban: every board column is tinted
+  // by its own semantic accent (status / priority / project) and the
+  // translucent cards let that tint bleed through — see the notionTint
+  // recipe in TaskBoardScreen. Primary = Notion brand blue.
+  // Contrast: textPrimary on card ≈ 12.5:1 (AAA); border stays whisper-
+  // subtle so the column tints do the talking.
+  static const ThemePalette notionBoard = ThemePalette(
+    bg: Color(0xFF0E0E0E),
+    surface: Color(0xFF151515),
+    card: Color(0xFF1C1C1C),
+    border: Color(0xFF2E2E2E),
+    textPrimary: Color(0xFFEDEDE9),
+    textSecondary: Color(0xFF9B9B94),
+    primary: Color(0xFF2383E2),
+    primaryLight: Color(0xFF5AA7EE),
+    primaryDark: Color(0xFF1667B5),
+    primaryGhost: Color(0xFF152736),
+  );
+
   // ─── Legacy aliases (for existing code compatibility) ───
-  // v1.4.39: kept in sync with the indigo-light / dark palettes above so the
+  // v1.4.39: kept in sync with the base light / dark palettes above so the
   // hard-coded `isDark ? darkX : lightX` usages (dates, tags, icons, meta)
   // brighten together with the rest of the theme instead of staying dim.
-  static const Color lightBg = Color(0xFFF7F8FD);
-  static const Color lightSurface = Color(0xFFFFFFFF);
+  // v1.12.17: the light anchor moved from the deleted indigoLight to the
+  // kept inkBlue palette.
+  static const Color lightBg = Color(0xFFF5F7F9);
+  static const Color lightSurface = Color(0xFFFDFDFE);
   static const Color lightCard = Color(0xFFFFFFFF);
-  static const Color lightBorder = Color(0xFFDFE3F0);
-  static const Color lightTextPrimary = Color(0xFF24304E);
-  static const Color lightTextSecondary = Color(0xFF58678C);
+  static const Color lightBorder = Color(0xFFE4E8EC);
+  static const Color lightTextPrimary = Color(0xFF2C3A4D);
+  static const Color lightTextSecondary = Color(0xFF6E7A87);
   static const Color darkBg = Color(0xFF142036);
   static const Color darkSurface = Color(0xFF1E2B42);
   static const Color darkCard = Color(0xFF273650);
   static const Color darkBorder = Color(0xFF3E5070);
   static const Color darkTextPrimary = Color(0xFFE4EAF4);
   static const Color darkTextSecondary = Color(0xFFB7C3D8);
-  static const Color primary = Color(0xFF6366F1);
-  static const Color primaryLight = Color(0xFF818CF8);
-  static const Color primaryDark = Color(0xFF4F46E5);
+  static const Color primary = Color(0xFF3F6C99);
+  static const Color primaryLight = Color(0xFF7FA3C4);
+  static const Color primaryDark = Color(0xFF31547A);
 
   static Color priorityColor(int priority) {
     switch (priority) {

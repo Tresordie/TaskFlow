@@ -9,7 +9,15 @@ import 'package:window_manager/window_manager.dart';
 class CustomTitleBar extends StatelessWidget {
   final String title;
 
-  const CustomTitleBar({super.key, this.title = 'TaskFlow'});
+  /// v1.12.15: nullable so light non-glass mode can pass transparent and
+  /// let the ambient canvas flow behind the title text.
+  final Color? backgroundColor;
+
+  const CustomTitleBar({
+    super.key,
+    this.title = 'TaskFlow',
+    this.backgroundColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +31,7 @@ class CustomTitleBar extends StatelessWidget {
       child: Container(
         height: 38,
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
+          color: backgroundColor ?? theme.colorScheme.surface,
           border: Border(
             bottom: BorderSide(
               color: theme.colorScheme.outline.withOpacity(0.2),

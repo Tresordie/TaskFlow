@@ -22,7 +22,7 @@ const String _kMd = '📄 **Work Summary**\n'
 
 MaterialApp _themed(Widget child) => MaterialApp(
       scrollBehavior: AppScrollBehavior(),
-      theme: AppTheme.buildTheme(AppThemeMode.indigoLight),
+      theme: AppTheme.buildTheme(AppThemeMode.inkBlue),
       debugShowCheckedModeBanner: false,
       home: child,
     );

@@ -7,7 +7,9 @@ import '../../data/models/task.dart';
 import '../../providers/date_nav_providers.dart';
 import '../../providers/task_providers.dart';
 import '../shared/app_date_picker.dart';
+import '../shared/hover_lift.dart';
 import '../shared/task_date_meta.dart';
+import '../shared/task_list_card.dart';
 import '../shared/task_tag_project_meta.dart';
 import '../shared/wheel_forward.dart';
 
@@ -183,6 +185,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
 
   Widget _buildCalendar(ThemeData theme, List<Task> tasks, DateNavState nav) {
+    final palette = theme.colorScheme;
     final year = _currentMonth.year;
     final month = _currentMonth.month;
     final firstDay = DateTime(year, month, 1);
@@ -208,45 +211,84 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return Column(
       children: [
         // Month navigation
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // v1.12.25: the month switcher floats as a pill toolbar instead of
+        // bare controls on the panel.
+        Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            decoration: BoxDecoration(
+              color: palette.surface,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                  color: palette.outline.withOpacity(0.35)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(
+                      theme.brightness == Brightness.dark ? 0.20 : 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: () => setState(() {
+                    _currentMonth = DateTime(year, month - 1);
+                  }),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text(
+                    DateFormat('MMMM yyyy').format(_currentMonth),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: () => setState(() {
+                    _currentMonth = DateTime(year, month + 1);
+                  }),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Weekday headers
+        // v1.12.22: hairline under the weekday strip — the grid gains a
+        // quiet "table header" anchor.
+        Column(
           children: [
-            IconButton(
-              icon: const Icon(Icons.chevron_left),
-              onPressed: () => setState(() {
-                _currentMonth = DateTime(year, month - 1);
-              }),
+            Row(
+              children: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
+                  .map((d) => Expanded(
+                        child: Center(
+                          child: Text(
+                            d,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface
+                                  .withOpacity(0.65),
+                            ),
+                          ),
+                        ),
+                      ))
+                  .toList(),
             ),
-            Text(
-              DateFormat('MMMM yyyy').format(_currentMonth),
-              style: theme.textTheme.titleLarge,
-            ),
-            IconButton(
-              icon: const Icon(Icons.chevron_right),
-              onPressed: () => setState(() {
-                _currentMonth = DateTime(year, month + 1);
-              }),
+            const SizedBox(height: 4),
+            Container(
+              height: 1,
+              color: theme.colorScheme.outline.withOpacity(0.25),
             ),
           ],
         ),
-        const SizedBox(height: 10),
-
-        // Weekday headers
-        Row(
-          children: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
-              .map((d) => Expanded(
-                    child: Center(
-                      child: Text(
-                        d,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ))
-              .toList(),
-        ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 5),
 
         // Day grid
         Expanded(
@@ -270,94 +312,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               final createdCount = createdCounts[day] ?? 0;
               final dueTasks = dueByDay[day] ?? const <Task>[];
 
-              return GestureDetector(
-                onTap: () =>
-                    _setNav(nav.copyWith(selectedDate: date, clearRange: true)),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  margin: const EdgeInsets.all(2),
-                  padding: const EdgeInsets.fromLTRB(4, 3, 4, 3),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? theme.colorScheme.primary
-                        : inRange
-                            ? theme.colorScheme.primary.withOpacity(0.15)
-                            : isToday
-                                ? theme.colorScheme.primary.withOpacity(0.1)
-                                : theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: isToday && !isSelected
-                        ? Border.all(
-                            color: theme.colorScheme.primary.withOpacity(0.4))
-                        : Border.all(
-                            color:
-                                theme.colorScheme.outline.withOpacity(0.12)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Day number + created-task dots
-                      Row(
-                        children: [
-                          Text(
-                            '$day',
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: isToday || isSelected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              color: isSelected
-                                  ? Colors.white
-                                  : isToday
-                                      ? theme.colorScheme.primary
-                                      : theme.colorScheme.onSurface
-                                          .withOpacity(0.8),
-                            ),
-                          ),
-                          if (createdCount > 0) ...[
-                            const SizedBox(width: 4),
-                            ...List.generate(
-                              createdCount > 2 ? 2 : createdCount,
-                              (_) => Container(
-                                width: 4,
-                                height: 4,
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 1),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? Colors.white.withOpacity(0.8)
-                                      : theme.colorScheme.primary
-                                          .withOpacity(0.7),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      // Apple-style due-task pills (condensed titles)
-                      ...dueTasks.take(3).map(
-                            (t) => Padding(
-                              padding: const EdgeInsets.only(bottom: 1.5),
-                              child: _DuePill(task: t, onSelected: isSelected),
-                            ),
-                          ),
-                      if (dueTasks.length > 3)
-                        Text(
-                          '+${dueTasks.length - 3} more',
-                          style: TextStyle(
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w600,
-                            color: isSelected
-                                ? Colors.white.withOpacity(0.85)
-                                : theme.colorScheme.onSurface
-                                    .withOpacity(0.45),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
+              return _DayCell(
+                day: day,
+                isToday: isToday,
+                isSelected: isSelected,
+                inRange: inRange,
+                isWeekend: date.weekday >= 6,
+                createdCount: createdCount,
+                dueTasks: dueTasks,
+                onTap: () => _setNav(
+                    nav.copyWith(selectedDate: date, clearRange: true)),
               );
             },
           ),
@@ -367,6 +331,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
 
   Widget _buildDayPanel(ThemeData theme, List<Task> tasks, DateNavState nav) {
+    final palette = theme.colorScheme;
     final String title;
     final List<Task> dayTasks;
     final String emptyLabel;
@@ -396,21 +361,64 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       margin: const EdgeInsets.only(top: 24, right: 24, bottom: 24),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        // v1.12.15: the day panel floats as its own card (card color +
+        // soft shadow) — module differentiation over the page surface.
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.5)),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.35)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(
+                theme.brightness == Brightness.dark ? 0.15 : 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: theme.textTheme.titleLarge,
+          // v1.12.25: header with the page-title accent bar and a task-count
+          // badge — the panel reads as a designed card, not a text dump.
+          Row(
+            children: [
+              Container(
+                width: 4,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: palette.primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(title, style: theme.textTheme.titleLarge),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: palette.primary.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${dayTasks.length}',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: palette.primary,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
-          Text(
-            '${dayTasks.length} task${dayTasks.length == 1 ? '' : 's'}',
-            style: theme.textTheme.bodyMedium,
+          Padding(
+            padding: const EdgeInsets.only(left: 14),
+            child: Text(
+              'task${dayTasks.length == 1 ? '' : 's'}',
+              style: theme.textTheme.bodyMedium,
+            ),
           ),
           const SizedBox(height: 16),
           if (dayTasks.isEmpty)
@@ -468,19 +476,20 @@ class _DayTaskItem extends StatelessWidget {
     final isCompleted = task.status == TaskStatus.completed ||
         task.status == TaskStatus.archived;
 
-    return GestureDetector(
-      onTap: () => context.push('/task/${task.id}'),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
+    // v1.12.13: hover lift + accent border highlight, same language as the
+    // Today board's TaskCard.
+    return HoverLift(
+      borderRadius: BorderRadius.circular(10),
+      accentColor: isCompleted ? AppColors.success : priorityColor,
+      margin: const EdgeInsets.only(bottom: 8),
+      builder: (context, hovered) => GestureDetector(
+        onTap: () => context.push('/task/${task.id}'),
+        child: TaskListCard(
+          accentColor: isCompleted ? AppColors.success : priorityColor,
+          highlighted: hovered,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: theme.colorScheme.outline.withOpacity(0.3),
-          ),
-        ),
-        child: Column(
+          padding: const EdgeInsets.fromLTRB(0, 11, 12, 11),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -547,6 +556,170 @@ class _DayTaskItem extends StatelessWidget {
               child: TaskDateMeta(task: task, compact: true),
             ),
           ],
+        ),
+      ),
+      ),
+    );
+  }
+}
+
+/// v1.12.22: one calendar day cell as a hover-aware widget — resting cells
+/// are flat, hovering brightens the border and lifts the cell with a soft
+/// shadow, today gets a vertical accent gradient, and the selected day
+/// carries an accent-tinted shadow so it visibly sits above the grid.
+class _DayCell extends StatefulWidget {
+  final int day;
+  final bool isToday;
+  final bool isSelected;
+  final bool inRange;
+  final bool isWeekend;
+  final int createdCount;
+  final List<Task> dueTasks;
+  final VoidCallback onTap;
+
+  const _DayCell({
+    required this.day,
+    required this.isToday,
+    required this.isSelected,
+    required this.inRange,
+    required this.isWeekend,
+    required this.createdCount,
+    required this.dueTasks,
+    required this.onTap,
+  });
+
+  @override
+  State<_DayCell> createState() => _DayCellState();
+}
+
+class _DayCellState extends State<_DayCell> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final palette = theme.colorScheme;
+    final day = widget.day;
+    final isToday = widget.isToday;
+    final isSelected = widget.isSelected;
+
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          margin: const EdgeInsets.all(2),
+          padding: const EdgeInsets.fromLTRB(4, 3, 4, 3),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? palette.primary
+                : widget.inRange
+                    ? palette.primary.withOpacity(0.15)
+                    : isToday
+                        ? null
+                        // v1.12.23: weekend columns carry a faint wash so
+                        // the week reads as work-days + rest-days blocks.
+                        : widget.isWeekend
+                            ? palette.onSurface.withOpacity(0.025)
+                            : palette.surface,
+            gradient: (!isSelected && isToday)
+                ? LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      palette.primary.withOpacity(0.14),
+                      palette.primary.withOpacity(0.05),
+                    ],
+                  )
+                : null,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected
+                  ? palette.primary
+                  : (isToday || _hovered)
+                      ? palette.primary.withOpacity(isToday ? 0.45 : 0.35)
+                      : palette.outline.withOpacity(0.25),
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: palette.primary.withOpacity(0.30),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : _hovered
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Day number + created-task dots
+              Row(
+                children: [
+                  Text(
+                    '$day',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: isToday || isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: isSelected
+                          ? Colors.white
+                          : isToday
+                              ? palette.primary
+                              : palette.onSurface.withOpacity(0.8),
+                    ),
+                  ),
+                  if (widget.createdCount > 0) ...[
+                    const SizedBox(width: 4),
+                    ...List.generate(
+                      widget.createdCount > 2 ? 2 : widget.createdCount,
+                      (_) => Container(
+                        width: 4,
+                        height: 4,
+                        margin: const EdgeInsets.symmetric(horizontal: 1),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Colors.white.withOpacity(0.8)
+                              : palette.primary.withOpacity(0.7),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 2),
+              // Apple-style due-task pills (condensed titles)
+              ...widget.dueTasks.take(3).map(
+                    (t) => Padding(
+                      padding: const EdgeInsets.only(bottom: 1.5),
+                      child: _DuePill(task: t, onSelected: isSelected),
+                    ),
+                  ),
+              if (widget.dueTasks.length > 3)
+                Text(
+                  '+${widget.dueTasks.length - 3} more',
+                  style: TextStyle(
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected
+                        ? Colors.white.withOpacity(0.85)
+                        : palette.onSurface.withOpacity(0.45),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

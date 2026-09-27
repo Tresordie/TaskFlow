@@ -204,7 +204,7 @@ void main() {
         child: MaterialApp.router(
           routerConfig: router,
           scrollBehavior: AppScrollBehavior(),
-          theme: AppTheme.buildTheme(AppThemeMode.indigoLight),
+          theme: AppTheme.buildTheme(AppThemeMode.inkBlue),
           debugShowCheckedModeBanner: false,
         ),
       ),

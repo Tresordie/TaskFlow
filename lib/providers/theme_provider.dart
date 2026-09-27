@@ -13,7 +13,7 @@ final themeModeProvider =
 class ThemeModeNotifier extends StateNotifier<AppThemeMode> {
   static const _storageKey = 'settings.themeMode';
 
-  ThemeModeNotifier() : super(AppThemeMode.freshGreen) {
+  ThemeModeNotifier() : super(AppThemeMode.inkBlue) {
     _restore();
   }
 

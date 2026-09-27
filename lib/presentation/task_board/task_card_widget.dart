@@ -1,9 +1,13 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart' show AppThemeMode;
 import '../../data/models/task.dart';
+import '../../providers/board_card_style_provider.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
 import '../../providers/theme_provider.dart';
@@ -139,6 +143,38 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     final cardColor = isDark
         ? ref.watch(themeModeProvider).palette.card
         : Colors.white;
+    // v1.12.3/1.12.10: independent per-card style (Settings → Today Board
+    // Cards) — background opacity below 100% lets the board canvas show
+    // through; glass mode renders the card as frosted glass (backdrop blur
+    // + translucent fill + bright rim). Fully independent of the app-wide
+    // Interface Glass section.
+    final style = ref.watch(boardCardStyleProvider);
+    final useGlass = style.glass;
+    // v1.12.18/v1.12.19: board-tinted themes — the card floats bright over
+    // the accent-tinted column. v1.12.21: the Card opacity slider WORKS on
+    // light board-tinted themes too (100% = the reference pure-white card;
+    // lower lets the column tint bleed through) — previously the fill was
+    // hard-coded and the sliders were dead. Dark board-tinted keeps its
+    // fixed 80% translucent fill (the dark reference look).
+    final notionTint = ref.watch(themeModeProvider).boardTinted;
+    final fillColor = notionTint
+        ? (isDark
+            ? cardColor.withOpacity(0.80)
+            : cardColor.withOpacity(style.opacity))
+        : (style.opacity >= 1.0
+            ? cardColor
+            : cardColor.withOpacity(style.opacity));
+    // v1.12.11: the glass rim is theme-aware — a WHITE rim pops on the dark
+    // glass columns but vanishes on near-white light ones (cards lost their
+    // outline entirely in light themes), so light themes use the theme
+    // border color instead.
+    final glassRim = isDark
+        ? (_isHovered
+            ? Colors.white.withOpacity(0.38)
+            : Colors.white.withOpacity(0.22))
+        : (_isHovered
+            ? palette.outline.withOpacity(0.90)
+            : palette.outline.withOpacity(0.65));
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -161,14 +197,18 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                     ? (Matrix4.identity()..translate(0.0, -2.0))
                     : Matrix4.identity(),
             decoration: BoxDecoration(
-              color: cardColor,
+              // Glass mode paints its translucent fill INSIDE the backdrop
+              // blur below, so the blur shows through the fill.
+              color: useGlass ? null : fillColor,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isDone
                     ? AppColors.success.withOpacity(0.3)
-                    : _isHovered
-                        ? barColor.withOpacity(0.45)
-                        : palette.outline.withOpacity(0.7),
+                    : useGlass
+                        ? glassRim
+                        : _isHovered
+                            ? barColor.withOpacity(0.45)
+                            : palette.outline.withOpacity(0.7),
               ),
               boxShadow: _isHovered
                   ? [
@@ -191,7 +231,10 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                       ),
                     ],
             ),
-            child: Stack(
+            child: _wrapGlass(
+              style,
+              fillColor,
+              Stack(
               children: [
                 // Content (bottom of the stack).
                 Padding(
@@ -317,8 +360,31 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                   ),
                 ),
               ],
+              ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// v1.12.3: glass-mode wrapper — backdrop blur + the translucent fill
+  /// painted over it, so the board canvas and its orbs blur through the
+  /// card (frosted-glass look). Plain mode returns the content untouched.
+  /// v1.12.4: the blur sigma comes from the user-adjustable style.
+  Widget _wrapGlass(BoardCardStyle style, Color fillColor, Widget content) {
+    if (!style.glass) return content;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+            sigmaX: style.blur, sigmaY: style.blur),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: fillColor,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: content,
         ),
       ),
     );

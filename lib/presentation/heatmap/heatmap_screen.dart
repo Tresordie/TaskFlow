@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
+import '../shared/hover_lift.dart';
 import '../shared/task_date_meta.dart';
+import '../shared/task_list_card.dart';
 import '../shared/task_tag_project_meta.dart';
 import '../shared/wheel_forward.dart';
 
@@ -100,14 +102,13 @@ class HeatmapScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Task Activity',
-                          style: theme.textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 10),
-                        _HeatmapGrid(tasks: tasks),
-                        const SizedBox(height: 8),
-                        // Legend
-                        _buildLegend(theme),
+                        'Task Activity',
+                        style: theme.textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 10),
+                      _HeatmapGrid(tasks: tasks),
+                      // Legend now lives INSIDE the grid (v1.12.23).
+                      const SizedBox(height: 8),
                       ],
                     ),
                   ),
@@ -154,6 +155,7 @@ class HeatmapScreen extends ConsumerWidget {
           label: 'Today',
           value: '$todayCount',
           icon: Icons.today,
+          accentColor: theme.colorScheme.primary,
           theme: theme,
           onTap: () => jumpWith(
               TaskFilter(date: DateTime(now.year, now.month, now.day))),
@@ -163,6 +165,7 @@ class HeatmapScreen extends ConsumerWidget {
           label: 'Completed',
           value: '$completedCount',
           icon: Icons.check_circle_outline,
+          accentColor: AppColors.success,
           theme: theme,
           onTap: () => jumpWith(TaskFilter(status: TaskStatus.completed)),
         ),
@@ -171,33 +174,10 @@ class HeatmapScreen extends ConsumerWidget {
           label: 'Total',
           value: '$totalCount',
           icon: Icons.list_alt,
+          accentColor: AppColors.info,
           theme: theme,
           onTap: () => jumpWith(TaskFilter()),
         ),
-      ],
-    );
-  }
-
-  Widget _buildLegend(ThemeData theme) {
-    final primary = theme.colorScheme.primary;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Text('Less', style: theme.textTheme.labelSmall),
-        const SizedBox(width: 6),
-        ...[0.0, 0.2, 0.4, 0.7, 1.0].map((opacity) => Container(
-              width: 12,
-              height: 12,
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              decoration: BoxDecoration(
-                color: opacity == 0.0
-                    ? theme.colorScheme.outline.withOpacity(0.15)
-                    : primary.withOpacity(opacity),
-                borderRadius: BorderRadius.circular(3),
-              ),
-            )),
-        const SizedBox(width: 6),
-        Text('More', style: theme.textTheme.labelSmall),
       ],
     );
   }
@@ -265,19 +245,20 @@ class _ActivityTaskItem extends StatelessWidget {
     final isCompleted = task.status == TaskStatus.completed ||
         task.status == TaskStatus.archived;
 
-    return GestureDetector(
-      onTap: () => context.push('/task/${task.id}'),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 5),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
+    // v1.12.13: hover lift + accent border highlight, same language as the
+    // Today board's TaskCard.
+    return HoverLift(
+      borderRadius: BorderRadius.circular(10),
+      accentColor: isCompleted ? AppColors.success : priorityColor,
+      margin: const EdgeInsets.only(bottom: 5),
+      builder: (context, hovered) => GestureDetector(
+        onTap: () => context.push('/task/${task.id}'),
+        child: TaskListCard(
+          accentColor: isCompleted ? AppColors.success : priorityColor,
+          highlighted: hovered,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: theme.colorScheme.outline.withOpacity(0.3),
-          ),
-        ),
-        child: Column(
+          padding: const EdgeInsets.fromLTRB(0, 7, 8, 7),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -328,6 +309,7 @@ class _ActivityTaskItem extends StatelessWidget {
           ],
         ),
       ),
+      ),
     );
   }
 }
@@ -336,6 +318,7 @@ class _StatCard extends StatelessWidget {
   final String label;
   final String value;
   final IconData icon;
+  final Color accentColor;
   final ThemeData theme;
   final VoidCallback? onTap;
 
@@ -343,6 +326,7 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
+    required this.accentColor,
     required this.theme,
     this.onTap,
   });
@@ -351,7 +335,9 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Material(
-        color: theme.colorScheme.surface,
+        // v1.12.15: stat cards float as their own modules (card color +
+        // soft shadow) instead of flat bordered boxes.
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
@@ -361,37 +347,90 @@ class _StatCard extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: theme.colorScheme.outline.withOpacity(0.4),
+                color: theme.colorScheme.outline.withOpacity(0.35),
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(icon, size: 18, color: theme.colorScheme.primary),
-                    const Spacer(),
-                    if (onTap != null)
-                      Icon(
-                        Icons.chevron_right,
-                        size: 16,
-                        color: theme.colorScheme.onSurface.withOpacity(0.35),
-                      ),
-                  ],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(
+                      theme.brightness == Brightness.dark ? 0.15 : 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontSize: 22,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 0),
-                Text(label,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(fontSize: 12)),
               ],
+            ),
+            // v1.12.25: KPI-card layout — left accent bar + tinted icon chip
+            // + accent value; each stat card carries its own semantic color
+            // (Today=primary / Completed=green / Total=blue).
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    width: 3,
+                    margin: const EdgeInsets.symmetric(vertical: 2),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          accentColor,
+                          accentColor.withOpacity(0.30),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 26,
+                              height: 26,
+                              decoration: BoxDecoration(
+                                color: accentColor.withOpacity(0.10),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child:
+                                  Icon(icon, size: 15, color: accentColor),
+                            ),
+                            const Spacer(),
+                            if (onTap != null)
+                              Icon(
+                                Icons.chevron_right,
+                                size: 16,
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.35),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          value,
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: accentColor,
+                          ),
+                        ),
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                            color: theme.colorScheme.onSurface
+                                .withOpacity(0.55),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -501,16 +540,13 @@ class _HeatmapGrid extends StatelessWidget {
                   return Tooltip(
                     message:
                         '${DateFormat('MMM d, yyyy').format(date)}: $count task${count == 1 ? '' : 's'}',
-                    child: Container(
-                      width: cell,
-                      height: cell,
-                      margin: const EdgeInsets.all(1),
-                      decoration: BoxDecoration(
-                        color: count == 0
-                            ? theme.colorScheme.outline.withOpacity(0.12)
-                            : primary.withOpacity(intensity),
-                        borderRadius: BorderRadius.circular(radius),
-                      ),
+                    child: _HeatCell(
+                      size: cell,
+                      radius: radius,
+                      color: primary,
+                      intensity: intensity,
+                      empty: count == 0,
+                      outlineColor: theme.colorScheme.outline,
                     ),
                   );
                 }),
@@ -570,14 +606,134 @@ class _HeatmapGrid extends StatelessWidget {
               ],
             );
 
-        if (avail / sumWeeks >= 12) {
-          return row(pitch);
-        }
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: row(12),
+        // v1.12.23: a Less→More legend under the grid — the intensity scale
+        // becomes self-explanatory.
+        Widget board = avail / sumWeeks >= 12
+            ? row(pitch)
+            : SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: row(12),
+              );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            board,
+            const SizedBox(height: 8),
+            _HeatLegend(
+              primary: primary,
+              outlineColor: theme.colorScheme.outline,
+            ),
+          ],
         );
       },
+    );
+  }
+}
+
+/// v1.12.23: the intensity scale legend — empty box through full accent,
+/// mirroring [_HeatCell]'s coloring.
+class _HeatLegend extends StatelessWidget {
+  final Color primary;
+  final Color outlineColor;
+
+  const _HeatLegend({required this.primary, required this.outlineColor});
+
+  @override
+  Widget build(BuildContext context) {
+    final labelStyle = TextStyle(
+      fontSize: 9,
+      color: primary.withOpacity(0.65),
+      fontWeight: FontWeight.w500,
+    );
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Less', style: labelStyle),
+        const SizedBox(width: 4),
+        for (final i in [0.0, 0.33, 0.66, 1.0])
+          Container(
+            width: 10,
+            height: 10,
+            margin: const EdgeInsets.symmetric(horizontal: 1.5),
+            decoration: BoxDecoration(
+              color: i == 0.0
+                  ? outlineColor.withOpacity(0.12)
+                  : primary.withOpacity(i),
+              borderRadius: BorderRadius.circular(2.5),
+            ),
+          ),
+        const SizedBox(width: 4),
+        Text('More', style: labelStyle),
+      ],
+    );
+  }
+}
+
+/// v1.12.22: one heatmap cell — active cells carry a top-left radial
+/// highlight (the "lit bead" look, like a small raised tile) and scale up
+/// with a bright rim on hover; empty cells stay quiet and flat.
+class _HeatCell extends StatefulWidget {
+  final double size;
+  final double radius;
+  final Color color;
+  final double intensity;
+  final bool empty;
+  final Color outlineColor;
+
+  const _HeatCell({
+    required this.size,
+    required this.radius,
+    required this.color,
+    required this.intensity,
+    required this.empty,
+    required this.outlineColor,
+  });
+
+  @override
+  State<_HeatCell> createState() => _HeatCellState();
+}
+
+class _HeatCellState extends State<_HeatCell> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final fill = widget.color.withOpacity(widget.intensity);
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedScale(
+        scale: _hovered ? 1.25 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutCubic,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: widget.size,
+          height: widget.size,
+          margin: const EdgeInsets.all(1),
+          decoration: BoxDecoration(
+            color: widget.empty
+                ? widget.outlineColor.withOpacity(0.12)
+                : null,
+            gradient: widget.empty
+                ? null
+                : RadialGradient(
+                    center: const Alignment(-0.4, -0.45),
+                    radius: 0.9,
+                    colors: [
+                      Color.alphaBlend(
+                          Colors.white.withOpacity(0.35), fill),
+                      fill,
+                    ],
+                  ),
+            borderRadius: BorderRadius.circular(widget.radius),
+            border: (_hovered && !widget.empty)
+                ? Border.all(color: widget.color, width: 1.2)
+                : null,
+          ),
+        ),
+      ),
     );
   }
 }

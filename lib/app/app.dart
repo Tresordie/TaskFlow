@@ -6,6 +6,7 @@ import '../core/theme/app_theme.dart';
 import '../core/theme/font_stack.dart';
 import '../providers/theme_provider.dart';
 import '../providers/font_provider.dart';
+import '../providers/app_glass_provider.dart';
 import '../app/router.dart';
 
 class TaskFlowApp extends ConsumerWidget {
@@ -18,8 +19,16 @@ class TaskFlowApp extends ConsumerWidget {
     final font = ref.watch(fontProvider);
     final fontScale = ref.watch(fontScaleProvider);
     final fontWeightValue = ref.watch(fontWeightProvider);
+    // v1.12.5: app-wide interface glass — the theme's surface/card colors
+    // go translucent so shell panels and ordinary cards read as frosted
+    // glass; MaterialApp rebuilds on every toggle.
+    final appGlass = ref.watch(appGlassStyleProvider);
 
-    var theme = AppTheme.buildTheme(themeMode);
+    var theme = AppTheme.buildTheme(
+      themeMode,
+      glass: appGlass.glass,
+      glassOpacity: appGlass.opacity,
+    );
 
     // Apply selected font
     if (font.fontFamily != null) {

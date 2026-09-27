@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' show ImageFilter;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/version.dart';
+import '../../providers/board_card_style_provider.dart';
+import '../../providers/app_glass_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/font_provider.dart';
 import '../../providers/typography_provider.dart';
@@ -126,6 +129,34 @@ class SettingsScreen extends ConsumerWidget {
           icon: Icons.edit_note,
           isContent: false,
         ),
+
+        const SizedBox(height: 36),
+
+        // ─── Today Board Cards (v1.12.3) ───
+        Text('Today Board Cards', style: theme.textTheme.titleLarge),
+        const SizedBox(height: 6),
+        Text(
+          'Adjust the task-card appearance on the Today dashboard — opacity '
+          '0–100% (0% = fully see-through) and a glass effect with its own '
+          'blur strength. Independent of the Interface Glass section below',
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 16),
+        const _BoardCardStyleCard(),
+
+        const SizedBox(height: 36),
+
+        // ─── Interface Glass (v1.12.5) ───
+        Text('Interface Glass', style: theme.textTheme.titleLarge),
+        const SizedBox(height: 6),
+        Text(
+          'Apply the glass effect to the whole app interface — title bar, '
+          'sidebar and content panels become frosted glass over an ambient '
+          'backdrop. The change is live: this very page turns glassy',
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 16),
+        const _InterfaceGlassCard(),
 
         const SizedBox(height: 36),
 
@@ -877,6 +908,493 @@ class _FontWeightCard extends ConsumerWidget {
               'Preview 预览: The quick brown fox jumps over the lazy dog · '
               '线束 EVT 测试电流 2.3A · 0123456789',
               style: theme.textTheme.bodyMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// v1.12.3: appearance of the Today-dashboard task cards — background
+/// opacity slider + glass-mode switch, with a live preview that mimics a
+/// card floating over the board canvas (gradient + orbs) so the effect is
+/// visible without leaving Settings.
+class _BoardCardStyleCard extends ConsumerWidget {
+  const _BoardCardStyleCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final palette = theme.colorScheme;
+    // v1.12.10: fully independent per-card style — separate from the
+    // app-wide Interface Glass section, full 0–100% opacity range.
+    final style = ref.watch(boardCardStyleProvider);
+    final notifier = ref.read(boardCardStyleProvider.notifier);
+    final isDark = theme.brightness == Brightness.dark;
+    // Same card base color the board cards use (white on light themes).
+    final baseCard =
+        isDark ? ref.watch(themeModeProvider).palette.card : Colors.white;
+    final percent = (style.opacity * 100).round();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.style_outlined,
+                  size: 18, color: palette.primary),
+              const SizedBox(width: 8),
+              Text('Card Appearance', style: theme.textTheme.titleMedium),
+              const Spacer(),
+              if (!style.isDefault)
+                Tooltip(
+                  message: 'Reset to default (opaque, no glass)',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: notifier.reset,
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.restart_alt,
+                        size: 18,
+                        color: palette.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Opacity slider — 0% = fully see-through, 100% = opaque.
+          Row(
+            children: [
+              Icon(Icons.opacity,
+                  size: 15, color: palette.onSurface.withOpacity(0.55)),
+              const SizedBox(width: 6),
+              Text('Card opacity',
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(fontSize: 12.5)),
+              Expanded(
+                child: Slider(
+                  value: style.opacity.clamp(
+                      BoardCardStyle.minOpacity, BoardCardStyle.maxOpacity),
+                  min: BoardCardStyle.minOpacity,
+                  max: BoardCardStyle.maxOpacity,
+                  divisions:
+                      ((BoardCardStyle.maxOpacity - BoardCardStyle.minOpacity) /
+                              0.05)
+                          .round(),
+                  label: '$percent%',
+                  onChanged: (v) => notifier.setOpacity(v),
+                ),
+              ),
+              // Percentage badge
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: palette.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '$percent%',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: palette.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Glass switch
+          Row(
+            children: [
+              Icon(Icons.blur_on,
+                  size: 15, color: palette.onSurface.withOpacity(0.55)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Glass effect — frosted-glass cards with a backdrop blur '
+                  '(most visible below 100% opacity)',
+                  style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12.5),
+                ),
+              ),
+              Switch(
+                value: style.glass,
+                // v1.12.16: theme-aware auto-drop — light themes land on
+                // 85% (55% white reads as dim mud on light surfaces).
+                onChanged: (v) => notifier.setGlass(v, lightTheme: !isDark),
+              ),
+            ],
+          ),
+
+          // v1.12.4: blur strength — only meaningful while glass is on,
+          // so the slider is disabled when the switch is off.
+          Row(
+            children: [
+              Icon(Icons.blur_linear,
+                  size: 15, color: palette.onSurface.withOpacity(0.55)),
+              const SizedBox(width: 6),
+              Text('Blur strength',
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(fontSize: 12.5)),
+              Expanded(
+                child: Slider(
+                  value: style.blur.clamp(
+                      BoardCardStyle.minBlur, BoardCardStyle.maxBlur),
+                  min: BoardCardStyle.minBlur,
+                  max: BoardCardStyle.maxBlur,
+                  divisions:
+                      (BoardCardStyle.maxBlur - BoardCardStyle.minBlur)
+                          .round(),
+                  label: '${style.blur.round()}',
+                  onChanged:
+                      style.glass ? (v) => notifier.setBlur(v) : null,
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: palette.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${style.blur.round()}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: style.glass
+                        ? palette.primary
+                        : palette.onSurface.withOpacity(0.35),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Live preview: mini board canvas (gradient + orbs) with a card
+          // rendered at the current opacity / glass settings on top.
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              height: 86,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    palette.primary.withOpacity(0.45),
+                    palette.secondary.withOpacity(0.35),
+                  ],
+                ),
+              ),
+              child: Stack(
+                children: [
+                  Positioned(
+                    right: 18,
+                    top: -14,
+                    child: _orb(palette.primary, 56),
+                  ),
+                  Positioned(
+                    left: 30,
+                    bottom: -20,
+                    child: _orb(palette.secondary, 64),
+                  ),
+                  Center(
+                    child: _PreviewCard(
+                      style: style,
+                      baseCard: baseCard,
+                      isDark: isDark,
+                      theme: theme,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _orb(Color color, double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          colors: [color.withOpacity(0.55), color.withOpacity(0.0)],
+        ),
+      ),
+    );
+  }
+}
+
+/// The mini task card shown inside the preview canvas. Applies exactly the
+/// same fill-opacity and glass (backdrop blur + bright rim) recipe as the
+/// real board cards.
+class _PreviewCard extends StatelessWidget {
+  final BoardCardStyle style;
+  final Color baseCard;
+  final bool isDark;
+  final ThemeData theme;
+
+  const _PreviewCard({
+    required this.style,
+    required this.baseCard,
+    required this.isDark,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = theme.colorScheme;
+    final card = Container(
+      width: 240,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: baseCard.withOpacity(style.opacity),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          // v1.12.11: theme-aware glass rim, same recipe as TaskCard —
+          // white pops on dark glass, border color reads on light glass.
+          color: style.glass
+              ? (isDark
+                  ? Colors.white.withOpacity(0.22)
+                  : palette.outline.withOpacity(0.65))
+              : palette.outline.withOpacity(0.7),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.10),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Sample task',
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: palette.onSurface,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Description preview · due date',
+            style: TextStyle(
+              fontSize: 11,
+              color: palette.onSurface.withOpacity(0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (!style.glass) return card;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+            sigmaX: style.blur, sigmaY: style.blur),
+        child: card,
+      ),
+    );
+  }
+}
+
+/// v1.12.5: app-wide interface glass controls — glass toggle, panel
+/// opacity and blur strength. No mini preview needed: the setting is live
+/// on the whole window, so this very page turns glassy while toggling.
+class _InterfaceGlassCard extends ConsumerWidget {
+  const _InterfaceGlassCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final palette = theme.colorScheme;
+    final style = ref.watch(appGlassStyleProvider);
+    final notifier = ref.read(appGlassStyleProvider.notifier);
+    final percent = (style.opacity * 100).round();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.dashboard_customize_outlined,
+                  size: 18, color: palette.primary),
+              const SizedBox(width: 8),
+              Text('App Interface', style: theme.textTheme.titleMedium),
+              const Spacer(),
+              if (!style.isDefault)
+                Tooltip(
+                  message: 'Reset to default (opaque, no glass)',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: notifier.reset,
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.restart_alt,
+                        size: 18,
+                        color: palette.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Glass switch
+          Row(
+            children: [
+              Icon(Icons.blur_on,
+                  size: 15, color: palette.onSurface.withOpacity(0.55)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Glass effect — frosted title bar, sidebar and content '
+                  'panels over an ambient backdrop',
+                  style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12.5),
+                ),
+              ),
+              Switch(
+                value: style.glass,
+                onChanged: (v) => notifier.setGlass(v),
+              ),
+            ],
+          ),
+
+          // Opacity slider (disabled while glass is off)
+          Row(
+            children: [
+              Icon(Icons.opacity,
+                  size: 15, color: palette.onSurface.withOpacity(0.55)),
+              const SizedBox(width: 6),
+              Text('Panel opacity',
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(fontSize: 12.5)),
+              Expanded(
+                child: Slider(
+                  value: style.opacity.clamp(
+                      AppGlassStyle.minOpacity, AppGlassStyle.maxOpacity),
+                  min: AppGlassStyle.minOpacity,
+                  max: AppGlassStyle.maxOpacity,
+                  divisions: ((AppGlassStyle.maxOpacity -
+                              AppGlassStyle.minOpacity) /
+                          0.05)
+                      .round(),
+                  label: '$percent%',
+                  onChanged: style.glass
+                      ? (v) => notifier.setOpacity(v)
+                      : null,
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: palette.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '$percent%',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: style.glass
+                        ? palette.primary
+                        : palette.onSurface.withOpacity(0.35),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Blur strength slider (disabled while glass is off)
+          Row(
+            children: [
+              Icon(Icons.blur_linear,
+                  size: 15, color: palette.onSurface.withOpacity(0.55)),
+              const SizedBox(width: 6),
+              Text('Blur strength',
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(fontSize: 12.5)),
+              Expanded(
+                child: Slider(
+                  value: style.blur.clamp(
+                      AppGlassStyle.minBlur, AppGlassStyle.maxBlur),
+                  min: AppGlassStyle.minBlur,
+                  max: AppGlassStyle.maxBlur,
+                  divisions: (AppGlassStyle.maxBlur - AppGlassStyle.minBlur)
+                      .round(),
+                  label: '${style.blur.round()}',
+                  onChanged:
+                      style.glass ? (v) => notifier.setBlur(v) : null,
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: palette.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${style.blur.round()}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: style.glass
+                        ? palette.primary
+                        : palette.onSurface.withOpacity(0.35),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+          Text(
+            'Opacity range 0–100% (0% = fully see-through). Enabling glass '
+            'lowers the panel opacity to 75% automatically so text stays '
+            'readable — tune it afterwards. Turning glass off restores the '
+            'opaque interface.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: palette.onSurface.withOpacity(0.45),
+              height: 1.4,
             ),
           ),
         ],

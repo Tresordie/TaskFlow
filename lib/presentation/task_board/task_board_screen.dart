@@ -1,14 +1,19 @@
 import 'dart:math';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/models/task.dart';
+import '../../providers/app_glass_provider.dart';
+import '../../providers/board_card_style_provider.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
 import '../../providers/theme_provider.dart';
+import '../shared/glass_panel.dart';
 import '../shared/suggestion_field.dart';
 import 'kanban_column.dart';
 
@@ -38,9 +43,21 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     final quickFilter = ref.watch(boardQuickFilterProvider);
     final dimension = ref.watch(boardDimensionProvider);
     final colorSettings = ref.watch(colorSettingsProvider);
+    // v1.12.6: glass cards need a TRANSLUCENT column under them, otherwise
+    // the opaque column hides the canvas/orbs and the card blur has nothing
+    // to frost (user feedback: glass effect invisible on Today).
+    // v1.12.10: fully independent domains — the board card style governs
+    // the cards (KPI / quick-add), the app interface style governs the
+    // canvas and the columns (the interface surfaces around the cards).
+    final appGlass = ref.watch(appGlassStyleProvider);
+    final boardStyle = ref.watch(boardCardStyleProvider);
     final today = DateFormat('EEEE, MMM d').format(DateTime.now());
     final theme = Theme.of(context);
     final appPalette = ref.watch(themeModeProvider).palette;
+    // v1.12.18/v1.12.19: Notion-board family — every column is tinted by
+    // its own semantic accent and the cards float bright over the tint
+    // (the reference look). Other themes keep their own recipes.
+    final notionTint = ref.watch(themeModeProvider).boardTinted;
     // v1.11.1: light themes get pure-white cards on a tinted canvas
     // (the "paper" recipe) so they actually pop; dark themes keep the
     // palette's card color.
@@ -50,16 +67,51 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     // three-layer ladder (canvas → glass column → white card) has real
     // tonal steps — pale bg alone left everything washed out. Dark themes
     // keep the palette bg the user likes.
+    // v1.12.11: in glass mode the light canvas deepens further — near-white
+    // palettes converge to white when every layer goes translucent, so the
+    // glass page read as washed-out gray (user screenshot: light theme
+    // glass poor vs dark good).
+    final glassActive = appGlass.glass || boardStyle.glass;
     final canvasColor = isDark
         ? appPalette.bg
-        : Color.alphaBlend(appPalette.border.withOpacity(0.38), appPalette.bg);
+        : Color.alphaBlend(appPalette.border.withOpacity(glassActive ? 0.50 : 0.38),
+            appPalette.bg);
     final canvasDeepColor = isDark
         ? appPalette.bg
-        : Color.alphaBlend(appPalette.border.withOpacity(0.52), appPalette.bg);
+        : Color.alphaBlend(appPalette.border.withOpacity(glassActive ? 0.64 : 0.52),
+            appPalette.bg);
+    // v1.12.12: the canvas stays OPAQUE — a translucent canvas let the
+    // blurred shell ambient fog through the whole dashboard, which read as
+    // an unclear milky wash (user feedback: 底色是毛玻璃，不够清晰). Glass on
+    // Today stays in the columns + cards; the canvas keeps the v1.12.11
+    // glass-mode deepening so it still reads as "tinted", and the Interface
+    // Glass sliders still visibly affect the column wash.
     // Glassy column surface between the canvas and the cards.
-    final columnColor = isDark
-        ? Color.alphaBlend(appPalette.card.withOpacity(0.40), appPalette.bg)
-        : Color.alphaBlend(Colors.white.withOpacity(0.72), canvasColor);
+    // Glass column wash — v1.12.16: light themes use a TINTED column
+    // (canvas-deep tone, not white-washed) so translucent white cards POP
+    // against it; the old white-on-white stack converged every layer into
+    // the same near-white, which read as dim mud ("暗淡模糊感"). Dark keeps
+    // its card-tone glass.
+    final lightGlassAlpha = appGlass.glass
+        ? appGlass.opacity
+        : (boardStyle.glass
+            ? max(BoardCardStyle.minOpacity, boardStyle.opacity - 0.2)
+            : null);
+    late Color columnColor;
+    if (isDark) {
+      columnColor =
+          Color.alphaBlend(appPalette.card.withOpacity(0.40), appPalette.bg);
+      if (lightGlassAlpha != null) {
+        columnColor = columnColor.withOpacity(lightGlassAlpha);
+      }
+    } else if (lightGlassAlpha != null) {
+      columnColor =
+          Color.alphaBlend(Colors.white.withOpacity(0.30), canvasDeepColor)
+              .withOpacity(lightGlassAlpha);
+    } else {
+      columnColor =
+          Color.alphaBlend(Colors.white.withOpacity(0.72), canvasColor);
+    }
 
     return Stack(
       children: [
@@ -68,7 +120,8 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
         Positioned.fill(
           child: IgnorePointer(
             child: _buildBackdrop(
-                theme, appPalette, canvasColor, canvasDeepColor, isDark),
+                theme, appPalette, canvasColor, canvasDeepColor, isDark,
+                boardStyle.glass),
           ),
         ),
         Column(
@@ -91,7 +144,8 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                     const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(child: Text('Error: $e')),
                 data: (_) => _buildBody(theme, board, filter, quickFilter,
-                    dimension, colorSettings, cardColor, columnColor),
+                    dimension, colorSettings, cardColor, columnColor,
+                    boardStyle, notionTint),
               ),
             ),
           ],
@@ -105,9 +159,13 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
   /// Neutral canvas (deepened toward the theme border on light themes)
   /// plus three slowly drifting color orbs — the quiet "texture" layer
   /// behind the board (translate_tool's ambient orbs).
+  /// v1.12.6: in glass mode the orbs double in presence — they are what
+  /// the frosted columns and cards blur through.
   Widget _buildBackdrop(ThemeData theme, ThemePalette appPalette,
-      Color canvasColor, Color canvasDeepColor, bool isDark) {
+      Color canvasColor, Color canvasDeepColor, bool isDark,
+      bool boardGlass) {
     final palette = theme.colorScheme;
+    final orbBoost = boardGlass ? 1.8 : 1.0;
 
     Widget orb(Color color, double size, double opacity) {
       return Container(
@@ -115,7 +173,10 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
         height: size,
         decoration: BoxDecoration(
           gradient: RadialGradient(
-            colors: [color.withOpacity(opacity), color.withOpacity(0.0)],
+            colors: [
+              color.withOpacity(opacity * orbBoost),
+              color.withOpacity(0.0)
+            ],
           ),
         ),
       )
@@ -258,7 +319,9 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
       BoardDimension dimension,
       ColorSettings colorSettings,
       Color cardColor,
-      Color columnColor) {
+      Color columnColor,
+      BoardCardStyle boardStyle,
+      bool notionTint) {
     final boardVisible = board.columns.any((c) => c.tasks.isNotEmpty);
     final showEmptyState = !boardVisible &&
         !filter.isActive &&
@@ -267,7 +330,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildKpiRow(theme, board, cardColor),
+        _buildKpiRow(theme, board, cardColor, boardStyle),
         _buildToolbar(theme, quickFilter, dimension),
         Expanded(
           child: showEmptyState
@@ -289,7 +352,8 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                   child: KeyedSubtree(
                     key: ValueKey('board-${dimension.name}'),
                     child: _buildBoard(
-                        theme, board, dimension, colorSettings, columnColor),
+                        theme, board, dimension, colorSettings, columnColor,
+                        notionTint),
                   ),
                 ),
         ),
@@ -421,9 +485,14 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
 
   // ─── KPI stat cards ───────────────────────────────────────────────────────
 
-  Widget _buildKpiRow(ThemeData theme, KanbanBoardData board, Color cardColor) {
+  Widget _buildKpiRow(ThemeData theme, KanbanBoardData board, Color cardColor,
+      BoardCardStyle boardStyle) {
     final palette = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    // v1.12.6: KPI cards follow the card style — translucent fill (+ backdrop
+    // blur) in glass mode so the whole dashboard reads as one material.
+    final kpiColor =
+        boardStyle.glass ? cardColor.withOpacity(boardStyle.opacity) : cardColor;
     final cards = [
       _KpiCardData(
         label: "TODAY'S PROGRESS",
@@ -471,8 +540,10 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                 child: _KpiCard(
                     data: data,
                     palette: palette,
-                    cardColor: cardColor,
-                    isDark: isDark)),
+                    cardColor: kpiColor,
+                    isDark: isDark,
+                    glass: boardStyle.glass,
+                    blur: boardStyle.blur)),
           ],
         ],
       ),
@@ -482,7 +553,8 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
   // ─── Board ────────────────────────────────────────────────────────────────
 
   Widget _buildBoard(ThemeData theme, KanbanBoardData board,
-      BoardDimension dimension, ColorSettings colorSettings, Color columnColor) {
+      BoardDimension dimension, ColorSettings colorSettings, Color columnColor,
+      bool notionTint) {
     const gap = 14.0;
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 8, 28, 14),
@@ -506,7 +578,8 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                   SizedBox(
                     width: colWidth,
                     child: _buildColumn(
-                        col, dimension, colorSettings, columnColor),
+                        col, dimension, colorSettings, columnColor, notionTint,
+                        theme),
                   ),
                 ],
               ],
@@ -518,16 +591,29 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
   }
 
   Widget _buildColumn(KanbanColumnData col, BoardDimension dimension,
-      ColorSettings colorSettings, Color columnColor) {
+      ColorSettings colorSettings, Color columnColor, bool notionTint,
+      ThemeData theme) {
     final (title, icon, accent) =
         _columnVisual(col, dimension, colorSettings);
+    // v1.12.18/v1.12.19: Notion-board family — each column is tinted by
+    // its own semantic accent over the surface (status / priority / project
+    // color), so the board reads as colored glass columns like the
+    // reference (pastel tints on light, deep tints on dark).
+    // v1.12.21: with Interface Glass on, its opacity slider scales the tint
+    // strength (glass off = the full reference tint).
+    final appGlass = ref.watch(appGlassStyleProvider);
+    final tintScale = appGlass.glass ? appGlass.opacity : 1.0;
+    final bg = notionTint
+        ? Color.alphaBlend(
+            accent.withOpacity(0.10 * tintScale), theme.colorScheme.surface)
+        : columnColor;
     return KanbanColumn(
       key: ValueKey('kanban-col-${dimension.name}-${col.key}'),
       data: col,
       title: title,
       icon: icon,
       accent: accent,
-      backgroundColor: columnColor,
+      backgroundColor: bg,
       isAdding: _addingColumnKey == col.key,
       onStartAdd: () => setState(() => _addingColumnKey = col.key),
       onCancelAdd: () => setState(() => _addingColumnKey = null),
@@ -641,12 +727,16 @@ class _KpiCard extends StatefulWidget {
   final ColorScheme palette;
   final Color cardColor;
   final bool isDark;
+  final bool glass;
+  final double blur;
 
   const _KpiCard({
     required this.data,
     required this.palette,
     required this.cardColor,
     required this.isDark,
+    this.glass = false,
+    this.blur = 14,
   });
 
   @override
@@ -662,6 +752,10 @@ class _KpiCardState extends State<_KpiCard> {
     final palette = widget.palette;
     final isDark = widget.isDark;
     final muted = palette.onSurface.withOpacity(0.5);
+    // v1.12.6: in glass mode the translucent gradient fill is painted INSIDE
+    // the backdrop blur (same recipe as TaskCard) so the canvas orbs frost
+    // through; the hover transform sits OUTSIDE the clip and moves with it.
+    final fillGradient = _kpiFillGradient;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -674,17 +768,9 @@ class _KpiCardState extends State<_KpiCard> {
             : Matrix4.identity(),
         decoration: BoxDecoration(
           // Pure card color with a subtle accent-tinted wash toward the
-          // bottom-right corner — the "texture" layer.
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              widget.cardColor,
-              Color.alphaBlend(
-                  data.accent.withOpacity(isDark ? 0.07 : 0.09),
-                  widget.cardColor),
-            ],
-          ),
+          // bottom-right corner — the "texture" layer. Glass mode paints
+          // the fill inside the blur below instead.
+          gradient: widget.glass ? null : fillGradient,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: palette.outline.withOpacity(_hovered ? 0.8 : 0.6),
@@ -710,28 +796,29 @@ class _KpiCardState extends State<_KpiCard> {
                   ),
                 ],
         ),
-        child: Stack(
-          children: [
-            // Left accent bar (translate_tool's KPI ::before).
-            Positioned(
-              left: 0,
-              top: 12,
-              bottom: 12,
-              child: Container(
-                width: 3,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      data.accent,
-                      data.accent.withOpacity(0.35),
-                    ],
+        child: _wrapGlass(
+          Stack(
+            children: [
+              // Left accent bar (translate_tool's KPI ::before).
+              Positioned(
+                left: 0,
+                top: 12,
+                bottom: 12,
+                child: Container(
+                  width: 3,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        data.accent,
+                        data.accent.withOpacity(0.35),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-            ),
             // Accent icon chip (top-right).
             Positioned(
               right: 10,
@@ -784,6 +871,39 @@ class _KpiCardState extends State<_KpiCard> {
               ),
             ),
           ],
+        ),
+      ),
+      ),
+    );
+  }
+
+  /// The card fill: base color with a subtle accent-tinted wash toward
+  /// the bottom-right corner. In glass mode cardColor already carries the
+  /// user's opacity, so both stops go translucent together.
+  LinearGradient get _kpiFillGradient => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          widget.cardColor,
+          Color.alphaBlend(widget.data.accent
+              .withOpacity(widget.isDark ? 0.07 : 0.09), widget.cardColor),
+        ],
+      );
+
+  /// v1.12.6: glass wrapper for the KPI card content — backdrop blur plus
+  /// the translucent gradient fill painted over it; plain mode untouched.
+  Widget _wrapGlass(Widget content) {
+    if (!widget.glass) return content;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: widget.blur, sigmaY: widget.blur),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: _kpiFillGradient,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: content,
         ),
       ),
     );
@@ -853,15 +973,23 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
     final theme = Theme.of(context);
     // Pure white card in light themes so it pops off the bg canvas.
     final isDark = theme.brightness == Brightness.dark;
+    // v1.12.6: the quick-add bar follows the card glass style so the whole
+    // dashboard reads as one material. v1.12.10: independent per-card style.
+    final style = ref.watch(boardCardStyleProvider);
     final cardColor = isDark
         ? ref.watch(themeModeProvider).palette.card
         : Colors.white;
+    final fillColor =
+        style.glass ? cardColor.withOpacity(style.opacity) : cardColor;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
-      decoration: BoxDecoration(
-        color: cardColor,
+    return GlassPanel(
+      glass: style.glass,
+      blur: style.blur,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        decoration: BoxDecoration(
+          color: fillColor,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: _expanded
@@ -1182,6 +1310,7 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
               ),
             ),
         ],
+      ),
       ),
     );
   }

@@ -3,20 +3,18 @@ import 'app_colors.dart';
 import 'font_stack.dart';
 
 enum AppThemeMode {
-  indigoLight,
-  freshGreen,
-  sunsetOrange,
-  lavenderPurple,
   warmSand,
-  // v1.7.0: three muted-quality light themes.
-  celadon,
+  // v1.7.0: muted-quality light theme.
   inkBlue,
-  dustyRose,
   dark,
   nordNight,
+  // v1.12.18: Notion-template near-black kanban (accent-tinted columns).
+  // v1.12.19: joined by midnight in the board-tinted family.
+  // v1.12.25: cocoaBoard removed per user request.
+  notionBoard,
+  midnightBoard,
   // v1.4.96: Catppuccin — four flavours × two accents.
-  catLatteLavender,
-  catLatteMauve,
+  // v1.12.17: both Latte (light) flavours removed.
   catFrappeMauve,
   catFrappeSapphire,
   catMacchiatoMauve,
@@ -24,32 +22,34 @@ enum AppThemeMode {
   catMochaMauve,
   catMochaLavender;
 
+  /// v1.12.19: themes with the Notion-template board look — every kanban
+  /// column is tinted by its own semantic accent (status / priority /
+  /// project color) and the cards float bright over the tint (translucent
+  /// on dark, opaque white on light). Other themes keep their own recipes.
+  /// v1.12.20: ALL light themes joined — the whole light family now renders
+  /// the reference dashboard (pastel columns + white cards).
+  bool get boardTinted => switch (this) {
+        AppThemeMode.warmSand ||
+        AppThemeMode.inkBlue ||
+        AppThemeMode.notionBoard ||
+        AppThemeMode.midnightBoard => true,
+        _ => false,
+      };
+
   String get label {
     switch (this) {
-      case AppThemeMode.indigoLight:
-        return 'Indigo Light';
-      case AppThemeMode.freshGreen:
-        return 'Fresh Green';
-      case AppThemeMode.sunsetOrange:
-        return 'Sunset Orange';
-      case AppThemeMode.lavenderPurple:
-        return 'Lavender Purple';
       case AppThemeMode.warmSand:
         return 'Warm Sand';
-      case AppThemeMode.celadon:
-        return 'Celadon';
       case AppThemeMode.inkBlue:
         return 'Ink Blue';
-      case AppThemeMode.dustyRose:
-        return 'Dusty Rose';
       case AppThemeMode.dark:
         return 'Dark';
       case AppThemeMode.nordNight:
         return 'Nord Night';
-      case AppThemeMode.catLatteLavender:
-        return 'Catppuccin Latte · Lavender';
-      case AppThemeMode.catLatteMauve:
-        return 'Catppuccin Latte · Mauve';
+      case AppThemeMode.notionBoard:
+        return 'Notion Board';
+      case AppThemeMode.midnightBoard:
+        return 'Midnight Board';
       case AppThemeMode.catFrappeMauve:
         return 'Catppuccin Frappé · Mauve';
       case AppThemeMode.catFrappeSapphire:
@@ -67,30 +67,18 @@ enum AppThemeMode {
 
   String get labelZh {
     switch (this) {
-      case AppThemeMode.indigoLight:
-        return '默认靛蓝';
-      case AppThemeMode.freshGreen:
-        return '清新淡绿';
-      case AppThemeMode.sunsetOrange:
-        return '日落橙';
-      case AppThemeMode.lavenderPurple:
-        return '薰衣草紫';
       case AppThemeMode.warmSand:
         return '暖沙';
-      case AppThemeMode.celadon:
-        return '青瓷';
       case AppThemeMode.inkBlue:
         return '黛蓝';
-      case AppThemeMode.dustyRose:
-        return '胭脂';
       case AppThemeMode.dark:
         return '暗夜模式';
       case AppThemeMode.nordNight:
         return '极夜蓝';
-      case AppThemeMode.catLatteLavender:
-        return '拿铁 · 薰衣草';
-      case AppThemeMode.catLatteMauve:
-        return '拿铁 · 木槿紫';
+      case AppThemeMode.notionBoard:
+        return '墨板';
+      case AppThemeMode.midnightBoard:
+        return '午夜看板';
       case AppThemeMode.catFrappeMauve:
         return '冰沙 · 木槿紫';
       case AppThemeMode.catFrappeSapphire:
@@ -108,30 +96,18 @@ enum AppThemeMode {
 
   ThemePalette get palette {
     switch (this) {
-      case AppThemeMode.indigoLight:
-        return AppColors.indigoLight;
-      case AppThemeMode.freshGreen:
-        return AppColors.freshGreen;
-      case AppThemeMode.sunsetOrange:
-        return AppColors.sunsetOrange;
-      case AppThemeMode.lavenderPurple:
-        return AppColors.lavenderPurple;
       case AppThemeMode.warmSand:
         return AppColors.warmSand;
-      case AppThemeMode.celadon:
-        return AppColors.celadon;
       case AppThemeMode.inkBlue:
         return AppColors.inkBlue;
-      case AppThemeMode.dustyRose:
-        return AppColors.dustyRose;
       case AppThemeMode.dark:
         return AppColors.dark;
       case AppThemeMode.nordNight:
         return AppColors.nordNight;
-      case AppThemeMode.catLatteLavender:
-        return AppColors.catLatteLavender;
-      case AppThemeMode.catLatteMauve:
-        return AppColors.catLatteMauve;
+      case AppThemeMode.notionBoard:
+        return AppColors.notionBoard;
+      case AppThemeMode.midnightBoard:
+        return AppColors.midnightBoard;
       case AppThemeMode.catFrappeMauve:
         return AppColors.catFrappeMauve;
       case AppThemeMode.catFrappeSapphire:
@@ -149,19 +125,13 @@ enum AppThemeMode {
 
   Brightness get brightness {
     switch (this) {
-      case AppThemeMode.indigoLight:
-      case AppThemeMode.freshGreen:
-      case AppThemeMode.sunsetOrange:
-      case AppThemeMode.lavenderPurple:
       case AppThemeMode.warmSand:
-      case AppThemeMode.celadon:
       case AppThemeMode.inkBlue:
-      case AppThemeMode.dustyRose:
-      case AppThemeMode.catLatteLavender:
-      case AppThemeMode.catLatteMauve:
         return Brightness.light;
       case AppThemeMode.dark:
       case AppThemeMode.nordNight:
+      case AppThemeMode.notionBoard:
+      case AppThemeMode.midnightBoard:
       case AppThemeMode.catFrappeMauve:
       case AppThemeMode.catFrappeSapphire:
       case AppThemeMode.catMacchiatoMauve:
@@ -176,9 +146,19 @@ enum AppThemeMode {
 class AppTheme {
   AppTheme._();
 
-  static ThemeData buildTheme(AppThemeMode mode) {
+  /// v1.12.5: [glass] + [glassOpacity] make the theme's surface and card
+  /// colors translucent so the app-wide interface-glass mode (app shell
+  /// panels + ordinary cards) reads as frosted glass over the ambient
+  /// backdrop. The scaffold background stays OPAQUE — it sits under
+  /// everything and must never show the black window through.
+  static ThemeData buildTheme(AppThemeMode mode,
+      {bool glass = false, double glassOpacity = 1.0}) {
     final p = mode.palette;
     final isDark = mode.brightness == Brightness.dark;
+    final surfaceColor =
+        glass ? p.surface.withOpacity(glassOpacity.clamp(0.0, 1.0)) : p.surface;
+    final cardColor =
+        glass ? p.card.withOpacity(glassOpacity.clamp(0.0, 1.0)) : p.card;
 
     return ThemeData(
       useMaterial3: true,
@@ -192,6 +172,7 @@ class AppTheme {
       // Use the surface color for the scaffold background so the window
       // background matches the content panels and title bar. This removes the
       // visible two-color "layered" frame (bg vs surface) around the content.
+      // v1.12.5: kept opaque even in glass mode (see doc comment above).
       scaffoldBackgroundColor: p.surface,
       colorScheme: ColorScheme(
         brightness: mode.brightness,
@@ -199,7 +180,7 @@ class AppTheme {
         onPrimary: Colors.white,
         secondary: p.primaryLight,
         onSecondary: Colors.white,
-        surface: p.surface,
+        surface: surfaceColor,
         onSurface: p.textPrimary,
         error: AppColors.error,
         onError: Colors.white,
@@ -216,12 +197,12 @@ class AppTheme {
           borderRadius: BorderRadius.circular(18),
           side: BorderSide(color: p.border.withOpacity(0.8), width: 1),
         ),
-        color: p.card,
+        color: cardColor,
         margin: EdgeInsets.zero,
       ),
       appBarTheme: AppBarTheme(
         elevation: 0,
-        backgroundColor: p.surface,
+        backgroundColor: surfaceColor,
         foregroundColor: p.textPrimary,
         surfaceTintColor: Colors.transparent,
       ),
@@ -434,6 +415,6 @@ class AppTheme {
   }
 
   // Legacy getters for backward compatibility
-  static ThemeData get light => buildTheme(AppThemeMode.indigoLight);
+  static ThemeData get light => buildTheme(AppThemeMode.inkBlue);
   static ThemeData get dark => buildTheme(AppThemeMode.dark);
 }

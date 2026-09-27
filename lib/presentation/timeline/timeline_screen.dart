@@ -7,7 +7,9 @@ import '../../data/models/task.dart';
 import '../../providers/date_nav_providers.dart';
 import '../../providers/task_providers.dart';
 import '../shared/app_date_picker.dart';
+import '../shared/hover_lift.dart';
 import '../shared/task_date_meta.dart';
+import '../shared/task_list_card.dart';
 import '../shared/task_tag_project_meta.dart';
 import '../shared/wheel_forward.dart';
 
@@ -30,10 +32,20 @@ class TimelineScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header with date picker / range controls
+              // v1.12.15: accent bar matches the Today page header.
               Padding(
                 padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
                 child: Row(
                   children: [
+                    Container(
+                      width: 4,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -291,50 +303,84 @@ class _TimelineItem extends StatelessWidget {
           const SizedBox(width: 12),
 
           // Timeline line + dot
-          Column(
-            children: [
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: statusColor.withOpacity(0.3),
-                    width: 3,
+          // v1.12.22: the node is a surface-filled ring with a colored core
+          // and a soft accent glow; the connecting line is a status-color
+          // gradient — the whole spine reads as lit from within instead of
+          // a flat gray rail.
+          // v1.12.23: the spine sits inside a recessed track (a narrow
+          // rounded groove) so the rail reads as carved INTO the page.
+          Container(
+            width: 18,
+            margin: const EdgeInsets.symmetric(horizontal: 1),
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.outline.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: statusColor, width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: statusColor.withOpacity(0.28),
+                        blurRadius: 7,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 4,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              if (!isLast)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? AppColors.darkBorder
-                        : AppColors.lightBorder,
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            statusColor.withOpacity(0.32),
+                            statusColor.withOpacity(0.08),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(1),
+                      ),
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(width: 16),
 
-          // Task card
+          // Task card — v1.12.13: hover lift + accent border highlight.
           Expanded(
-            child: GestureDetector(
-              onTap: () => context.push('/task/${task.id}'),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 20),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
+            child: HoverLift(
+              borderRadius: BorderRadius.circular(12),
+              accentColor: statusColor,
+              margin: const EdgeInsets.only(bottom: 20),
+              builder: (context, hovered) => GestureDetector(
+                onTap: () => context.push('/task/${task.id}'),
+                child: TaskListCard(
+                  accentColor: statusColor,
+                  highlighted: hovered,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? AppColors.darkBorder
-                        : AppColors.lightBorder,
-                  ),
-                ),
-                child: Column(
+                  padding: const EdgeInsets.fromLTRB(0, 13, 14, 13),
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
@@ -423,6 +469,7 @@ class _TimelineItem extends StatelessWidget {
                 ),
               ),
             ),
+          ),
           ),
         ],
       ),

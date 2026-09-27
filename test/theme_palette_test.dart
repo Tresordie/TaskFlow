@@ -17,10 +17,10 @@ import 'package:taskflow/core/theme/app_theme.dart';
 ///    so a refactor can't silently flatten them into each other.
 void main() {
   group('AppThemeMode catalog (v1.7.0, trimmed v1.8.0)', () {
-    test('18 themes with unique names and non-empty bilingual labels', () {
-      expect(AppThemeMode.values.length, 18);
+    test('12 themes with unique names and non-empty bilingual labels', () {
+      expect(AppThemeMode.values.length, 12);
       final names = AppThemeMode.values.map((m) => m.name).toSet();
-      expect(names.length, 18);
+      expect(names.length, 12);
       for (final mode in AppThemeMode.values) {
         expect(mode.label.isNotEmpty, isTrue, reason: '${mode.name}.label');
         expect(mode.labelZh.isNotEmpty, isTrue, reason: '${mode.name}.labelZh');
@@ -82,20 +82,14 @@ void main() {
 
     test('brightness grouping is complete and correct', () {
       const light = [
-        AppThemeMode.indigoLight,
-        AppThemeMode.freshGreen,
-        AppThemeMode.sunsetOrange,
-        AppThemeMode.lavenderPurple,
         AppThemeMode.warmSand,
-        AppThemeMode.celadon,
         AppThemeMode.inkBlue,
-        AppThemeMode.dustyRose,
-        AppThemeMode.catLatteLavender,
-        AppThemeMode.catLatteMauve,
       ];
       const dark = [
         AppThemeMode.dark,
         AppThemeMode.nordNight,
+        AppThemeMode.notionBoard,
+        AppThemeMode.midnightBoard,
         AppThemeMode.catFrappeMauve,
         AppThemeMode.catFrappeSapphire,
         AppThemeMode.catMacchiatoMauve,
@@ -113,36 +107,38 @@ void main() {
     });
   });
 
-  group('v1.7.0 signature colors (trimmed v1.8.0)', () {
+  group('v1.7.0 signature colors (trimmed v1.8.0 + v1.12.17)', () {
     // One anchor per kept palette: the accent that gives the theme its
     // identity, plus the canvas tone where the design intent lives there.
-    test('celadon keeps the jade accent on a porcelain canvas', () {
-      final p = AppThemeMode.celadon.palette;
-      expect(p.primary, const Color(0xFF3E7C6C));
-      expect(p.surface, const Color(0xFFFAFCFB));
-      expect(AppThemeMode.celadon.labelZh, '青瓷');
-    });
-
     test('inkBlue keeps the porcelain-ink accent', () {
       final p = AppThemeMode.inkBlue.palette;
       expect(p.primary, const Color(0xFF3F6C99));
       expect(AppThemeMode.inkBlue.labelZh, '黛蓝');
     });
 
-    test('dustyRose keeps the muted rose accent', () {
-      final p = AppThemeMode.dustyRose.palette;
-      expect(p.primary, const Color(0xFFA66470));
-      expect(AppThemeMode.dustyRose.labelZh, '胭脂');
+    test('notionBoard keeps the near-black kanban palette', () {
+      final p = AppThemeMode.notionBoard.palette;
+      expect(p.primary, const Color(0xFF2383E2));
+      expect(p.bg, const Color(0xFF0E0E0E));
+      expect(AppThemeMode.notionBoard.labelZh, '墨板');
+    });
+
+    test('midnightBoard keeps the cool slate with deep green', () {
+      final p = AppThemeMode.midnightBoard.palette;
+      expect(p.primary, const Color(0xFF4E8A67));
+      expect(p.bg, const Color(0xFF101317));
+      expect(AppThemeMode.midnightBoard.labelZh, '午夜看板');
     });
   });
 
   group('AppColors legacy block (v1.7.0 regression guard)', () {
-    test('legacy aliases stay in sync with indigoLight / dark palettes', () {
+    test('legacy aliases stay in sync with inkBlue / dark palettes', () {
       // The hardcoded isDark ? darkX : lightX call sites (~20 of them) read
       // these aliases, not the active palette — they must keep tracking the
-      // two base palettes.
-      expect(AppColors.lightBg, AppColors.indigoLight.bg);
-      expect(AppColors.lightTextPrimary, AppColors.indigoLight.textPrimary);
+      // two base palettes. v1.12.17: the light anchor moved from the
+      // deleted indigoLight to the kept inkBlue.
+      expect(AppColors.lightBg, AppColors.inkBlue.bg);
+      expect(AppColors.lightTextPrimary, AppColors.inkBlue.textPrimary);
       expect(AppColors.darkBg, AppColors.dark.bg);
       expect(AppColors.darkTextPrimary, AppColors.dark.textPrimary);
     });

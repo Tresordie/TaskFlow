@@ -37,7 +37,7 @@ lib/
 │   └── router.dart                    # GoRouter navigation
 ├── core/
 │   ├── theme/
-│   │   ├── app_colors.dart            # 18 theme palettes + priority colors
+│   │   ├── app_colors.dart            # 12 theme palettes + priority colors
 │   │   └── app_theme.dart             # ThemeData per palette
 │   └── markdown/
 │       ├── latex_support.dart         # $..$ / $$..$$ LaTeX in Markdown
@@ -85,7 +85,8 @@ test/
 - Sub-step checklists within tasks
 - Today kanban dashboard, Timeline, Calendar and Activity (heatmap) views
 - Quick-add bar with priority + due date
-- 18 color themes — muted lights (Celadon / Ink Blue / Dusty Rose) plus the earlier palette and Catppuccin sets; 3 curated CN/EN font pairings with **Inter × MiSans as the app default** (Plus Jakarta Sans × Noto Sans SC and Lexend × Noto Sans SC selectable); global font-size scaling (80–140%)
+- 12 color themes — 2 Notion-tuned lights (Warm Sand / Ink Blue porcelain) + 2 near-black board themes (Notion Board / Midnight) + Catppuccin darks; 3 curated CN/EN font pairings with **Inter × MiSans as the app default** (Plus Jakarta Sans × Noto Sans SC and Lexend × Noto Sans SC selectable); global font-size scaling (80–140%)
+- **Today dashboard themes**: every light theme tints each kanban column with its own semantic accent (status / priority / project) and floats bright task cards over it — the Notion board-template look; two dark board themes (Notion Board / Midnight) do the same with translucent cards
 - Responsive: sidebar on desktop, bottom nav on mobile
 - Local-first persistence via Isar (NoSQL)
 
@@ -136,7 +137,16 @@ test/
 - Quick-filter pills (All / Due Today / High Priority); drag a card onto another card to convert it into a sub-step; archived tasks render in the Done column
 - Rich task cards: 3-line description preview, latest execution-log note preview (type-colored icon: note / pass / fail / blocked), meta chips (priority / due date / project / tags), stats row (attachments / log entries / sub-task progress ring)
 - Ambient backdrop with drifting accent orbs; light themes use the “paper” recipe (tinted canvas + pure-white cards + glassy columns), dark themes keep the palette ladder
+- Card appearance settings in **Settings → Today Board Cards**: background opacity slider (0%–100%) and a **glass effect** toggle with adjustable blur strength (frosted-glass cards via backdrop blur + bright rim), with a live mini-canvas preview
+- **Interface Glass** (Settings) extends the same treatment to the whole app: title bar, sidebar and content panels become frosted glass over an ambient canvas, and the theme's surface/card colors go translucent app-wide — with panel opacity (0%–100%) and blur strength sliders; light themes keep the ambient canvas even without glass
 - 13 kanban contract tests (column bucketing / in-column ordering / quick filters / KPI math)
+
+### Phase 9 — Timeline / Calendar / Activity polish
+- **Timeline**: glowing spine — nodes render as surface rings with a colored core and halo, the connecting line is a status-color gradient, and the whole rail sits inside a recessed track
+- **Calendar**: hover-aware day cells, today carries a vertical accent gradient, the selected day floats with an accent shadow, weekend columns are tinted, the month switcher is a floating pill toolbar, and the day panel header gets the accent bar + task-count badge
+- **Activity**: heatmap cells light up with a top-left radial highlight and scale on hover, a Less→More legend explains the intensity scale, and the status stat cards are KPI-styled (semantic accent bar + tinted icon chip + accent value)
+- Task cards across all three pages share the Today card skin (left accent bar, top-lit fill, hover lift + layered shadows) via the shared `TaskListCard` / `HoverLift` components
+- 300-test suite including glass/theme/hover regressions
 
 ## Data locations
 
