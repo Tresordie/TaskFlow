@@ -258,7 +258,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
-- ✅ v1.12.26（已发版）：Calendar 日期格实体瓷砖质感（顶面受光渐变+镜面高光+斜面边框+层叠投影四层模型，静止→hover→today→selected 递进；今日/选中圆形日期徽章；周末反渐变凹陷；选中日光泽按键+主色光晕）；300 测试全过
+- ✅ v1.12.26（已发版）：Calendar 日期格实体瓷砖质感（顶面受光渐变+镜面高光+斜面边框+层叠投影四层模型，静止→hover→today→selected 递进；今日/选中圆形日期徽章；周末反渐变凹陷；选中日光泽按键+主色光晕）；300 测试全过、双推 `962cc7a`、包体 35.9MB
 - ✅ v1.12.25（已发版）：删除可可看板（12 款主题）+ Calendar 月份胶囊工具栏/日面板头部精修 + Activity 状态卡 KPI 化（accent 色条/图标章/accent 数值）+ 清除重复图例；300 测试全过
 - ✅ v1.12.24（已发版）：修 TaskListCard 无界高度塌缩（Calendar/Activity 任务列表空白）——IntrinsicHeight 内置组件；301 测试全过（+2 回归）
 - ✅ v1.12.23（已发版）：三页任务卡升级 Today 皮肤（TaskListCard 重生：白卡+顶面微亮+左渐变色条）+ Timeline 轨道脊柱 + Calendar 周末微着色 + Activity 统计卡图标章/热力图图例；299 测试全过
