@@ -563,6 +563,25 @@ class _DayTaskItem extends StatelessWidget {
   }
 }
 
+/// How many whole due-task pills fit inside a calendar day tile of
+/// [availHeight] px (the space left under the day-number row), capped at 3;
+/// the remaining tasks fold into a "+N more" line. The tile height is fixed
+/// by the grid's childAspectRatio and the grid can't grow, so a busy day must
+/// not paint pills past the tile edge (v1.12.31 overflow fix). Heights are
+/// deliberately conservative (a real pill row is ~14.7px) so the returned
+/// count never overflows the allotted height, at any window size.
+int calendarPillsThatFit(double availHeight, int total) {
+  const pillH = 16.0; // pill + its 1.5 bottom gap, rounded up
+  const moreH = 13.0; // the "+N more" line
+  final cap = total < 3 ? total : 3; // never claim more pills than exist
+  int shown = (availHeight / pillH).floor().clamp(0, cap);
+  if (shown < total) {
+    // Not everything fits — reserve a line for the "+N more" indicator.
+    shown = ((availHeight - moreH) / pillH).floor().clamp(0, cap);
+  }
+  return shown;
+}
+
 /// v1.12.26: one calendar day cell as a hover-aware tactile tile — the
 /// cell models a small physical surface with four layers (top-lit body
 /// gradient, specular top sheen, bevel border, layered drop shadow) that
@@ -847,24 +866,51 @@ class _DayCellState extends State<_DayCell> {
                         ],
                       ),
                       const SizedBox(height: 2),
-                      // Apple-style due-task pills (condensed titles)
-                      ...widget.dueTasks.take(3).map(
-                            (t) => Padding(
-                              padding: const EdgeInsets.only(bottom: 1.5),
-                              child: _DuePill(task: t, onSelected: isSelected),
-                            ),
-                          ),
-                      if (widget.dueTasks.length > 3)
-                        Text(
-                          '+${widget.dueTasks.length - 3} more',
-                          style: TextStyle(
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w600,
-                            color: isSelected
-                                ? Colors.white.withOpacity(0.85)
-                                : palette.onSurface.withOpacity(0.45),
+                      // Apple-style due-task pills. v1.12.31: the tile has a
+                      // fixed height (grid childAspectRatio) and the grid can't
+                      // grow (it sits in an Expanded with no scroll), so show
+                      // only as many WHOLE pills as fit the space left under the
+                      // day-number row and fold the rest into "+N more" — a busy
+                      // day can no longer spill outside its tile. The ClipRect is
+                      // a safety net for sub-pixel rounding at tiny cell sizes.
+                      Flexible(
+                        child: ClipRect(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final total = widget.dueTasks.length;
+                              final shown = calendarPillsThatFit(
+                                  constraints.maxHeight, total);
+                              final hidden = total - shown;
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ...widget.dueTasks.take(shown).map(
+                                        (t) => Padding(
+                                          padding: const EdgeInsets.only(
+                                              bottom: 1.5),
+                                          child: _DuePill(
+                                              task: t, onSelected: isSelected),
+                                        ),
+                                      ),
+                                  if (hidden > 0)
+                                    Text(
+                                      '+$hidden more',
+                                      style: TextStyle(
+                                        fontSize: 8.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: isSelected
+                                            ? Colors.white.withOpacity(0.85)
+                                            : palette.onSurface
+                                                .withOpacity(0.45),
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
                           ),
                         ),
+                      ),
                     ],
                   ),
                 ),
