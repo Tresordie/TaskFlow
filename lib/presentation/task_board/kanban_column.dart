@@ -134,9 +134,9 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
                     borderRadius: BorderRadius.all(Radius.circular(18)),
                     child: GlassSheen(
                       borderRadius: 17,
-                      topAlpha: 0.26,
-                      bottomAlpha: 0.05,
-                      rimAlpha: 0.60,
+                      topAlpha: 0.14,
+                      bottomAlpha: 0.03,
+                      rimAlpha: 0.30,
                       asPositioned: false,
                     ),
                   ),

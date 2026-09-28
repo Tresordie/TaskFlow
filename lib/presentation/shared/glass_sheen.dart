@@ -15,12 +15,17 @@ class GlassSheen extends StatelessWidget {
   final double borderRadius;
 
   /// Alpha of the top wash (light from above).
+  /// v1.12.34: dialed back from 0.32 — a strong wash plus a bright bottom rim
+  /// read as a curved lens bulging out of the card (user: 弯曲立体感太强).
+  /// Glass should be a flat lit slab: a whisper of top light, no bottom glow.
   final double topAlpha;
 
-  /// Alpha of the bottom refraction rim.
+  /// Alpha of the bottom refraction rim (0 = off).
   final double bottomAlpha;
 
   /// Where the top wash fades out (fraction of the surface height).
+  /// v1.12.34: fades sooner (0.45) so the light stays a thin edge glow rather
+  /// than a gradient across the whole face.
   final double topFade;
 
   /// Alpha of the 1px inner rim light (0 = off). A bright inner edge is the
@@ -36,9 +41,9 @@ class GlassSheen extends StatelessWidget {
   const GlassSheen({
     super.key,
     this.borderRadius = 14,
-    this.topAlpha = 0.32,
-    this.bottomAlpha = 0.12,
-    this.topFade = 0.55,
+    this.topAlpha = 0.14,
+    this.bottomAlpha = 0.03,
+    this.topFade = 0.45,
     this.rimAlpha = 0.0,
     this.asPositioned = true,
   });
@@ -87,7 +92,9 @@ class GlassSheen extends StatelessWidget {
   /// [base] (a translucent glass fill) with the specular profile composited
   /// over it — the same wash [GlassSheen] paints, folded into the fill.
   static LinearGradient fillOver(Color base,
-      {double topAlpha = 0.32, double bottomAlpha = 0.12, double topFade = 0.55}) {
+      {double topAlpha = 0.14,
+      double bottomAlpha = 0.03,
+      double topFade = 0.45}) {
     return LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,

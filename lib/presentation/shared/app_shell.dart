@@ -267,11 +267,19 @@ class _SidebarState extends ConsumerState<_Sidebar> {
           ),
           boxShadow: !glassOn
               ? [
+                  // v1.12.34: two-layer elevation (diffuse + contact) so the
+                  // selector sheet clearly floats above the page.
                   BoxShadow(
                     color: Colors.black.withOpacity(
-                        theme.brightness == Brightness.dark ? 0.15 : 0.05),
-                    blurRadius: 12,
-                    offset: const Offset(0, 3),
+                        theme.brightness == Brightness.dark ? 0.22 : 0.07),
+                    blurRadius: 18,
+                    offset: const Offset(2, 6),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(
+                        theme.brightness == Brightness.dark ? 0.18 : 0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
                   ),
                 ]
               : null,
@@ -440,30 +448,86 @@ class _NavItemState extends State<_NavItem> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isActive = widget.isActive;
+    final scheme = theme.colorScheme;
     // v1.4.29: active item gets a leading accent bar + a soft tinted pill;
     // hover (when inactive) reveals a faint wash so the nav feels alive.
+    // v1.12.34: the selector is now a physical control — the active pill is a
+    // raised key (top-lit gradient, accent rim, contact shadow + accent glow),
+    // hover lifts the row a pixel with a soft shadow, and the leading bar gets
+    // its own gradient and glow.
     final bg = isActive
-        ? theme.colorScheme.primary.withOpacity(0.12)
+        ? scheme.primary.withOpacity(0.12)
         : _hovered
-            ? theme.colorScheme.onSurface.withOpacity(0.05)
+            ? scheme.onSurface.withOpacity(0.05)
             : Colors.transparent;
+    final pillGradient = isActive
+        ? LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              scheme.primary.withOpacity(0.18),
+              scheme.primary.withOpacity(0.07),
+            ],
+          )
+        : null;
+    final shadows = isActive
+        ? [
+            // Accent glow — the pill is lit by the theme colour.
+            BoxShadow(
+              color: scheme.primary.withOpacity(0.20),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+            // Contact shadow — the pill sits ABOVE the sidebar sheet.
+            BoxShadow(
+              color: theme.brightness == Brightness.dark
+                  ? Colors.black.withOpacity(0.30)
+                  : Colors.black.withOpacity(0.07),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ]
+        : _hovered
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(
+                      theme.brightness == Brightness.dark ? 0.25 : 0.05),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : const <BoxShadow>[];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 1),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(9),
         child: InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(9),
           onTap: widget.onTap,
           onHover: (h) => setState(() => _hovered = h),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
             curve: Curves.easeOutCubic,
+            transform: _hovered && !isActive
+                ? (Matrix4.identity()..translate(0.0, -1.0))
+                : Matrix4.identity(),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(8),
+              // A gradient fill (not a flat tint) is what makes the pill read
+              // as a solid key rather than as a coloured rectangle.
+              gradient: pillGradient,
+              color: pillGradient != null ? null : bg,
+              borderRadius: BorderRadius.circular(9),
+              // Accent rim on the raised pill (uniform — a non-uniform Border
+              // cannot carry a borderRadius, pitfall 8.25).
+              border: Border.all(
+                color: isActive
+                    ? scheme.primary.withOpacity(0.30)
+                    : Colors.transparent,
+              ),
+              boxShadow: shadows,
             ),
             child: Row(
               children: [
@@ -475,10 +539,29 @@ class _NavItemState extends State<_NavItem> {
                   height: 18,
                   margin: const EdgeInsets.only(right: 8),
                   decoration: BoxDecoration(
-                    color: isActive
-                        ? theme.colorScheme.primary
-                        : Colors.transparent,
+                    // v1.12.34: the bar is a lit sliver (gradient + glow) so
+                    // the selected row reads as extruded, not painted.
+                    gradient: isActive
+                        ? LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              theme.colorScheme.primary,
+                              theme.colorScheme.primary.withOpacity(0.35),
+                            ],
+                          )
+                        : null,
+                    color: isActive ? null : Colors.transparent,
                     borderRadius: BorderRadius.circular(2),
+                    boxShadow: isActive
+                        ? [
+                            BoxShadow(
+                              color:
+                                  theme.colorScheme.primary.withOpacity(0.45),
+                              blurRadius: 6,
+                            ),
+                          ]
+                        : const <BoxShadow>[],
                   ),
                 ),
                 Icon(

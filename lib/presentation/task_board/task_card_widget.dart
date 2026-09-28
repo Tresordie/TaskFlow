@@ -410,7 +410,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
               // translucent rectangle into a glass slab.
               GlassSheen(
                 borderRadius: 14,
-                rimAlpha: isDark ? 0.20 : 0.85,
+                rimAlpha: isDark ? 0.12 : 0.30,
               ),
               content,
             ],

@@ -463,11 +463,32 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     required ValueChanged<T> onSelect,
   }) {
     final palette = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    // v1.12.34: the selector bar now reads as a physical control — the track
+    // is a groove pressed into the page (top-inner shade + hairline rim) and
+    // the selected segment is a raised key lit from above with an accent glow.
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: palette.onSurface.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(10),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            palette.onSurface.withOpacity(isDark ? 0.10 : 0.06),
+            palette.onSurface.withOpacity(isDark ? 0.05 : 0.03),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: palette.outline.withOpacity(0.28)),
+        boxShadow: [
+          // Fake inner shadow: Flutter has no native inset shadow, a bright
+          // bottom rim over the darkening gradient does the job.
+          BoxShadow(
+            color: Colors.white.withOpacity(isDark ? 0.06 : 0.55),
+            blurRadius: 1,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -480,9 +501,34 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color:
-                      current == value ? palette.primary : Colors.transparent,
+                  // The selected key: accent gradient + two-layer elevation.
+                  gradient: current == value
+                      ? LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            palette.primary,
+                            Color.alphaBlend(Colors.black.withOpacity(0.14),
+                                palette.primary),
+                          ],
+                        )
+                      : null,
+                  color: current == value ? null : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
+                  boxShadow: current == value
+                      ? [
+                          BoxShadow(
+                            color: palette.primary.withOpacity(0.35),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.10),
+                            blurRadius: 2,
+                            offset: const Offset(0, 1),
+                          ),
+                        ]
+                      : const <BoxShadow>[],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -492,7 +538,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                         icon(value),
                         size: 13,
                         color: current == value
-                            ? Colors.white
+                            ? palette.onPrimary
                             : palette.onSurface.withOpacity(0.55),
                       ),
                       const SizedBox(width: 5),
@@ -505,7 +551,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                             ? FontWeight.w600
                             : FontWeight.w400,
                         color: current == value
-                            ? Colors.white
+                            ? palette.onPrimary
                             : palette.onSurface.withOpacity(0.6),
                       ),
                     ),
@@ -951,7 +997,7 @@ class _KpiCardState extends State<_KpiCard> {
             children: [
               GlassSheen(
                 borderRadius: 16,
-                rimAlpha: widget.isDark ? 0.20 : 0.85,
+                rimAlpha: widget.isDark ? 0.12 : 0.30,
               ),
               content,
             ],
