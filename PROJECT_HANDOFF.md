@@ -261,7 +261,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
-- ✅ v1.12.29：琉璃玻璃升级为 iPhone 液态玻璃态——AppThemeMode.glassPreset（frostedGlass 自带 opacity 0.60/blur 22 签名通透度，选中即套用，prefersGlass 改为 glassPreset!=null）+ 调色板提亮（border/surface 更明亮）；307 测试全过
+- ✅ v1.12.29（已发版）：琉璃玻璃升级为 iPhone 液态玻璃态——AppThemeMode.glassPreset（frostedGlass 自带 opacity 0.60/blur 22 签名通透度，选中即套用，prefersGlass 改为 glassPreset!=null）+ 调色板提亮（border/surface 更明亮）；307 测试全过、双推 `ac287bb`、包体 36.0MB
 - ✅ v1.12.28（已发版）：琉璃玻璃浅色透明玻璃主题（frostedGlass：冷调近白画布+纯白卡+琉璃青蓝 primary #2E7DA3，第 14 款、boardTinted）+ AppThemeMode.prefersGlass（选中该主题自动 setGlass(true)，透明磨砂开箱即得）；306 测试全过、双推 `f735545`、包体 36.0MB
 - ✅ v1.12.27（已发版）：奶油玻璃 dashboard 主题（glassDashboard：暖炭玻璃阶梯 bg→surface→card + 奶油 primary + 深炭 onPrimary，第 13 款主题）+ ThemePalette.onPrimary 机制（默认白，其余主题零变化）+ 白字压 primary 的 9 处硬编码改读 onPrimary（日历选中态/对勾/spinner）；303 测试全过、双推 `c04236f`、包体 36.0MB
 - ✅ v1.12.26（已发版）：Calendar 日期格实体瓷砖质感（顶面受光渐变+镜面高光+斜面边框+层叠投影四层模型，静止→hover→today→selected 递进；今日/选中圆形日期徽章；周末反渐变凹陷；选中日光泽按键+主色光晕）；300 测试全过、双推 `962cc7a`、包体 35.9MB
