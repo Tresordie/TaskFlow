@@ -86,7 +86,7 @@ test/
 - Today kanban dashboard, Timeline, Calendar and Activity (heatmap) views
 - Quick-add bar with priority + due date
 - 13 color themes — 2 Notion-tuned lights (Warm Sand / Ink Blue porcelain) + 2 near-black board themes (Notion Board / Midnight) + Catppuccin darks + **Glass Dashboard** (warm-charcoal glass ladder with a cream accent and dark text on it); 3 curated CN/EN font pairings with **Inter × MiSans as the app default** (Plus Jakarta Sans × Noto Sans SC and Lexend × Noto Sans SC selectable); global font-size scaling (80–140%)
-- **Today dashboard themes**: every light theme tints each kanban column with its own semantic accent (status / priority / project) and floats bright task cards over it — the Notion board-template look; two dark board themes (Notion Board / Midnight) do the same with translucent cards. Warm Sand and Ink Blue go further: the **whole Today dashboard becomes one iOS glass material** — task cards, KPI stat cards, the quick-add bar and the column trays share a single recipe (translucent fill + backdrop blur + a top light wash + a bottom refraction rim + an inner highlight edge), frosted over drifting ambient light pools, tunable via Settings → Today Board Cards
+- **Today dashboard themes**: every light theme tints each kanban column with its own semantic accent (status / priority / project) and floats bright task cards over it — the Notion board-template look; two dark board themes (Notion Board / Midnight) do the same with translucent cards. Warm Sand and Ink Blue go further: the **whole Today dashboard becomes one iOS glass material** — task cards, KPI stat cards, the quick-add bar and the column trays share a single recipe (translucent fill + backdrop blur + a restrained top light wash + a faint inner highlight edge), frosted over drifting ambient light pools, tunable via Settings → Today Board Cards. The specular is deliberately quiet: glass here is a **flat lit slab lying on the page, not a bulging lens**
 - Responsive: sidebar on desktop, bottom nav on mobile
 - Local-first persistence via Isar (NoSQL)
 
@@ -146,7 +146,8 @@ test/
 - **Calendar**: day cells render as tactile tiles — a top-lit body gradient, specular top sheen, bevel border and layered drop shadow step up through rest → hover → today → selected; today / the selected day carry a circular date badge, the selected day reads as a glossy pressed key with an accent glow, and weekends invert the gradient (recessed wells); the month switcher is a floating pill toolbar and the day panel header gets the accent bar + task-count badge
 - **Activity**: heatmap cells light up with a top-left radial highlight and scale on hover, a Less→More legend explains the intensity scale, and the status stat cards are KPI-styled (semantic accent bar + tinted icon chip + accent value)
 - Task cards across all three pages share the Today card skin (left accent bar, top-lit fill, hover lift + layered shadows) via the shared `TaskListCard` / `HoverLift` components
-- 320-test suite including glass/theme/hover regressions
+- **Page selector with depth**: sidebar nav items are physical keys — the active one is a primary-gradient pill with an accent glow, a contact shadow and an accent rim, its leading bar is a glowing gradient sliver, hovered rows lift 1px with a soft shadow, and the sheet itself floats on a two-layer shadow; the two Today segmented controls (quick filter / board dimension) match the language — a recessed groove holding raised keys (selected segment in a primary gradient with a glow, text reading `onPrimary`)
+- 322-test suite including glass/theme/hover regressions, with a contract pinning the flat specular profile
 
 ## Data locations
 
