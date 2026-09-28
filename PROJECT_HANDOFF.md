@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-09-28 · 当前版本 **v1.12.32**（暖沙/黛蓝 Today 看板卡片改为 iOS 透明玻璃容器；13 款主题；309 测试）
+> 最后更新：2026-09-28 · 当前版本 **v1.12.32**（暖沙/黛蓝 Today 看板卡片改为 iOS 透明玻璃容器；13 款主题；309 测试；已发版双推）
 
 ---
 
@@ -264,7 +264,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
-- ✅ v1.12.32：暖沙/黛蓝 Today 看板卡片改为 iOS 透明玻璃容器（boardGlass 主题标志 + 卡片 backdrop blur+半透明白 0.72+顶部高光 sheen + 列底同步玻璃 wash；全局开关/滑块仍可覆盖）；+inkBlue 默认玻璃测试；309 测试全过
+- ✅ v1.12.32（已发版）：暖沙/黛蓝 Today 看板卡片改为 iOS 透明玻璃容器（boardGlass 主题标志 + 卡片 backdrop blur+半透明白 0.72+顶部高光 sheen + 列底同步玻璃 wash；全局开关/滑块仍可覆盖）；+inkBlue 默认玻璃测试；309 测试全过、双推 `0a46de9`、包体 36.0MB
 - ✅ v1.12.31（已发版）：修 Calendar 日期格任务胶囊溢出格外——胶囊区改 Flexible+ClipRect+LayoutBuilder，按格高用纯函数 calendarPillsThatFit 自适应只画放得下的整颗、其余折叠 +N more；+calendar_day_cell_test 5 例；308 测试全过、双推 `6af401d`、包体 36.0MB
 - ✅ v1.12.30（已发版）：删除琉璃玻璃主题 frostedGlass（枚举/标签/palette/brightness/boardTinted 五处同步删 + 其专用 glassPreset/prefersGlass 机制 + Settings 自动开玻璃分支 + 相关测试 −4；全局 Interface Glass 开关保留）；回到 13 款主题、303 测试全过、双推 `0ea449e`、包体 36.0MB
 - ✅ v1.12.29（已发版）：琉璃玻璃升级为 iPhone 液态玻璃态——AppThemeMode.glassPreset（frostedGlass 自带 opacity 0.60/blur 22 签名通透度，选中即套用，prefersGlass 改为 glassPreset!=null）+ 调色板提亮（border/surface 更明亮）；307 测试全过、双推 `ac287bb`、包体 36.0MB
