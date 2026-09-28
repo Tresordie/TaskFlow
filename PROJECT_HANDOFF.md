@@ -67,7 +67,7 @@ outputs/taskflow/
 │       ├── task_detail/          # task_detail_screen、execution_log_widget（内联编辑）
 │       ├── reports/              # reports_screen（分栏编辑器 + AI 生成）
 │       ├── work_log/ calendar/ heatmap/ ai_parse/ settings/
-├── test/                         # 29 个测试文件，309 个测试（含 extended_markdown/selectable_spacing/font_upgrade/gfm_extensions/theme_palette/kanban_board/board_card_style 契约）
+├── test/                         # 30 个测试文件，309 个测试（含 extended_markdown/selectable_spacing/font_upgrade/gfm_extensions/theme_palette/kanban_board/board_card_style/calendar_day_cell 契约）
 └── pubspec.yaml                  # version 字段与 kAppVersion 必须同步；fonts + FONT_LICENSES.md 声明
 ```
 
@@ -121,7 +121,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 
 1. **双远程同步**：每次提交必须推 GitHub（`https://github.com/Tresordie/TaskFlow.git`）+ Gitee（`https://gitee.com/simonyuan2019/TaskFlow.git`），显式单 URL 分别推，不用 `origin` 多 URL。
 2. **版本显示**：只在 Settings → About 显示 `kAppVersion`；侧边栏不显示版本号（用户明确要求，v1.4.93）。
-3. **主题体系**：13 个主题（v1.12.30）= 2 浅色（warmSand 暖沙/inkBlue 黛蓝）+ 2 暗色基础（dark/nordNight）+ **看板着色系 2 款**（notionBoard 墨板/midnightBoard 午夜看板，列底按语义 accent 着色）+ 6 Catppuccin 暗色（Frappe 木槿紫/蓝晶、Macchiato 木槿紫/青碧、Mocha 木槿紫/薰衣草）+ **glassDashboard 奶油玻璃**（v1.12.27，暖炭玻璃阶梯+奶油 primary #EFE9DA+深炭 onPrimary——全目录唯一"深字压浅 accent"的主题）。v1.12.21 删除奶油/珍珠看板（v1.12.20 已让全部浅色看板化，独立的浅色看板款冗余）；v1.12.25 删除可可看板；**v1.12.30 删除琉璃玻璃 frostedGlass**（连同其专用的 prefersGlass/glassPreset 机制与 Settings 选中自动开玻璃逻辑一并移除，全局 Interface Glass 开关本身保留）。已删除：v1.12.17 用户点名删 11 款（indigoLight/freshGreen/sunsetOrange/lavenderPurple/celadon/dustyRose/mintFresh/clearSky/peachCream/双 Latte）；**默认主题改为 inkBlue 黛蓝**（原默认 freshGreen 已删）。已删除：oceanBlue、sakuraPink、blueDark、purpleDark（v1.4.98）及 v1.7.0 曾上线的 espresso/deepSea/aubergine（v1.8.0 用户实测后要求删除）。主题按 `mode.name` 字符串持久化，删除枚举值安全（回退默认）；枚举按组插入（浅接 warmSand 后、深接 nordNight 后），Settings 列表/亮度/GFM alert 色自动适配。v1.12.27 起 ThemePalette 携带 `onPrimary`（压 primary 的前景色，默认白）——白字压 primary 的组件一律读它，不得硬编码 Colors.white。
+3. **主题体系**：13 个主题（v1.12.30）= 2 浅色（warmSand 暖沙/inkBlue 黛蓝）+ 2 暗色基础（dark/nordNight）+ **看板着色系 2 款**（notionBoard 墨板/midnightBoard 午夜看板，列底按语义 accent 着色）+ 6 Catppuccin 暗色（Frappe 木槿紫/蓝晶、Macchiato 木槿紫/青碧、Mocha 木槿紫/薰衣草）+ **glassDashboard 奶油玻璃**（v1.12.27，暖炭玻璃阶梯+奶油 primary #EFE9DA+深炭 onPrimary——全目录唯一"深字压浅 accent"的主题）。v1.12.21 删除奶油/珍珠看板（v1.12.20 已让全部浅色看板化，独立的浅色看板款冗余）；v1.12.25 删除可可看板；**v1.12.30 删除琉璃玻璃 frostedGlass**（连同其专用的 prefersGlass/glassPreset 机制与 Settings 选中自动开玻璃逻辑一并移除，全局 Interface Glass 开关本身保留）。已删除：v1.12.17 用户点名删 11 款（indigoLight/freshGreen/sunsetOrange/lavenderPurple/celadon/dustyRose/mintFresh/clearSky/peachCream/双 Latte）；**默认主题改为 inkBlue 黛蓝**（原默认 freshGreen 已删）。已删除：oceanBlue、sakuraPink、blueDark、purpleDark（v1.4.98）及 v1.7.0 曾上线的 espresso/deepSea/aubergine（v1.8.0 用户实测后要求删除）。主题按 `mode.name` 字符串持久化，删除枚举值安全（回退默认）；枚举按组插入（浅接 warmSand 后、深接 nordNight 后），Settings 列表/亮度/GFM alert 色自动适配。v1.12.27 起 ThemePalette 携带 `onPrimary`（压 primary 的前景色，默认白）——白字压 primary 的组件一律读它，不得硬编码 Colors.white。v1.12.32 起 AppThemeMode 携带 `boardGlass`（仅 warmSand/inkBlue）——这两个浅色主题的 Today 看板卡片默认渲染为 iOS 透明玻璃容器（backdrop blur + 半透明白 + 顶部高光 sheen），列底同步半透明 wash；全局「今日看板卡片」玻璃开关与透明度/模糊滑块仍可覆盖。
 4. **报告**：AI 总结必须基于描述+全部日志；技术要点（料号/固件版本/参数/测量值/测试条件/结果/根因）绝不过度压缩，照抄原文；5 章节齐备不可省。
 5. **编辑记录**：Execution Log 记录编辑为**输入区内联模式**（v1.4.90）：点编辑 → 内容/类型/附件载入底部输入区，记录高亮 + "Editing" 徽标 → Update 原位更新（保留 uid+时间戳）/ Cancel 取消。编辑对话框已删除。按钮布局：Cancel（描边）左 + Update（主题色）右（v1.4.95 等高等圆角）。
 6. **导出同源**：Export.md / Export.html / Email.html 均来自 `s.markdown`；Email 版适配 Gmail（表格布局+内联样式+无 `<style>` 块）。
