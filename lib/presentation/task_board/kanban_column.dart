@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
+import '../shared/glass_sheen.dart';
 import 'task_card_widget.dart';
 
 /// v1.10.0 / v1.11.0: one kanban column of the Today board
@@ -22,6 +23,10 @@ class KanbanColumn extends ConsumerStatefulWidget {
   /// Glassy column surface (between canvas and cards), resolved by the
   /// screen per brightness.
   final Color backgroundColor;
+  /// v1.12.33: paint the shared iOS specular layer (top wash + rim light) on
+  /// the column tray so the glass columns read as frosted trays holding
+  /// frosted cards, not as flat tinted rectangles.
+  final bool sheen;
   final bool isAdding;
   final VoidCallback onStartAdd;
   final VoidCallback onCancelAdd;
@@ -35,6 +40,7 @@ class KanbanColumn extends ConsumerStatefulWidget {
     required this.icon,
     required this.accent,
     required this.backgroundColor,
+    this.sheen = false,
     required this.isAdding,
     required this.onStartAdd,
     required this.onCancelAdd,
@@ -119,6 +125,22 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
           ),
           child: Stack(
             children: [
+              // v1.12.33: the tray itself is glass — same specular recipe as
+              // the cards (softer, since it is the backdrop they frost
+              // against). Clipped to the tray's own corner radius.
+              if (widget.sheen)
+                const Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.all(Radius.circular(18)),
+                    child: GlassSheen(
+                      borderRadius: 17,
+                      topAlpha: 0.26,
+                      bottomAlpha: 0.05,
+                      rimAlpha: 0.60,
+                      asPositioned: false,
+                    ),
+                  ),
+                ),
               // Accent hairline along the top edge (translate_tool's column
               // ::before).
               Positioned(

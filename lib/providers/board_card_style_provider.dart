@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'app_glass_provider.dart';
+import 'theme_provider.dart';
 
 /// v1.12.3: appearance of the task cards on the Today dashboard —
 /// background opacity and an optional frosted-glass (glassmorphism)
@@ -42,6 +44,11 @@ class BoardCardStyle {
   static const maxBlur = 30.0;
   static const defaultBlur = 14.0;
 
+  /// v1.12.32: fill alpha a board-glass theme (warmSand / inkBlue) uses while
+  /// the user has not tuned the opacity slider — translucent enough to read as
+  /// iOS frosted glass over the tinted column, still high enough for text.
+  static const iosGlassDefaultOpacity = 0.72;
+
   bool get isDefault =>
       opacity == 1.0 && !glass && blur == defaultBlur;
 
@@ -53,6 +60,84 @@ class BoardCardStyle {
         blur: blur ?? this.blur,
       );
 }
+
+/// v1.12.33: the single source of truth for "how glassy should the Today
+/// dashboard surfaces be", merging the user's Settings style with the theme's
+/// own iOS-glass default (`AppThemeMode.boardGlass`). Every Today surface —
+/// task cards, KPI stat cards, the quick-add bar, the column wash and the
+/// ambient orbs — resolves through this, so the dashboard never mixes a
+/// frosted card with a solid slab of the same material.
+class BoardGlassSpec {
+  /// Glass rendering (backdrop blur + translucent fill + sheen) is on.
+  final bool glass;
+
+  /// Fill alpha to use for the glass surface (1.0 = solid).
+  final double opacity;
+
+  /// Fill alpha for the dashboard's PANEL surfaces (KPI strip, quick-add
+  /// bar). Panels carry more text directly on the canvas than a card does,
+  /// so they follow the Interface Glass slider when it is on and never drop
+  /// below [panelOpacityFloor] — a 15% card fill is a deliberate choice, the
+  /// same value would make the stat strip unreadable.
+  final double panelOpacity;
+
+  /// Backdrop blur sigma for the card surfaces.
+  final double blur;
+
+  /// Backdrop blur sigma for the panel surfaces (Interface Glass drives the
+  /// shell panels, so they match its frosting when it is the active domain).
+  final double panelBlur;
+
+  /// Readability floor for [panelOpacity].
+  static const panelOpacityFloor = 0.5;
+
+  const BoardGlassSpec({
+    required this.glass,
+    required this.opacity,
+    required this.panelOpacity,
+    required this.blur,
+    required this.panelBlur,
+  });
+
+  static BoardGlassSpec resolve(BoardCardStyle style,
+      {required bool themeGlass, AppGlassStyle? appGlass}) {
+    // The theme can lead with glass even when the global toggle is off; the
+    // user's own choice always wins when it is on.
+    final glass = style.glass || themeGlass;
+    // Theme-led glass on an untouched slider falls back to the iOS default so
+    // the surface is actually translucent out of the box; a tuned slider is
+    // honored as-is (1.0 → solid).
+    final opacity =
+        (themeGlass && !style.glass && style.opacity >= 1.0)
+            ? BoardCardStyle.iosGlassDefaultOpacity
+            : style.opacity;
+    // Panels: the Interface Glass domain owns the surfaces around the cards
+    // (v1.12.10), so when it is on they take its opacity/blur; otherwise they
+    // follow the card recipe, floored for readability.
+    final interface = appGlass != null && appGlass.glass;
+    final rawPanel = interface ? appGlass.opacity : opacity;
+    final panelOpacity =
+        rawPanel < panelOpacityFloor ? panelOpacityFloor : rawPanel;
+    final panelBlur = interface ? appGlass.blur : style.blur;
+    return BoardGlassSpec(
+      glass: glass,
+      opacity: opacity,
+      panelOpacity: panelOpacity,
+      blur: style.blur,
+      panelBlur: panelBlur,
+    );
+  }
+}
+
+/// v1.12.33: the resolved glass recipe for the Today dashboard — watch this
+/// instead of combining the card style and the theme flag at every call site.
+final boardGlassSpecProvider = Provider<BoardGlassSpec>((ref) {
+  final style = ref.watch(boardCardStyleProvider);
+  final themeGlass = ref.watch(themeModeProvider.select((m) => m.boardGlass));
+  final appGlass = ref.watch(appGlassStyleProvider);
+  return BoardGlassSpec.resolve(style,
+      themeGlass: themeGlass, appGlass: appGlass);
+});
 
 final boardCardStyleProvider =
     StateNotifierProvider<BoardCardStyleNotifier, BoardCardStyle>((ref) {

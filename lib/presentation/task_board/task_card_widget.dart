@@ -5,13 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_theme.dart' show AppThemeMode;
 import '../../data/models/task.dart';
 import '../../providers/board_card_style_provider.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
 import '../../providers/theme_provider.dart';
 import '../shared/edit_task_dialog.dart';
+import '../shared/glass_sheen.dart';
 
 /// v1.10.0: kanban-style task card for the Today board (translate_tool-
 /// inspired): a 3px priority bar on the left edge, title with hover actions
@@ -33,11 +33,6 @@ class _TaskCardState extends ConsumerState<TaskCard> {
   // v1.4.29: brief press-down state so the card gives a subtle "dips then
   // springs back" tactile feedback on tap, in addition to the hover lift.
   bool _isPressed = false;
-
-  /// v1.12.32: fill alpha a board-glass theme (warmSand / inkBlue) uses when
-  /// the user hasn't tuned the card opacity — translucent enough to read as
-  /// iOS frosted glass over the tinted column, still high enough for text.
-  static const double _iosGlassDefaultOpacity = 0.72;
 
   @override
   Widget build(BuildContext context) {
@@ -153,12 +148,13 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     // through; glass mode renders the card as frosted glass (backdrop blur
     // + translucent fill + bright rim). Fully independent of the app-wide
     // Interface Glass section.
-    final style = ref.watch(boardCardStyleProvider);
     // v1.12.32: warmSand / inkBlue lead with an iOS-style frosted-glass card
     // look even when the global board-card glass toggle is off. The user's
     // own Settings choices (explicit glass on, or a tuned opacity) still win.
-    final boardGlass = ref.watch(themeModeProvider).boardGlass;
-    final useGlass = style.glass || boardGlass;
+    // v1.12.33: both rules now live in the shared BoardGlassSpec, so the task
+    // cards, the KPI strip and the quick-add bar can never drift apart.
+    final spec = ref.watch(boardGlassSpecProvider);
+    final useGlass = spec.glass;
     // v1.12.18/v1.12.19: board-tinted themes — the card floats bright over
     // the accent-tinted column. v1.12.21: the Card opacity slider WORKS on
     // light board-tinted themes too (100% = the reference pure-white card;
@@ -166,14 +162,9 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     // hard-coded and the sliders were dead. Dark board-tinted keeps its
     // fixed 80% translucent fill (the dark reference look).
     final notionTint = ref.watch(themeModeProvider).boardTinted;
-    // Effective fill alpha. On a glass-preferring light theme that the user
-    // hasn't tuned (opacity still at the untouched 1.0 and glass not explicitly
-    // on), fall back to the iOS-glass default so the card is actually
-    // translucent out of the box; otherwise honor the slider (1.0 → solid).
-    final cardOpacity =
-        (boardGlass && !style.glass && style.opacity >= 1.0)
-            ? _iosGlassDefaultOpacity
-            : style.opacity;
+    // Effective fill alpha (BoardGlassSpec.resolve: the iOS default on an
+    // untouched theme-glass card, otherwise exactly what the slider says).
+    final cardOpacity = spec.opacity;
     final fillColor = notionTint
         ? (isDark
             ? cardColor.withOpacity(0.80)
@@ -248,8 +239,9 @@ class _TaskCardState extends ConsumerState<TaskCard> {
             ),
             child: _wrapGlass(
               glass: useGlass,
-              blur: style.blur,
+              blur: spec.blur,
               fillColor: fillColor,
+              isDark: isDark,
               content: Stack(
               children: [
                 // Content (bottom of the stack).
@@ -389,13 +381,16 @@ class _TaskCardState extends ConsumerState<TaskCard> {
   /// card (frosted-glass look). Plain mode returns the content untouched.
   /// v1.12.4: the blur sigma comes from the user-adjustable style.
   /// v1.12.32: iOS-style frosted-glass card — backdrop blur + translucent
-  /// fill + a top specular sheen (light from above), all inside the rounded
-  /// clip. Renders whenever [glass] is on (the theme's boardGlass default or
+  /// fill + a specular sheen (light from above), all inside the rounded clip.
+  /// v1.12.33: the specular layer is the shared [GlassSheen] (top wash +
+  /// bottom refraction rim) so every Today surface uses one glass recipe.
+  /// Renders whenever [glass] is on (the theme's boardGlass default or
   /// the user's explicit Settings toggle); otherwise returns plain [content].
   Widget _wrapGlass({
     required bool glass,
     required double blur,
     required Color fillColor,
+    required bool isDark,
     required Widget content,
   }) {
     if (!glass) return content;
@@ -410,26 +405,12 @@ class _TaskCardState extends ConsumerState<TaskCard> {
           ),
           child: Stack(
             children: [
-              // Specular sheen — a white wash fading from the top edge, the
-              // hallmark of Apple's liquid glass. Behind the content so text
-              // stays crisp; ignored for hit-testing.
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.white.withOpacity(0.32),
-                          Colors.white.withOpacity(0.0),
-                        ],
-                        stops: const [0.0, 0.55],
-                      ),
-                    ),
-                  ),
-                ),
+              // Specular layer — BEHIND the content so text stays crisp and
+              // hit-testing is unaffected. The inner rim light is what turns a
+              // translucent rectangle into a glass slab.
+              GlassSheen(
+                borderRadius: 14,
+                rimAlpha: isDark ? 0.20 : 0.85,
               ),
               content,
             ],

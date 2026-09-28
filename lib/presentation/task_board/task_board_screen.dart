@@ -6,7 +6,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_theme.dart';
 import '../../data/models/task.dart';
 import '../../providers/app_glass_provider.dart';
 import '../../providers/board_card_style_provider.dart';
@@ -14,6 +13,7 @@ import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
 import '../../providers/theme_provider.dart';
 import '../shared/glass_panel.dart';
+import '../shared/glass_sheen.dart';
 import '../shared/suggestion_field.dart';
 import 'kanban_column.dart';
 
@@ -50,7 +50,6 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     // the cards (KPI / quick-add), the app interface style governs the
     // canvas and the columns (the interface surfaces around the cards).
     final appGlass = ref.watch(appGlassStyleProvider);
-    final boardStyle = ref.watch(boardCardStyleProvider);
     final today = DateFormat('EEEE, MMM d').format(DateTime.now());
     final theme = Theme.of(context);
     final appPalette = ref.watch(themeModeProvider).palette;
@@ -62,7 +61,10 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     // default, so the columns behind them must be a translucent glass wash too
     // (otherwise the card blur has an opaque surface to frost and the effect
     // disappears — same lesson as v1.12.6).
-    final boardGlass = ref.watch(themeModeProvider).boardGlass;
+    // v1.12.33: one resolved spec now governs EVERY surface on the page —
+    // task cards, KPI strip, quick-add bar, column wash and the ambient orbs
+    // the glass blurs through — so the dashboard reads as one material.
+    final boardGlass = ref.watch(boardGlassSpecProvider);
     // v1.11.1: light themes get pure-white cards on a tinted canvas
     // (the "paper" recipe) so they actually pop; dark themes keep the
     // palette's card color.
@@ -76,7 +78,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     // palettes converge to white when every layer goes translucent, so the
     // glass page read as washed-out gray (user screenshot: light theme
     // glass poor vs dark good).
-    final glassActive = appGlass.glass || boardStyle.glass || boardGlass;
+    final glassActive = appGlass.glass || boardGlass.glass;
     final canvasColor = isDark
         ? appPalette.bg
         : Color.alphaBlend(appPalette.border.withOpacity(glassActive ? 0.50 : 0.38),
@@ -99,11 +101,11 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     // its card-tone glass.
     final lightGlassAlpha = appGlass.glass
         ? appGlass.opacity
-        : (boardStyle.glass
-            ? max(BoardCardStyle.minOpacity, boardStyle.opacity - 0.2)
-            // v1.12.32: a board-glass theme with no explicit glass still gets
-            // a translucent column wash (matches the cards' iOS default).
-            : (boardGlass ? 0.72 : null));
+        // v1.12.32: a board-glass theme with no explicit glass still gets
+        // a translucent column wash (matches the cards' iOS default).
+        : (boardGlass.glass
+            ? max(BoardCardStyle.minOpacity, boardGlass.opacity - 0.2)
+            : null);
     late Color columnColor;
     if (isDark) {
       columnColor =
@@ -128,7 +130,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
           child: IgnorePointer(
             child: _buildBackdrop(
                 theme, appPalette, canvasColor, canvasDeepColor, isDark,
-                boardStyle.glass),
+                glassActive),
           ),
         ),
         Column(
@@ -152,7 +154,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                 error: (e, _) => Center(child: Text('Error: $e')),
                 data: (_) => _buildBody(theme, board, filter, quickFilter,
                     dimension, colorSettings, cardColor, columnColor,
-                    boardStyle, notionTint),
+                    boardGlass, notionTint),
               ),
             ),
           ],
@@ -170,9 +172,13 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
   /// the frosted columns and cards blur through.
   Widget _buildBackdrop(ThemeData theme, ThemePalette appPalette,
       Color canvasColor, Color canvasDeepColor, bool isDark,
-      bool boardGlass) {
+      bool glassActive) {
     final palette = theme.colorScheme;
-    final orbBoost = boardGlass ? 1.8 : 1.0;
+    final orbBoost = glassActive ? 3.0 : 1.0;
+    // v1.12.33: on a glass board the orbs ARE the wallpaper — frost is only
+    // perceivable when there is something colourful and moving to blur, so
+    // the pools grow as well as brighten.
+    final orbScale = glassActive ? 1.45 : 1.0;
 
     Widget orb(Color color, double size, double opacity) {
       return Container(
@@ -214,9 +220,31 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
             ),
           ),
         ),
-        Positioned(top: -140, right: -100, child: orb(palette.primary, 460, 0.07)),
-        Positioned(top: 300, left: -160, child: orb(palette.secondary, 420, 0.05)),
-        Positioned(bottom: -160, right: 160, child: orb(AppColors.success, 380, 0.04)),
+        Positioned(
+            top: -160,
+            right: -120,
+            child: orb(palette.primary, 460 * orbScale, 0.07)),
+        Positioned(
+            top: 300,
+            left: -170,
+            child: orb(palette.secondary, 420 * orbScale, 0.05)),
+        Positioned(
+            bottom: -170,
+            right: 160,
+            child: orb(AppColors.success, 380 * orbScale, 0.04)),
+        // v1.12.33: a fourth pool behind the board itself — frost is only
+        // perceivable when there is colour directly BEHIND the glass, and the
+        // three corner orbs sit outside the columns' footprint.
+        if (glassActive)
+          Positioned(
+              top: 260,
+              left: 240,
+              child: orb(AppColors.info, 560, 0.055)),
+        if (glassActive)
+          Positioned(
+              bottom: 120,
+              right: 320,
+              child: orb(palette.primary, 520, 0.05)),
       ],
     );
   }
@@ -327,7 +355,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
       ColorSettings colorSettings,
       Color cardColor,
       Color columnColor,
-      BoardCardStyle boardStyle,
+      BoardGlassSpec boardGlass,
       bool notionTint) {
     final boardVisible = board.columns.any((c) => c.tasks.isNotEmpty);
     final showEmptyState = !boardVisible &&
@@ -337,7 +365,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildKpiRow(theme, board, cardColor, boardStyle),
+        _buildKpiRow(theme, board, cardColor, boardGlass),
         _buildToolbar(theme, quickFilter, dimension),
         Expanded(
           child: showEmptyState
@@ -360,7 +388,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                     key: ValueKey('board-${dimension.name}'),
                     child: _buildBoard(
                         theme, board, dimension, colorSettings, columnColor,
-                        notionTint),
+                        notionTint, boardGlass.glass),
                   ),
                 ),
         ),
@@ -493,13 +521,19 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
   // ─── KPI stat cards ───────────────────────────────────────────────────────
 
   Widget _buildKpiRow(ThemeData theme, KanbanBoardData board, Color cardColor,
-      BoardCardStyle boardStyle) {
+      BoardGlassSpec boardGlass) {
     final palette = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     // v1.12.6: KPI cards follow the card style — translucent fill (+ backdrop
     // blur) in glass mode so the whole dashboard reads as one material.
-    final kpiColor =
-        boardStyle.glass ? cardColor.withOpacity(boardStyle.opacity) : cardColor;
+    // v1.12.33: they read the SAME resolved spec as the task cards, so on the
+    // iOS-glass themes (warmSand / inkBlue) the stat strip frosts by default
+    // instead of staying a solid white slab above the glass columns. Panels
+    // use the spec's panel recipe (Interface Glass drives them, floored for
+    // readability) — a 15% card fill must not make the numbers vanish.
+    final kpiColor = boardGlass.glass
+        ? cardColor.withOpacity(boardGlass.panelOpacity)
+        : cardColor;
     final cards = [
       _KpiCardData(
         label: "TODAY'S PROGRESS",
@@ -549,8 +583,8 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                     palette: palette,
                     cardColor: kpiColor,
                     isDark: isDark,
-                    glass: boardStyle.glass,
-                    blur: boardStyle.blur)),
+                    glass: boardGlass.glass,
+                    blur: boardGlass.panelBlur)),
           ],
         ],
       ),
@@ -561,7 +595,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
 
   Widget _buildBoard(ThemeData theme, KanbanBoardData board,
       BoardDimension dimension, ColorSettings colorSettings, Color columnColor,
-      bool notionTint) {
+      bool notionTint, bool glassTray) {
     const gap = 14.0;
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 8, 28, 14),
@@ -586,7 +620,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                     width: colWidth,
                     child: _buildColumn(
                         col, dimension, colorSettings, columnColor, notionTint,
-                        theme),
+                        theme, glassTray),
                   ),
                 ],
               ],
@@ -599,7 +633,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
 
   Widget _buildColumn(KanbanColumnData col, BoardDimension dimension,
       ColorSettings colorSettings, Color columnColor, bool notionTint,
-      ThemeData theme) {
+      ThemeData theme, bool glassTray) {
     final (title, icon, accent) =
         _columnVisual(col, dimension, colorSettings);
     // v1.12.18/v1.12.19: Notion-board family — each column is tinted by
@@ -621,6 +655,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
       icon: icon,
       accent: accent,
       backgroundColor: bg,
+      sheen: glassTray,
       isAdding: _addingColumnKey == col.key,
       onStartAdd: () => setState(() => _addingColumnKey = col.key),
       onCancelAdd: () => setState(() => _addingColumnKey = null),
@@ -899,6 +934,8 @@ class _KpiCardState extends State<_KpiCard> {
 
   /// v1.12.6: glass wrapper for the KPI card content — backdrop blur plus
   /// the translucent gradient fill painted over it; plain mode untouched.
+  /// v1.12.33: the same [GlassSheen] specular layer as the task cards, so the
+  /// stat strip and the kanban cards are literally one material.
   Widget _wrapGlass(Widget content) {
     if (!widget.glass) return content;
     return ClipRRect(
@@ -910,7 +947,15 @@ class _KpiCardState extends State<_KpiCard> {
             gradient: _kpiFillGradient,
             borderRadius: BorderRadius.circular(16),
           ),
-          child: content,
+          child: Stack(
+            children: [
+              GlassSheen(
+                borderRadius: 16,
+                rimAlpha: widget.isDark ? 0.20 : 0.85,
+              ),
+              content,
+            ],
+          ),
         ),
       ),
     );
@@ -982,21 +1027,28 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
     final isDark = theme.brightness == Brightness.dark;
     // v1.12.6: the quick-add bar follows the card glass style so the whole
     // dashboard reads as one material. v1.12.10: independent per-card style.
-    final style = ref.watch(boardCardStyleProvider);
+    // v1.12.33: reads the RESOLVED spec — on warmSand / inkBlue the bar is an
+    // iOS glass container by default, like the KPI strip and the cards.
+    final boardGlass = ref.watch(boardGlassSpecProvider);
     final cardColor = isDark
         ? ref.watch(themeModeProvider).palette.card
         : Colors.white;
-    final fillColor =
-        style.glass ? cardColor.withOpacity(style.opacity) : cardColor;
+    final fillColor = boardGlass.glass
+        ? cardColor.withOpacity(boardGlass.panelOpacity)
+        : cardColor;
 
     return GlassPanel(
-      glass: style.glass,
-      blur: style.blur,
+      glass: boardGlass.glass,
+      blur: boardGlass.panelBlur,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
         decoration: BoxDecoration(
-          color: fillColor,
+          // v1.12.33: in glass mode the fill carries the shared specular
+          // profile (bright top face, refraction rim along the bottom edge).
+          gradient:
+              boardGlass.glass ? GlassSheen.fillOver(fillColor) : null,
+          color: boardGlass.glass ? null : fillColor,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: _expanded
