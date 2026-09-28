@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-09-27 · 当前版本 **v1.12.26**（Calendar 日期格实体瓷砖质感；12 款主题；300 测试；已发版双推）
+> 最后更新：2026-09-28 · 当前版本 **v1.12.27**（奶油玻璃 dashboard 主题 + onPrimary 机制；13 款主题；303 测试）
 
 ---
 
@@ -121,7 +121,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 
 1. **双远程同步**：每次提交必须推 GitHub（`https://github.com/Tresordie/TaskFlow.git`）+ Gitee（`https://gitee.com/simonyuan2019/TaskFlow.git`），显式单 URL 分别推，不用 `origin` 多 URL。
 2. **版本显示**：只在 Settings → About 显示 `kAppVersion`；侧边栏不显示版本号（用户明确要求，v1.4.93）。
-3. **主题体系**：13 个主题（v1.12.21）= 2 浅色（warmSand 暖沙/inkBlue 黛蓝）+ 3 暗色基础（dark/nordNight）+ **看板着色系 3 款**（notionBoard 墨板/cocoaBoard 可可看板/midnightBoard 午夜看板，列底按语义 accent 着色）+ 5 Catppuccin 暗色（Frappe 木槿紫/蓝晶、Macchiato 木槿紫/青碧、Mocha 木槿紫/薰衣草）。v1.12.21 删除奶油/珍珠看板（v1.12.20 已让全部浅色看板化，独立的浅色看板款冗余）。已删除：v1.12.17 用户点名删 11 款（indigoLight/freshGreen/sunsetOrange/lavenderPurple/celadon/dustyRose/mintFresh/clearSky/peachCream/双 Latte）；**默认主题改为 inkBlue 黛蓝**（原默认 freshGreen 已删）。已删除：oceanBlue、sakuraPink、blueDark、purpleDark（v1.4.98）及 v1.7.0 曾上线的 espresso/deepSea/aubergine（v1.8.0 用户实测后要求删除）。主题按 `mode.name` 字符串持久化，删除枚举值安全（回退默认）；枚举按组插入（浅接 warmSand 后、深接 nordNight 后），Settings 列表/亮度/GFM alert 色自动适配。
+3. **主题体系**：13 个主题（v1.12.27）= 2 浅色（warmSand 暖沙/inkBlue 黛蓝）+ 2 暗色基础（dark/nordNight）+ **看板着色系 2 款**（notionBoard 墨板/midnightBoard 午夜看板，列底按语义 accent 着色）+ 6 Catppuccin 暗色（Frappe 木槿紫/蓝晶、Macchiato 木槿紫/青碧、Mocha 木槿紫/薰衣草）+ **glassDashboard 奶油玻璃**（v1.12.27，暖炭玻璃阶梯+奶油 primary #EFE9DA+深炭 onPrimary——全目录唯一"深字压浅 accent"的主题）。v1.12.21 删除奶油/珍珠看板（v1.12.20 已让全部浅色看板化，独立的浅色看板款冗余）；v1.12.25 删除可可看板。已删除：v1.12.17 用户点名删 11 款（indigoLight/freshGreen/sunsetOrange/lavenderPurple/celadon/dustyRose/mintFresh/clearSky/peachCream/双 Latte）；**默认主题改为 inkBlue 黛蓝**（原默认 freshGreen 已删）。已删除：oceanBlue、sakuraPink、blueDark、purpleDark（v1.4.98）及 v1.7.0 曾上线的 espresso/deepSea/aubergine（v1.8.0 用户实测后要求删除）。主题按 `mode.name` 字符串持久化，删除枚举值安全（回退默认）；枚举按组插入（浅接 warmSand 后、深接 nordNight 后），Settings 列表/亮度/GFM alert 色自动适配。v1.12.27 起 ThemePalette 携带 `onPrimary`（压 primary 的前景色，默认白）——白字压 primary 的组件一律读它，不得硬编码 Colors.white。
 4. **报告**：AI 总结必须基于描述+全部日志；技术要点（料号/固件版本/参数/测量值/测试条件/结果/根因）绝不过度压缩，照抄原文；5 章节齐备不可省。
 5. **编辑记录**：Execution Log 记录编辑为**输入区内联模式**（v1.4.90）：点编辑 → 内容/类型/附件载入底部输入区，记录高亮 + "Editing" 徽标 → Update 原位更新（保留 uid+时间戳）/ Cancel 取消。编辑对话框已删除。按钮布局：Cancel（描边）左 + Update（主题色）右（v1.4.95 等高等圆角）。
 6. **导出同源**：Export.md / Export.html / Email.html 均来自 `s.markdown`；Email 版适配 Gmail（表格布局+内联样式+无 `<style>` 块）。
@@ -136,6 +136,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 
 | 日期/版本 | 决策 | 理由 |
 |---|---|---|
+| v1.12.27 | **奶油玻璃 dashboard 主题（glassDashboard）+ onPrimary 机制**（用户："参考图片做一个dashboard主题"——深色毛玻璃 dashboard 参考图，暖炭玻璃面板+奶油色 accent 胶囊/按钮，奶油底上是深炭色文字）：① **新调色板 glassDashboard**——bg #2E2B28（深暖灰画布）→ surface #3B3835 → card #4A4640（对应参考图玻璃层层浮起），文字 #F3F0E9/#BCB6AB，primary **#EFE9DA 奶油色**（选中胶囊/选中日/确认按钮），枚举追加为第 13 款（按 `mode.name` 持久化，追加安全）；② **ThemePalette 新增可选 `onPrimary` 字段**（默认白色——其余 12 款零影响；奶油主题设深炭 #33302B，对比度≈11:1），接入 ColorScheme.onPrimary/onSecondary + ElevatedButton 前景；③ **白字压 primary 的硬编码全部改读 onPrimary**——Calendar 选中日徽章/日期数字/任务点/选中格上 `_DuePill`、Settings 主题卡+字体卡对勾、About 渐变图标、6 处按钮 loading spinner（Settings/AI Prompts/AI Parse/Reports/Work Log）；**保持白色**的场景：success 绿按钮（AppColors.success 底，非 primary）、执行日志状态色圆圈（语义色底）、图片查看器关闭按钮（黑色遮罩底）。测试：主题数 12→13、暗色分组+签名色+onPrimary 契约（其余恒白/奶油必深） | 参考图的精髓是"奶油底深字"——与全目录"白字压彩底"相反，逐处改白字会漏且脆；正解=把 on-accent 前景色变成调色板一等公民（Material 本就有 onPrimary 槽位），默认值保住向后兼容；spinner 白字是隐形雷（奶油按钮上白圈直接消失）；主题持久化按 name 所以追加枚举不破坏已存偏好 |
 | v1.12.26 | **Calendar 日期格实体瓷砖质感**（用户："Calendar页面中日期视觉感，质感以及立体感更强"）：`_DayCell` 重构为**四层质感模型**——①**顶面受光渐变**（浅色主题 card≈surface 渐变不可见，手动拉开：顶部向纯白 lerp 50%、底部向 onSurface lerp 4.5%；深色主题用 cardTheme.color→surface 天然色阶）；②**镜面高光**——Stack 内 Positioned(1) 白色顶部渐变 sheen（inset 1px 不盖边框，圆角随外框 -2），强度 0（周末）→0.05→0.10（hover）→0.12（today）→0.26（选中）；③**斜面边框**+**层叠投影**（选中=primary 光晕 blur12 y4 + 贴地接触影双层）；强度随 静止→hover→today→selected 递进；④**周末反转渐变**（上深下浅=凹陷井）；⑤**今日/选中日 22px 圆形日期徽章**（Apple Calendar 锚点，选中=白 22% 底+白边，今日=primary 14% 底+主色边），数字 13.5px height1.0 w600/w800；格间距 margin 2→3 强化"独立按键"分块；Container padding 移入 Stack 内层 Positioned.fill（sheen 需贴边框）。验证轮：临时 golden 测试（浅色选中+hover / 深色范围模式，FontLoader 加载 Manrope/MiSans）2x 放大逐格目检后删除 | 浅色主题 card 与 surface 都是近白色，靠默认色阶做不出立体感——必须手动构造明暗；sheen 是廉价高光手法（1 个渐变=玻璃瓷釉感）；周末反渐变让工作日/休息日从"色块差异"升级为"凸起/凹陷"触感隐喻；全部状态分支都给 gradient（无 null）让 AnimatedContainer 状态切换时渐变平滑插值；golden 目检 catching 了浅色渐变不可见问题（第一版 card→surface 渐变在 inkBlue 下纯隐形） |
 | v1.12.25 | **删除可可看板 + Calendar/Activity 精修**（用户："①删除主题：可可看板；②Calendar 改进美观/质感/立体感；③Activity 任务状态显示卡的美观/质感/立体感"）：① **cocoaBoard 五处同步删除**（枚举/标签/palette/brightness/调色板+boardTinted 成员），剩 **12 款**（2 浅+3 暗基础+2 看板着色+5 Catppuccin）；② **Calendar**——月份切换器从裸控件改为**居中胶囊工具栏**（surface 底+发丝线+投影，标题 titleMedium w600），日面板头部加**页面级 accent 竖条+主色 10% 圆形计数徽章**（数量从文字行拆出）；③ **Activity `_StatCard` KPI 化**——新增 `accentColor` 参数（Today=primary/Completed=success/Total=info），**左渐变 accent 条**（同 TaskListCard 配方）+ accent 10% 图标章 + **accent 色数值**（w800）+ 10px 大写字距标签；IntrinsicHeight 内置（stretch Row 在页面 Column 的无界子高度下会塌缩，同 v1.12.24 教训）；移除 v1.12.23 遗留的页面级 `_buildLegend`（与网格内 `_HeatLegend` 重复） | 状态卡是"任务状态显示卡"——按语义分色（蓝/绿/蓝）让数值一眼可辨而非全靠主色；IntrinsicHeight 内置进 _StatCard（v1.12.24 教训的肌肉记忆）；旧 _buildLegend 是 v1.12.23 双图例重复的实现遗漏，顺手清除 |
 | v1.12.24 | **修 TaskListCard 无界高度塌缩**（用户截图："Calendar 选定日期，日期中的任务列表没有展示"——右侧日面板只见"3 tasks"标题，列表空白）：根因=TaskListCard 内 `Row(crossAxisAlignment: stretch)` 在 **ListView/无界高度容器**里无法解析高度（Timeline 页正常只因外层早有 IntrinsicHeight），stretch 色条+Expanded 内容塌缩为零、任务卡整体不可见。修复=**IntrinsicHeight 内置进 TaskListCard**（三页共用一处修复）；新增 task_list_card_test.dart 两条回归：ListView 内正常渲染无异常、色条高度>10px（塌缩时仅剩 6px 边距） | stretch Row 的宿主高度必须有界；共享组件的布局前提（宿主有界）要内置进组件而不是依赖每个调用点记得包 IntrinsicHeight；IntrinsicHeight 对文本型列表项的开销可接受；Calendar/Activity 两列表同获益 |
@@ -258,6 +259,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
+- ✅ v1.12.27：奶油玻璃 dashboard 主题（glassDashboard：暖炭玻璃阶梯 bg→surface→card + 奶油 primary + 深炭 onPrimary，第 13 款主题）+ ThemePalette.onPrimary 机制（默认白，其余主题零变化）+ 白字压 primary 的 9 处硬编码改读 onPrimary（日历选中态/对勾/spinner）；303 测试全过
 - ✅ v1.12.26（已发版）：Calendar 日期格实体瓷砖质感（顶面受光渐变+镜面高光+斜面边框+层叠投影四层模型，静止→hover→today→selected 递进；今日/选中圆形日期徽章；周末反渐变凹陷；选中日光泽按键+主色光晕）；300 测试全过、双推 `962cc7a`、包体 35.9MB
 - ✅ v1.12.25（已发版）：删除可可看板（12 款主题）+ Calendar 月份胶囊工具栏/日面板头部精修 + Activity 状态卡 KPI 化（accent 色条/图标章/accent 数值）+ 清除重复图例；300 测试全过
 - ✅ v1.12.24（已发版）：修 TaskListCard 无界高度塌缩（Calendar/Activity 任务列表空白）——IntrinsicHeight 内置组件；301 测试全过（+2 回归）

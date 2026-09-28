@@ -792,16 +792,19 @@ class _DayCellState extends State<_DayCell> {
                             alignment: Alignment.center,
                             // Today / selected carry a circular date badge —
                             // the Apple-Calendar anchor that makes the day
-                            // number pop off the tile.
+                            // number pop off the tile. v1.12.27: the badge
+                            // tints follow onPrimary, not white, so they
+                            // stay visible on light accents (cream) too.
                             decoration: (isToday || isSelected)
                                 ? BoxDecoration(
                                     shape: BoxShape.circle,
                                     color: isSelected
-                                        ? Colors.white.withOpacity(0.22)
+                                        ? palette.onPrimary.withOpacity(0.22)
                                         : palette.primary.withOpacity(0.14),
                                     border: Border.all(
                                       color: isSelected
-                                          ? Colors.white.withOpacity(0.45)
+                                          ? palette.onPrimary
+                                              .withOpacity(0.45)
                                           : palette.primary.withOpacity(0.50),
                                     ),
                                   )
@@ -815,7 +818,7 @@ class _DayCellState extends State<_DayCell> {
                                     ? FontWeight.w800
                                     : FontWeight.w600,
                                 color: isSelected
-                                    ? Colors.white
+                                    ? palette.onPrimary
                                     : isToday
                                         ? palette.primary
                                         : palette.onSurface
@@ -834,7 +837,7 @@ class _DayCellState extends State<_DayCell> {
                                     const EdgeInsets.symmetric(horizontal: 1),
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? Colors.white.withOpacity(0.8)
+                                      ? palette.onPrimary.withOpacity(0.8)
                                       : palette.primary.withOpacity(0.7),
                                   shape: BoxShape.circle,
                                 ),
@@ -890,18 +893,22 @@ class _DuePill extends StatelessWidget {
     final isCompleted = task.status == TaskStatus.completed ||
         task.status == TaskStatus.archived;
     final accent = isCompleted ? AppColors.success : AppColors.warning;
+    // v1.12.27: on a selected tile the pill sits on the primary fill, so
+    // its foreground follows onPrimary (dark on cream accents) instead of
+    // hardcoded white.
+    final onAccent = theme.colorScheme.onPrimary;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
       decoration: BoxDecoration(
         color: onSelected
-            ? Colors.white.withOpacity(0.2)
+            ? onAccent.withOpacity(0.2)
             : accent.withOpacity(0.12),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
           color: onSelected
-              ? Colors.white.withOpacity(0.35)
+              ? onAccent.withOpacity(0.35)
               : accent.withOpacity(0.28),
           width: 0.7,
         ),
@@ -912,7 +919,7 @@ class _DuePill extends StatelessWidget {
             width: 3.5,
             height: 3.5,
             decoration: BoxDecoration(
-              color: onSelected ? Colors.white : accent,
+              color: onSelected ? onAccent : accent,
               shape: BoxShape.circle,
             ),
           ),
@@ -931,7 +938,7 @@ class _DuePill extends StatelessWidget {
                     ? TextDecoration.lineThrough
                     : null,
                 color: onSelected
-                    ? Colors.white
+                    ? onAccent
                     : theme.colorScheme.onSurface.withOpacity(0.8),
               ),
             ),

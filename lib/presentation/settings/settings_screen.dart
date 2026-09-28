@@ -257,8 +257,10 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.check_circle_outline,
-                    color: Colors.white, size: 20),
+                child: Icon(Icons.check_circle_outline,
+                    // v1.12.27: on-accent foreground (dark on cream accents).
+                    color: theme.colorScheme.onPrimary,
+                    size: 20),
               ),
               const SizedBox(width: 12),
               Column(
@@ -360,7 +362,11 @@ class _ThemeCard extends StatelessWidget {
                 ),
               ),
               child: isSelected
-                  ? const Icon(Icons.check, size: 13, color: Colors.white)
+                  ? Icon(Icons.check,
+                      // v1.12.27: follow the palette's on-accent foreground
+                      // (dark on cream, white elsewhere).
+                      size: 13,
+                      color: palette.onPrimary)
                   : null,
             ),
           ],
@@ -455,7 +461,8 @@ class _FontCard extends StatelessWidget {
                 ),
               ),
               child: isSelected
-                  ? const Icon(Icons.check, size: 13, color: Colors.white)
+                  ? Icon(Icons.check,
+                      size: 13, color: theme.colorScheme.onPrimary)
                   : null,
             ),
           ],
@@ -1706,11 +1713,12 @@ class _AiConfigCardState extends ConsumerState<_AiConfigCard> {
               FilledButton.icon(
                 onPressed: _saving ? null : _save,
                 icon: _saving
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 14,
                         height: 14,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
+                            strokeWidth: 2,
+                            color: theme.colorScheme.onPrimary))
                     : const Icon(Icons.save_outlined, size: 16),
                 label: Text(_saving ? 'Saving…' : 'Save'),
               ),

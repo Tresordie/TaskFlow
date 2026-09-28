@@ -943,11 +943,13 @@ e.g.
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   icon: state.generating
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 14,
                           height: 14,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
+                              strokeWidth: 2,
+                              color:
+                                  Theme.of(context).colorScheme.onPrimary))
                       : const Icon(Icons.auto_awesome, size: 15),
                   label: Text(
                     state.generating ? 'Generating...' : 'Generate',

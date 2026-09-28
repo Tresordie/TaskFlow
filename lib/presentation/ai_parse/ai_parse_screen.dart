@@ -519,11 +519,13 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
                 icon: session.summarizing
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 14,
                         height: 14,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
+                            strokeWidth: 2,
+                            color:
+                                Theme.of(context).colorScheme.onPrimary))
                     : const Icon(Icons.auto_awesome, size: 16),
                 label: Text(session.summarizing
                     ? 'Parsing…'

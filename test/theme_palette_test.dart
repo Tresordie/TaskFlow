@@ -17,10 +17,10 @@ import 'package:taskflow/core/theme/app_theme.dart';
 ///    so a refactor can't silently flatten them into each other.
 void main() {
   group('AppThemeMode catalog (v1.7.0, trimmed v1.8.0)', () {
-    test('12 themes with unique names and non-empty bilingual labels', () {
-      expect(AppThemeMode.values.length, 12);
+    test('13 themes with unique names and non-empty bilingual labels', () {
+      expect(AppThemeMode.values.length, 13);
       final names = AppThemeMode.values.map((m) => m.name).toSet();
-      expect(names.length, 12);
+      expect(names.length, 13);
       for (final mode in AppThemeMode.values) {
         expect(mode.label.isNotEmpty, isTrue, reason: '${mode.name}.label');
         expect(mode.labelZh.isNotEmpty, isTrue, reason: '${mode.name}.labelZh');
@@ -96,6 +96,7 @@ void main() {
         AppThemeMode.catMacchiatoTeal,
         AppThemeMode.catMochaMauve,
         AppThemeMode.catMochaLavender,
+        AppThemeMode.glassDashboard,
       ];
       expect(light.length + dark.length, AppThemeMode.values.length);
       for (final mode in light) {
@@ -128,6 +129,44 @@ void main() {
       expect(p.primary, const Color(0xFF4E8A67));
       expect(p.bg, const Color(0xFF101317));
       expect(AppThemeMode.midnightBoard.labelZh, '午夜看板');
+    });
+
+    test('glassDashboard keeps the warm-charcoal + cream reference palette',
+        () {
+      final p = AppThemeMode.glassDashboard.palette;
+      expect(p.primary, const Color(0xFFEFE9DA));
+      expect(p.bg, const Color(0xFF2E2B28));
+      expect(AppThemeMode.glassDashboard.labelZh, '奶油玻璃');
+      expect(AppThemeMode.glassDashboard.brightness, Brightness.dark);
+    });
+  });
+
+  group('onPrimary contract (v1.12.27)', () {
+    test('default palettes stay white-on-accent; cream carries dark text',
+        () {
+      for (final mode in AppThemeMode.values) {
+        final p = mode.palette;
+        if (mode == AppThemeMode.glassDashboard) {
+          // Cream accent → dark charcoal foreground (readable on cream).
+          expect(p.onPrimary.computeLuminance(), lessThan(0.2),
+              reason: 'glassDashboard.onPrimary must be dark');
+          expect(p.primary.computeLuminance(), greaterThan(0.6),
+              reason: 'glassDashboard.primary must stay light (cream)');
+        } else {
+          // Every pre-existing palette keeps the white convention.
+          expect(p.onPrimary, Colors.white, reason: '${mode.name}.onPrimary');
+        }
+      }
+    });
+
+    test('buildTheme wires palette.onPrimary into the color scheme', () {
+      final theme =
+          AppTheme.buildTheme(AppThemeMode.glassDashboard);
+      expect(theme.colorScheme.onPrimary,
+          AppThemeMode.glassDashboard.palette.onPrimary);
+      final fg = theme.elevatedButtonTheme.style?.foregroundColor;
+      expect(fg?.resolve(const {}),
+          AppThemeMode.glassDashboard.palette.onPrimary);
     });
   });
 

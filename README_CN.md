@@ -37,7 +37,7 @@ lib/
 │   └── router.dart                    # GoRouter 导航
 ├── core/
 │   ├── theme/
-│   │   ├── app_colors.dart            # 12 套主题色板 + 优先级颜色
+│   │   ├── app_colors.dart            # 13 套主题色板 + 优先级颜色
 │   │   └── app_theme.dart             # 每套色板的 ThemeData
 │   └── markdown/
 │       ├── latex_support.dart         # Markdown 中的 $..$ / $$..$$ LaTeX
@@ -85,7 +85,7 @@ test/
 - 任务内子步骤清单
 - 今日看板 Dashboard、时间线、日历和热力图视图
 - 快速添加栏（优先级 + 截止日期）
-- 12 套颜色主题——2 款 Notion 化浅色（暖沙 / 黛蓝，看板列按语义色着色）+ 2 款近黑看板暗色（墨板 / 午夜看板，半透明卡渗列色）+ Catppuccin 暗色系列；3 种精选中英混排字体配对，**Inter × MiSans 为应用默认字体**（可选 Plus Jakarta Sans × 思源黑体、Lexend × 思源黑体）；全局字号缩放（80–140%）
+- 13 套颜色主题——2 款 Notion 化浅色（暖沙 / 黛蓝，看板列按语义色着色）+ 2 款近黑看板暗色（墨板 / 午夜看板，半透明卡渗列色）+ Catppuccin 暗色系列 + **奶油玻璃**（暖炭玻璃阶梯 + 奶油色 accent，奶油底深炭字）；3 种精选中英混排字体配对，**Inter × MiSans 为应用默认字体**（可选 Plus Jakarta Sans × 思源黑体、Lexend × 思源黑体）；全局字号缩放（80–140%）
 - **Today 看板主题**：Notion 风家族为每一列按语义 accent（状态 / 优先级 / 项目）着色，白色任务卡浮于着色列上——还原看板模板观感
 - 响应式布局：桌面侧边栏，移动端底部导航
 - 基于 Isar (NoSQL) 的本地优先持久化

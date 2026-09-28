@@ -274,11 +274,14 @@ class _AiPromptsScreenState extends ConsumerState<AiPromptsScreen> {
                         onPressed:
                             _generating || !hasInput ? null : _generate,
                         icon: _generating
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 14,
                                 height: 14,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
+                                    strokeWidth: 2,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimary),
                               )
                             : const Icon(Icons.auto_fix_high, size: 16),
                         label: Text(_generating ? 'Generating…' : 'Generate'),

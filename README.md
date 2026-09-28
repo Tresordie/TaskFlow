@@ -37,7 +37,7 @@ lib/
 │   └── router.dart                    # GoRouter navigation
 ├── core/
 │   ├── theme/
-│   │   ├── app_colors.dart            # 12 theme palettes + priority colors
+│   │   ├── app_colors.dart            # 13 theme palettes + priority colors
 │   │   └── app_theme.dart             # ThemeData per palette
 │   └── markdown/
 │       ├── latex_support.dart         # $..$ / $$..$$ LaTeX in Markdown
@@ -85,7 +85,7 @@ test/
 - Sub-step checklists within tasks
 - Today kanban dashboard, Timeline, Calendar and Activity (heatmap) views
 - Quick-add bar with priority + due date
-- 12 color themes — 2 Notion-tuned lights (Warm Sand / Ink Blue porcelain) + 2 near-black board themes (Notion Board / Midnight) + Catppuccin darks; 3 curated CN/EN font pairings with **Inter × MiSans as the app default** (Plus Jakarta Sans × Noto Sans SC and Lexend × Noto Sans SC selectable); global font-size scaling (80–140%)
+- 13 color themes — 2 Notion-tuned lights (Warm Sand / Ink Blue porcelain) + 2 near-black board themes (Notion Board / Midnight) + Catppuccin darks + **Glass Dashboard** (warm-charcoal glass ladder with a cream accent and dark text on it); 3 curated CN/EN font pairings with **Inter × MiSans as the app default** (Plus Jakarta Sans × Noto Sans SC and Lexend × Noto Sans SC selectable); global font-size scaling (80–140%)
 - **Today dashboard themes**: every light theme tints each kanban column with its own semantic accent (status / priority / project) and floats bright task cards over it — the Notion board-template look; two dark board themes (Notion Board / Midnight) do the same with translucent cards
 - Responsive: sidebar on desktop, bottom nav on mobile
 - Local-first persistence via Isar (NoSQL)

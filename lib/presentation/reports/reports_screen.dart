@@ -1014,11 +1014,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                             horizontal: 18, vertical: 12),
                       ),
                       icon: s.generating
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 14,
                               height: 14,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
+                                  strokeWidth: 2,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimary))
                           : const Icon(Icons.play_arrow_rounded, size: 17),
                       label: Text(
                           s.generating ? 'Generating…' : 'Generate Report'),

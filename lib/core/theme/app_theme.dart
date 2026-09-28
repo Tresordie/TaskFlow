@@ -20,7 +20,10 @@ enum AppThemeMode {
   catMacchiatoMauve,
   catMacchiatoTeal,
   catMochaMauve,
-  catMochaLavender;
+  catMochaLavender,
+  // v1.12.27: frosted-glass dashboard reference — warm charcoal glass with
+  // a cream accent (dark text ON the accent, via palette.onPrimary).
+  glassDashboard;
 
   /// v1.12.19: themes with the Notion-template board look — every kanban
   /// column is tinted by its own semantic accent (status / priority /
@@ -62,6 +65,8 @@ enum AppThemeMode {
         return 'Catppuccin Mocha · Mauve';
       case AppThemeMode.catMochaLavender:
         return 'Catppuccin Mocha · Lavender';
+      case AppThemeMode.glassDashboard:
+        return 'Glass Dashboard';
     }
   }
 
@@ -91,6 +96,8 @@ enum AppThemeMode {
         return '摩卡 · 木槿紫';
       case AppThemeMode.catMochaLavender:
         return '摩卡 · 薰衣草';
+      case AppThemeMode.glassDashboard:
+        return '奶油玻璃';
     }
   }
 
@@ -120,6 +127,8 @@ enum AppThemeMode {
         return AppColors.catMochaMauve;
       case AppThemeMode.catMochaLavender:
         return AppColors.catMochaLavender;
+      case AppThemeMode.glassDashboard:
+        return AppColors.glassDashboard;
     }
   }
 
@@ -138,6 +147,7 @@ enum AppThemeMode {
       case AppThemeMode.catMacchiatoTeal:
       case AppThemeMode.catMochaMauve:
       case AppThemeMode.catMochaLavender:
+      case AppThemeMode.glassDashboard:
         return Brightness.dark;
     }
   }
@@ -177,9 +187,11 @@ class AppTheme {
       colorScheme: ColorScheme(
         brightness: mode.brightness,
         primary: p.primary,
-        onPrimary: Colors.white,
+        // v1.12.27: palettes own their on-accent foreground — cream / pastel
+        // accents carry dark text instead of the white convention.
+        onPrimary: p.onPrimary,
         secondary: p.primaryLight,
-        onSecondary: Colors.white,
+        onSecondary: p.onPrimary,
         surface: surfaceColor,
         onSurface: p.textPrimary,
         error: AppColors.error,
@@ -286,7 +298,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: p.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: p.onPrimary,
           elevation: 0,
           shadowColor: p.primary.withOpacity(0.35),
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),

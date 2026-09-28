@@ -16,6 +16,13 @@ class ThemePalette {
   final Color primaryDark;
   final Color primaryGhost; // very light tint for backgrounds
 
+  /// v1.12.27: foreground (text / icons) drawn ON primary-filled elements —
+  /// buttons, selected chips, active toggles. Defaults to white, which is
+  /// what every palette before the cream-accented glass dashboard assumed;
+  /// light accents (cream / pastel) set a dark tone instead so labels stay
+  /// readable on their own accent.
+  final Color onPrimary;
+
   const ThemePalette({
     required this.bg,
     required this.surface,
@@ -27,6 +34,7 @@ class ThemePalette {
     required this.primaryLight,
     required this.primaryDark,
     required this.primaryGhost,
+    this.onPrimary = Colors.white,
   });
 }
 
@@ -298,6 +306,27 @@ class AppColors {
     primaryLight: Color(0xFF5AA7EE),
     primaryDark: Color(0xFF1667B5),
     primaryGhost: Color(0xFF152736),
+  );
+
+  // ─── Glass Dashboard (奶油玻璃, v1.12.27) ───
+  // Frosted-glass dashboard reference: warm charcoal glass panels layered
+  // over a deep taupe canvas, with a cream accent for active pills, buttons
+  // and checkmarks — dark charcoal text sits ON the cream (onPrimary), the
+  // reverse of the white-on-accent convention the other dark themes use.
+  // Contrast: textPrimary on card ≈ 8.2:1 (AAA); cream on card ≈ 7.8:1;
+  // onPrimary charcoal on cream ≈ 11:1 (AAA).
+  static const ThemePalette glassDashboard = ThemePalette(
+    bg: Color(0xFF2E2B28),
+    surface: Color(0xFF3B3835),
+    card: Color(0xFF4A4640),
+    border: Color(0xFF5C564E),
+    textPrimary: Color(0xFFF3F0E9),
+    textSecondary: Color(0xFFBCB6AB),
+    primary: Color(0xFFEFE9DA),
+    primaryLight: Color(0xFFF7F3E8),
+    primaryDark: Color(0xFFD9D1BC),
+    primaryGhost: Color(0xFF33302C),
+    onPrimary: Color(0xFF33302B),
   );
 
   // ─── Legacy aliases (for existing code compatibility) ───
