@@ -86,7 +86,7 @@ test/
 - Today kanban dashboard, Timeline, Calendar and Activity (heatmap) views
 - Quick-add bar with priority + due date
 - 13 color themes — 2 Notion-tuned lights (Warm Sand / Ink Blue porcelain) + 2 near-black board themes (Notion Board / Midnight) + Catppuccin darks + **Glass Dashboard** (warm-charcoal glass ladder with a cream accent and dark text on it); 3 curated CN/EN font pairings with **Inter × MiSans as the app default** (Plus Jakarta Sans × Noto Sans SC and Lexend × Noto Sans SC selectable); global font-size scaling (80–140%)
-- **Today dashboard themes**: every light theme tints each kanban column with its own semantic accent (status / priority / project) and floats bright task cards over it — the Notion board-template look; two dark board themes (Notion Board / Midnight) do the same with translucent cards
+- **Today dashboard themes**: every light theme tints each kanban column with its own semantic accent (status / priority / project) and floats bright task cards over it — the Notion board-template look; two dark board themes (Notion Board / Midnight) do the same with translucent cards. Warm Sand and Ink Blue go further: their task cards render as iOS-style frosted-glass containers (translucent white + backdrop blur + a top specular sheen) by default, tunable via Settings → Today Board Cards
 - Responsive: sidebar on desktop, bottom nav on mobile
 - Local-first persistence via Isar (NoSQL)
 

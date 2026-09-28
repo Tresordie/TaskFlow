@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-09-28 · 当前版本 **v1.12.31**（修 Calendar 日期格任务胶囊溢出格外；13 款主题；308 测试；已发版双推）
+> 最后更新：2026-09-28 · 当前版本 **v1.12.32**（暖沙/黛蓝 Today 看板卡片改为 iOS 透明玻璃容器；13 款主题；309 测试）
 
 ---
 
@@ -10,7 +10,7 @@
 - **项目**：TaskFlow —— Flutter Windows 桌面任务管理应用，面向硬件测试工程师（NPI 电动自行车项目）的个人任务/日志/周报工具。
 - **位置**：`outputs/taskflow/`（工作区根 = `c:\Users\Administrator\.qoderworkcn\workspace\mrtw67znp8zrkqp4`）。
 - **跑起来**：`cd outputs/taskflow && flutter run -d windows`（或 `flutter build windows --release` 后运行 `build\windows\x64\runner\Release\taskflow.exe`）。
-- **发版闭环（每次变更必做）**：升版本（`pubspec.yaml` + `lib/core/version.dart` 的 `kAppVersion` **必须同步**）→ `flutter test`（308 个）→ 构建 → `git commit` → **显式单 URL 双推** GitHub + Gitee → `Compress-Archive` 打包 zip 到 `outputs/` → 启动 exe 验证。
+- **发版闭环（每次变更必做）**：升版本（`pubspec.yaml` + `lib/core/version.dart` 的 `kAppVersion` **必须同步**）→ `flutter test`（309 个）→ 构建 → `git commit` → **显式单 URL 双推** GitHub + Gitee → `Compress-Archive` 打包 zip 到 `outputs/` → 启动 exe 验证。
 - **最高危五条**：① Isar 嵌入对象字段冻结（见禁忌 9.1）；② 禁用全局 SelectionArea（9.2）；③ 杀进程后立即构建会“拒绝访问”，等 15–25 秒重试（8.1）；④ 可能出现中文的 TextStyle 禁只设 `fontFamily`，必须带 `FontStack` 回退链（9.11）；⑤ 两渲染链共用的 `GfmExtensions.prepare` 管线（多行公式展平 → 表格行归一 → 硬换行硬化）顺序不可乱改，表格行/alert 起始行/`$$` 行豁免硬化（8.19-8.20）。
 
 ---
@@ -67,7 +67,7 @@ outputs/taskflow/
 │       ├── task_detail/          # task_detail_screen、execution_log_widget（内联编辑）
 │       ├── reports/              # reports_screen（分栏编辑器 + AI 生成）
 │       ├── work_log/ calendar/ heatmap/ ai_parse/ settings/
-├── test/                         # 29 个测试文件，308 个测试（含 extended_markdown/selectable_spacing/font_upgrade/gfm_extensions/theme_palette/kanban_board/board_card_style 契约）
+├── test/                         # 29 个测试文件，309 个测试（含 extended_markdown/selectable_spacing/font_upgrade/gfm_extensions/theme_palette/kanban_board/board_card_style 契约）
 └── pubspec.yaml                  # version 字段与 kAppVersion 必须同步；fonts + FONT_LICENSES.md 声明
 ```
 
@@ -79,7 +79,7 @@ outputs/taskflow/
 
 ```powershell
 cd outputs\taskflow
-flutter test                                    # 308 个，约 30–40 秒
+flutter test                                    # 309 个，约 30–40 秒
 dart analyze lib                                # 要求 0 error（task.g.dart 的 experimental 警告为既有）
 flutter build windows --release                 # 约 60–110 秒
 
@@ -136,6 +136,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 
 | 日期/版本 | 决策 | 理由 |
 |---|---|---|
+| v1.12.32 | **暖沙/黛蓝 Today 看板卡片 → iOS 透明玻璃容器**（用户："暖沙，黛蓝主题的Today页面：任务dashboard改进为类似iphone iOS的透明玻璃容器"）：① **AppThemeMode 新增 `boardGlass` getter**（仅 warmSand/inkBlue=true），作为这两个浅色主题的看板签名外观（与 boardTinted 并列）；② **task_card_widget**：`useGlass = style.glass || boardGlass`（主题默认开 + 全局 Today Board Cards 玻璃开关都能触发）；`cardOpacity`——boardGlass 且用户未动过（!style.glass && style.opacity>=1.0）时取 iOS 默认 `_iosGlassDefaultOpacity=0.72`（够透又不糊字），否则尊重滑块（拉到 1.0=实心）；③ **`_wrapGlass` 升级为液态玻璃**——签名改具名参数（glass/blur/fillColor/content），在 backdrop blur + 半透明白填充之上叠一层**顶部白色高光 sheen**（white 0.32→0.0，stops 0/0.55，IgnorePointer 不吃点击、在内容之下不糊字），圆角 14 内裁切；④ **task_board_screen**：boardGlass 主题即使没开全局玻璃，列底也走 0.72 半透明 tinted wash（`lightGlassAlpha` 增 boardGlass 分支、`glassActive` 并入 boardGlass 让画布加深），否则卡片磨砂没有可透的底、玻璃感消失（同 v1.12.6 教训）。测试：改 'default style renders no BackdropFilter' 用 dark 主题跑（保住"全局默认不加模糊"契约，因 inkBlue 现在默认就模糊了），新增 'board-glass theme (inkBlue) renders glass by default'；309 全过。临时 golden 目检（inkBlue 卡片在蓝→米渐变底上呈半透明白磨砂、顶部微亮、文字清晰）后删除 | iOS 玻璃三要素=通透填充+背景模糊+高光边，本主题把三者做成看板卡片默认；关键坑是 themeModeProvider 默认值恰是 inkBlue，令"默认非玻璃"旧测试失效——正解是让该测试改用 dark 跑、另立 inkBlue 默认玻璃测试，而非放宽断言；透明度走"未动过才用 0.72、动过听用户"避免与全局滑块打架；列底必须同步半透明否则 opaque 列挡住背景、blur 无从磨砂 |
 | v1.12.31 | **修 Calendar 日期格任务胶囊溢出格外**（用户截图："Calendar日期内的任务 出现在日期块之外了"——12 号/26 号等有 3 颗胶囊的日子，第三颗画到了格子下方/邻格上沿）：根因=`_DayCell` 的 tile 高度被网格 `childAspectRatio:1.3` 固定、且网格在 `Expanded`+`NeverScrollable` 里不能加高，而格内 Column 是「日期行(22)+间距(2)+最多 3 胶囊(各~14.7)+可选 +N more(12)」，最坏 ~80px 超出格内容高（宽~56→高~43→扣 padding 仅 ~35），无约束的 Column 直接溢出绘制（release 无黄黑条，就是画到格外）。修法=胶囊区包成 `Flexible(child: ClipRect(child: LayoutBuilder))`：外层 Column 只剩固定日期行 + 一个 Flexible，永不溢出；LayoutBuilder 读剩余高度，用纯函数 `calendarPillsThatFit(avail,total)`（cap=min(total,3)，pillH=16/moreH=13 保守值，放不下全部时预留 +N more 行）算出放得下的**整颗**胶囊数，其余折叠进 "+N more"；ClipRect 兜底亚像素。自适应窗口大小（窄→少画，宽→画满 3），点日期仍在右侧面板看全部。抽出纯函数 + 新增 calendar_day_cell_test（5 例：0..3 且 ≤total 不变量、零/负高、充裕高满 3、预留 more 行、全放得下不预留）；308 全过 | 日历格是固定高度网格，立体瓷砖质感（v1.12.26）与"内容多"天然冲突——正解不是加高格子（会挤爆 Expanded/触发滚动），而是让内容自适应格子：Flexible 保证外层不溢出、LayoutBuilder+纯函数保证内层只画放得下的整颗（绝不半颗裁切，用户截图里 "ore" 就是被裁的半胶囊）、溢出信息用 +N more 明示；把算法抽成纯函数才能低成本上回归测试（_DayCell 私有、整屏要 DB/provider 难测） |
 | v1.12.30 | **删除琉璃玻璃主题 frostedGlass**（用户："删除琉璃玻璃主题"）：v1.12.28/29 上线的浅色透明玻璃主题按用户要求整体移除，回到 13 款。① **frostedGlass 多处同步删除**——app_colors 调色板常量、app_theme 枚举值 + label/labelZh/palette/brightness/boardTinted 五处 case；② **连同其专用机制一并清除**（frostedGlass 是唯一消费者，留下即死代码）：AppThemeMode 的 `glassPreset`/`prefersGlass` getter、Settings 主题卡 onTap 里"选中玻璃主题自动 setGlass+套预设"的分支（还原为单纯 `setTheme(mode)`）、theme_palette_test 的 frostedGlass 签名测试 + glass-theme 契约组（−4 测试，307→303）+ 随之无用的 app_glass_provider import；③ **全局 Interface Glass 开关与其 opacity/blur 滑块保留不动**（那是正交的全局能力，不属于本主题）；④ README(EN/CN) 主题列表回退到 13 款 2 浅色、目录树/测试计数同步、handoff 表头/目录/进度同步。主题按 name 持久化，曾选 frostedGlass 的用户下次启动回退默认 inkBlue，安全 | 删主题要连根拔：只删枚举会漏掉 palette 常量/标签 case（编译直接挂），只删主题会留下 glassPreset/prefersGlass 这套只为它存在的死 getter 和 onTap 分支——按"删除自己引入的东西"原则一并清干净；但全局玻璃效果是独立特性不能误删（其它主题也靠它出磨砂），故只移除"主题自动开玻璃"的耦合，保留手动开关 |
 | v1.12.29 | **琉璃玻璃升级为 iPhone 液态玻璃态（glassPreset 签名通透度）**（用户："浅色透明玻璃主题，类似iphone的玻璃态"）：v1.12.28 的 frostedGlass 选中后只吃到通用玻璃默认（opacity 0.75/blur 14），偏"半透明"不够通透。① **AppThemeMode 新增 `glassPreset` getter**——返回 `({double opacity, double blur})?`，frostedGlass=(0.60, 22.0)，其余 null；`prefersGlass` 改为 `glassPreset != null`（语义不变，单一真相源）；② Settings 主题卡 onTap 选中玻璃主题时除 `setGlass(true)` 外再 `setOpacity/setBlur` 套用签名预设——高通透（0.60，远低于通用 0.75）+ 强磨砂（22>默认 14），面板呈奶白玻璃、内容透入又被模糊成柔光；用户之后仍可手动调两滑块；③ **调色板提亮**：border #D8E2EC→#DEE7F0、surface #F2F6FA→#F4F8FB，让环境画布（base/deep=border 叠 surface）更明亮透气，贴近 Apple 高调玻璃底。测试：+glassPreset 契约（opacity<0.75 且≥0.5、blur>defaultBlur、prefersGlass≡有预设）；307 全过 | iPhone 玻璃态=通透+磨砂+高光边，三要素里通透度是主开关，而它属于全局 Interface Glass 而非调色板（alpha 不能进 palette，见 v1.12.28）；解法=让玻璃主题自带一套签名参数，选中即套用，把"选主题"与"调到最佳观感"合并成一步；强 blur 反而让低 opacity 下正文仍可读（背景被糊成均匀柔光）；shell 已有白色高光 rim（light 玻璃 white@0.55）本就是 Apple 边缘光，无需再动 |
@@ -263,6 +264,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
+- ✅ v1.12.32：暖沙/黛蓝 Today 看板卡片改为 iOS 透明玻璃容器（boardGlass 主题标志 + 卡片 backdrop blur+半透明白 0.72+顶部高光 sheen + 列底同步玻璃 wash；全局开关/滑块仍可覆盖）；+inkBlue 默认玻璃测试；309 测试全过
 - ✅ v1.12.31（已发版）：修 Calendar 日期格任务胶囊溢出格外——胶囊区改 Flexible+ClipRect+LayoutBuilder，按格高用纯函数 calendarPillsThatFit 自适应只画放得下的整颗、其余折叠 +N more；+calendar_day_cell_test 5 例；308 测试全过、双推 `6af401d`、包体 36.0MB
 - ✅ v1.12.30（已发版）：删除琉璃玻璃主题 frostedGlass（枚举/标签/palette/brightness/boardTinted 五处同步删 + 其专用 glassPreset/prefersGlass 机制 + Settings 自动开玻璃分支 + 相关测试 −4；全局 Interface Glass 开关保留）；回到 13 款主题、303 测试全过、双推 `0ea449e`、包体 36.0MB
 - ✅ v1.12.29（已发版）：琉璃玻璃升级为 iPhone 液态玻璃态——AppThemeMode.glassPreset（frostedGlass 自带 opacity 0.60/blur 22 签名通透度，选中即套用，prefersGlass 改为 glassPreset!=null）+ 调色板提亮（border/surface 更明亮）；307 测试全过、双推 `ac287bb`、包体 36.0MB

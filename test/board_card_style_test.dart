@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taskflow/data/models/task.dart';
 import 'package:taskflow/presentation/task_board/task_card_widget.dart';
 import 'package:taskflow/providers/board_card_style_provider.dart';
+import 'package:taskflow/providers/theme_provider.dart';
+import 'package:taskflow/core/theme/app_theme.dart';
 
 /// v1.12.3 tests for the Today-board card style settings: opacity bounds,
 /// glass mode, the auto-translucency applied when glass is first enabled,
@@ -184,15 +186,38 @@ void main() {
       expect(find.text('Sample task'), findsOneWidget);
     });
 
-    testWidgets('default style renders no BackdropFilter', (tester) async {
+    testWidgets('default style renders no BackdropFilter (non-glass theme)',
+        (tester) async {
       SharedPreferences.setMockInitialValues({});
+      // v1.12.32: warmSand / inkBlue now render glass by default, so to keep
+      // testing the GLOBAL default contract ("untuned board-card style adds no
+      // blur") this runs under a non-glass theme (dark).
+      final darkTheme = ThemeModeNotifier()..setTheme(AppThemeMode.dark);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            themeModeProvider.overrideWith((ref) => darkTheme),
+          ],
+          child: harness(TaskCard(task: sampleTask())),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(BackdropFilter), findsNothing);
+      expect(find.text('Sample task'), findsOneWidget);
+    });
+
+    testWidgets('board-glass theme (inkBlue) renders glass by default',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      // inkBlue is the provider's default theme; with no board-card style set
+      // it must still frost its cards (v1.12.32 iOS-glass look).
       await tester.pumpWidget(
         ProviderScope(
           child: harness(TaskCard(task: sampleTask())),
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.byType(BackdropFilter), findsNothing);
+      expect(find.byType(BackdropFilter), findsOneWidget);
       expect(find.text('Sample task'), findsOneWidget);
     });
   });

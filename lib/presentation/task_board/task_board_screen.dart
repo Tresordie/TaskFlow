@@ -58,6 +58,11 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     // its own semantic accent and the cards float bright over the tint
     // (the reference look). Other themes keep their own recipes.
     final notionTint = ref.watch(themeModeProvider).boardTinted;
+    // v1.12.32: warmSand / inkBlue render their cards as iOS frosted glass by
+    // default, so the columns behind them must be a translucent glass wash too
+    // (otherwise the card blur has an opaque surface to frost and the effect
+    // disappears — same lesson as v1.12.6).
+    final boardGlass = ref.watch(themeModeProvider).boardGlass;
     // v1.11.1: light themes get pure-white cards on a tinted canvas
     // (the "paper" recipe) so they actually pop; dark themes keep the
     // palette's card color.
@@ -71,7 +76,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     // palettes converge to white when every layer goes translucent, so the
     // glass page read as washed-out gray (user screenshot: light theme
     // glass poor vs dark good).
-    final glassActive = appGlass.glass || boardStyle.glass;
+    final glassActive = appGlass.glass || boardStyle.glass || boardGlass;
     final canvasColor = isDark
         ? appPalette.bg
         : Color.alphaBlend(appPalette.border.withOpacity(glassActive ? 0.50 : 0.38),
@@ -96,7 +101,9 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
         ? appGlass.opacity
         : (boardStyle.glass
             ? max(BoardCardStyle.minOpacity, boardStyle.opacity - 0.2)
-            : null);
+            // v1.12.32: a board-glass theme with no explicit glass still gets
+            // a translucent column wash (matches the cards' iOS default).
+            : (boardGlass ? 0.72 : null));
     late Color columnColor;
     if (isDark) {
       columnColor =

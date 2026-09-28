@@ -39,6 +39,16 @@ enum AppThemeMode {
         _ => false,
       };
 
+  /// v1.12.32: light themes whose Today board renders task cards as iOS-style
+  /// frosted glass containers (translucent white + backdrop blur + a top
+  /// specular sheen) by default. The Settings → Today Board Cards sliders still
+  /// tune opacity/blur, and the global glass toggle can override — but these
+  /// two themes lead with the liquid-glass look out of the box.
+  bool get boardGlass => switch (this) {
+        AppThemeMode.warmSand || AppThemeMode.inkBlue => true,
+        _ => false,
+      };
+
   String get label {
     switch (this) {
       case AppThemeMode.warmSand:

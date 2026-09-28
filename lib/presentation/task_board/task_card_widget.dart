@@ -34,6 +34,11 @@ class _TaskCardState extends ConsumerState<TaskCard> {
   // springs back" tactile feedback on tap, in addition to the hover lift.
   bool _isPressed = false;
 
+  /// v1.12.32: fill alpha a board-glass theme (warmSand / inkBlue) uses when
+  /// the user hasn't tuned the card opacity — translucent enough to read as
+  /// iOS frosted glass over the tinted column, still high enough for text.
+  static const double _iosGlassDefaultOpacity = 0.72;
+
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
@@ -149,7 +154,11 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     // + translucent fill + bright rim). Fully independent of the app-wide
     // Interface Glass section.
     final style = ref.watch(boardCardStyleProvider);
-    final useGlass = style.glass;
+    // v1.12.32: warmSand / inkBlue lead with an iOS-style frosted-glass card
+    // look even when the global board-card glass toggle is off. The user's
+    // own Settings choices (explicit glass on, or a tuned opacity) still win.
+    final boardGlass = ref.watch(themeModeProvider).boardGlass;
+    final useGlass = style.glass || boardGlass;
     // v1.12.18/v1.12.19: board-tinted themes — the card floats bright over
     // the accent-tinted column. v1.12.21: the Card opacity slider WORKS on
     // light board-tinted themes too (100% = the reference pure-white card;
@@ -157,13 +166,19 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     // hard-coded and the sliders were dead. Dark board-tinted keeps its
     // fixed 80% translucent fill (the dark reference look).
     final notionTint = ref.watch(themeModeProvider).boardTinted;
+    // Effective fill alpha. On a glass-preferring light theme that the user
+    // hasn't tuned (opacity still at the untouched 1.0 and glass not explicitly
+    // on), fall back to the iOS-glass default so the card is actually
+    // translucent out of the box; otherwise honor the slider (1.0 → solid).
+    final cardOpacity =
+        (boardGlass && !style.glass && style.opacity >= 1.0)
+            ? _iosGlassDefaultOpacity
+            : style.opacity;
     final fillColor = notionTint
         ? (isDark
             ? cardColor.withOpacity(0.80)
-            : cardColor.withOpacity(style.opacity))
-        : (style.opacity >= 1.0
-            ? cardColor
-            : cardColor.withOpacity(style.opacity));
+            : cardColor.withOpacity(cardOpacity))
+        : (cardOpacity >= 1.0 ? cardColor : cardColor.withOpacity(cardOpacity));
     // v1.12.11: the glass rim is theme-aware — a WHITE rim pops on the dark
     // glass columns but vanishes on near-white light ones (cards lost their
     // outline entirely in light themes), so light themes use the theme
@@ -232,9 +247,10 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                     ],
             ),
             child: _wrapGlass(
-              style,
-              fillColor,
-              Stack(
+              glass: useGlass,
+              blur: style.blur,
+              fillColor: fillColor,
+              content: Stack(
               children: [
                 // Content (bottom of the stack).
                 Padding(
@@ -372,19 +388,52 @@ class _TaskCardState extends ConsumerState<TaskCard> {
   /// painted over it, so the board canvas and its orbs blur through the
   /// card (frosted-glass look). Plain mode returns the content untouched.
   /// v1.12.4: the blur sigma comes from the user-adjustable style.
-  Widget _wrapGlass(BoardCardStyle style, Color fillColor, Widget content) {
-    if (!style.glass) return content;
+  /// v1.12.32: iOS-style frosted-glass card — backdrop blur + translucent
+  /// fill + a top specular sheen (light from above), all inside the rounded
+  /// clip. Renders whenever [glass] is on (the theme's boardGlass default or
+  /// the user's explicit Settings toggle); otherwise returns plain [content].
+  Widget _wrapGlass({
+    required bool glass,
+    required double blur,
+    required Color fillColor,
+    required Widget content,
+  }) {
+    if (!glass) return content;
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
       child: BackdropFilter(
-        filter: ImageFilter.blur(
-            sigmaX: style.blur, sigmaY: style.blur),
+        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: fillColor,
             borderRadius: BorderRadius.circular(14),
           ),
-          child: content,
+          child: Stack(
+            children: [
+              // Specular sheen — a white wash fading from the top edge, the
+              // hallmark of Apple's liquid glass. Behind the content so text
+              // stays crisp; ignored for hit-testing.
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.white.withOpacity(0.32),
+                          Colors.white.withOpacity(0.0),
+                        ],
+                        stops: const [0.0, 0.55],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              content,
+            ],
+          ),
         ),
       ),
     );
