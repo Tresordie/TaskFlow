@@ -85,7 +85,7 @@ test/
 - Sub-step checklists within tasks
 - Today kanban dashboard, Timeline, Calendar and Activity (heatmap) views
 - Quick-add bar with priority + due date
-- 14 color themes — 3 Notion-tuned lights (Warm Sand / Ink Blue porcelain / **Frosted Glass** — a cool azure light theme that turns on Interface Glass the moment it's selected, so panels read as translucent frosted glass) + 2 near-black board themes (Notion Board / Midnight) + Catppuccin darks + Glass Dashboard (warm-charcoal glass ladder with a cream accent and dark text on it); 3 curated CN/EN font pairings with **Inter × MiSans as the app default** (Plus Jakarta Sans × Noto Sans SC and Lexend × Noto Sans SC selectable); global font-size scaling (80–140%)
+- 14 color themes — 3 Notion-tuned lights (Warm Sand / Ink Blue porcelain / **Frosted Glass** — a cool azure light theme tuned to an iPhone-style "liquid glass" look: picking it turns on Interface Glass at a signature high transparency (60%) with a strong frost, so panels read as milky glass over the ambient canvas) + 2 near-black board themes (Notion Board / Midnight) + Catppuccin darks + Glass Dashboard (warm-charcoal glass ladder with a cream accent and dark text on it); 3 curated CN/EN font pairings with **Inter × MiSans as the app default** (Plus Jakarta Sans × Noto Sans SC and Lexend × Noto Sans SC selectable); global font-size scaling (80–140%)
 - **Today dashboard themes**: every light theme tints each kanban column with its own semantic accent (status / priority / project) and floats bright task cards over it — the Notion board-template look; two dark board themes (Notion Board / Midnight) do the same with translucent cards
 - Responsive: sidebar on desktop, bottom nav on mobile
 - Local-first persistence via Isar (NoSQL)

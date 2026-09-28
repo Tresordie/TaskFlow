@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:taskflow/core/theme/app_colors.dart';
 import 'package:taskflow/core/theme/app_theme.dart';
+import 'package:taskflow/providers/app_glass_provider.dart';
 
 /// v1.7.0 theme contracts (v1.8.0: the three dark additions were removed
 /// again per user request — 18 themes remain):
@@ -160,6 +161,20 @@ void main() {
       for (final mode in AppThemeMode.values) {
         expect(mode.prefersGlass, mode == AppThemeMode.frostedGlass,
             reason: '${mode.name}.prefersGlass');
+      }
+    });
+
+    test('frostedGlass carries an iPhone-style liquid-glass preset', () {
+      final preset = AppThemeMode.frostedGlass.glassPreset;
+      expect(preset, isNotNull);
+      // High transparency (well under the generic 0.75) + a strong frost.
+      expect(preset!.opacity, lessThan(0.75));
+      expect(preset.opacity, greaterThanOrEqualTo(0.5));
+      expect(preset.blur, greaterThan(AppGlassStyle.defaultBlur));
+      // prefersGlass is exactly "has a preset".
+      for (final mode in AppThemeMode.values) {
+        expect(mode.prefersGlass, mode.glassPreset != null,
+            reason: '${mode.name}');
       }
     });
   });

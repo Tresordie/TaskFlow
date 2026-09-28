@@ -50,11 +50,16 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () {
                   ref.read(themeModeProvider.notifier).setTheme(mode);
                   // v1.12.28: a glass theme turns the frosted effect on the
-                  // moment it is picked (setGlass keeps a tuned opacity if
-                  // the user already set one; otherwise drops to the
-                  // readable default). They can still switch it off after.
-                  if (mode.prefersGlass) {
-                    ref.read(appGlassStyleProvider.notifier).setGlass(true);
+                  // moment it is picked. v1.12.29: it also applies its own
+                  // signature opacity/blur so the look is right out of the
+                  // box (iPhone-style liquid glass), overriding the generic
+                  // default. The user can still tune both sliders after.
+                  final preset = mode.glassPreset;
+                  if (preset != null) {
+                    final glass = ref.read(appGlassStyleProvider.notifier);
+                    glass.setGlass(true);
+                    glass.setOpacity(preset.opacity);
+                    glass.setBlur(preset.blur);
                   }
                 },
               ),

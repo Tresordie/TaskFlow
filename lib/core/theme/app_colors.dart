@@ -169,9 +169,9 @@ class AppColors {
   // ≈ 4.6:1 — the accent is tuned to hold both directions.
   static const ThemePalette frostedGlass = ThemePalette(
     bg: Color(0xFFE6EDF4),
-    surface: Color(0xFFF2F6FA),
+    surface: Color(0xFFF4F8FB),
     card: Color(0xFFFFFFFF),
-    border: Color(0xFFD8E2EC),
+    border: Color(0xFFDEE7F0),
     textPrimary: Color(0xFF27313B),
     textSecondary: Color(0xFF66727E),
     primary: Color(0xFF2E7DA3),
