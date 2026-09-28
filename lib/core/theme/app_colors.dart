@@ -158,6 +158,28 @@ class AppColors {
     primaryGhost: Color(0xFFE4ECF4),
   );
 
+  // ─── Frosted Glass (琉璃玻璃, v1.12.28) ───
+  // A light transparent-glass theme: cool near-white canvas (a step bluer
+  // and airier than inkBlue's warm porcelain), pure-white floating cards,
+  // hairline cool borders, and a clear azure-cyan accent. Selecting it
+  // turns on the app-wide Interface Glass so the panels read as frosted
+  // translucency over the ambient canvas right away (see prefersGlass).
+  // Contrast: textPrimary on card ≈ 13:1 (AAA); textSecondary on card ≈
+  // 4.9:1 (AA); white on primary ≈ 4.6:1 (AA) and primary as text on white
+  // ≈ 4.6:1 — the accent is tuned to hold both directions.
+  static const ThemePalette frostedGlass = ThemePalette(
+    bg: Color(0xFFE6EDF4),
+    surface: Color(0xFFF2F6FA),
+    card: Color(0xFFFFFFFF),
+    border: Color(0xFFD8E2EC),
+    textPrimary: Color(0xFF27313B),
+    textSecondary: Color(0xFF66727E),
+    primary: Color(0xFF2E7DA3),
+    primaryLight: Color(0xFF5FA3C4),
+    primaryDark: Color(0xFF235F7E),
+    primaryGhost: Color(0xFFE2EEF4),
+  );
+
   // ═════════════ Board-tinted family (v1.12.19) ═════════════
   // Notion-template-style palettes (user reference screenshots): every
   // kanban column is tinted by its own semantic accent (see the

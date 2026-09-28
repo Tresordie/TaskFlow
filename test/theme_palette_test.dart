@@ -17,10 +17,10 @@ import 'package:taskflow/core/theme/app_theme.dart';
 ///    so a refactor can't silently flatten them into each other.
 void main() {
   group('AppThemeMode catalog (v1.7.0, trimmed v1.8.0)', () {
-    test('13 themes with unique names and non-empty bilingual labels', () {
-      expect(AppThemeMode.values.length, 13);
+    test('14 themes with unique names and non-empty bilingual labels', () {
+      expect(AppThemeMode.values.length, 14);
       final names = AppThemeMode.values.map((m) => m.name).toSet();
-      expect(names.length, 13);
+      expect(names.length, 14);
       for (final mode in AppThemeMode.values) {
         expect(mode.label.isNotEmpty, isTrue, reason: '${mode.name}.label');
         expect(mode.labelZh.isNotEmpty, isTrue, reason: '${mode.name}.labelZh');
@@ -84,6 +84,7 @@ void main() {
       const light = [
         AppThemeMode.warmSand,
         AppThemeMode.inkBlue,
+        AppThemeMode.frostedGlass,
       ];
       const dark = [
         AppThemeMode.dark,
@@ -138,6 +139,28 @@ void main() {
       expect(p.bg, const Color(0xFF2E2B28));
       expect(AppThemeMode.glassDashboard.labelZh, '奶油玻璃');
       expect(AppThemeMode.glassDashboard.brightness, Brightness.dark);
+    });
+
+    test('frostedGlass keeps the cool near-white + azure glass palette', () {
+      final p = AppThemeMode.frostedGlass.palette;
+      expect(p.primary, const Color(0xFF2E7DA3));
+      expect(p.card, const Color(0xFFFFFFFF));
+      expect(AppThemeMode.frostedGlass.labelZh, '琉璃玻璃');
+      expect(AppThemeMode.frostedGlass.brightness, Brightness.light);
+    });
+  });
+
+  group('glass-theme contract (v1.12.28)', () {
+    test('frostedGlass is a board-tinted light theme that prefers glass', () {
+      expect(AppThemeMode.frostedGlass.boardTinted, isTrue);
+      expect(AppThemeMode.frostedGlass.prefersGlass, isTrue);
+    });
+
+    test('only frostedGlass opts into auto-glass', () {
+      for (final mode in AppThemeMode.values) {
+        expect(mode.prefersGlass, mode == AppThemeMode.frostedGlass,
+            reason: '${mode.name}.prefersGlass');
+      }
     });
   });
 

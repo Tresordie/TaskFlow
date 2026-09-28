@@ -6,6 +6,8 @@ enum AppThemeMode {
   warmSand,
   // v1.7.0: muted-quality light theme.
   inkBlue,
+  // v1.12.28: light transparent-glass theme (auto-enables Interface Glass).
+  frostedGlass,
   dark,
   nordNight,
   // v1.12.18: Notion-template near-black kanban (accent-tinted columns).
@@ -34,10 +36,16 @@ enum AppThemeMode {
   bool get boardTinted => switch (this) {
         AppThemeMode.warmSand ||
         AppThemeMode.inkBlue ||
+        AppThemeMode.frostedGlass ||
         AppThemeMode.notionBoard ||
         AppThemeMode.midnightBoard => true,
         _ => false,
       };
+
+  /// v1.12.28: themes whose whole identity is translucency. Selecting one
+  /// in Settings turns on the app-wide Interface Glass so the frosted look
+  /// is there immediately (the user can still toggle it off afterwards).
+  bool get prefersGlass => this == AppThemeMode.frostedGlass;
 
   String get label {
     switch (this) {
@@ -45,6 +53,8 @@ enum AppThemeMode {
         return 'Warm Sand';
       case AppThemeMode.inkBlue:
         return 'Ink Blue';
+      case AppThemeMode.frostedGlass:
+        return 'Frosted Glass';
       case AppThemeMode.dark:
         return 'Dark';
       case AppThemeMode.nordNight:
@@ -76,6 +86,8 @@ enum AppThemeMode {
         return '暖沙';
       case AppThemeMode.inkBlue:
         return '黛蓝';
+      case AppThemeMode.frostedGlass:
+        return '琉璃玻璃';
       case AppThemeMode.dark:
         return '暗夜模式';
       case AppThemeMode.nordNight:
@@ -107,6 +119,8 @@ enum AppThemeMode {
         return AppColors.warmSand;
       case AppThemeMode.inkBlue:
         return AppColors.inkBlue;
+      case AppThemeMode.frostedGlass:
+        return AppColors.frostedGlass;
       case AppThemeMode.dark:
         return AppColors.dark;
       case AppThemeMode.nordNight:
@@ -136,6 +150,7 @@ enum AppThemeMode {
     switch (this) {
       case AppThemeMode.warmSand:
       case AppThemeMode.inkBlue:
+      case AppThemeMode.frostedGlass:
         return Brightness.light;
       case AppThemeMode.dark:
       case AppThemeMode.nordNight:

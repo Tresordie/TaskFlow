@@ -47,8 +47,16 @@ class SettingsScreen extends ConsumerWidget {
               child: _ThemeCard(
                 mode: mode,
                 isSelected: currentTheme == mode,
-                onTap: () =>
-                    ref.read(themeModeProvider.notifier).setTheme(mode),
+                onTap: () {
+                  ref.read(themeModeProvider.notifier).setTheme(mode);
+                  // v1.12.28: a glass theme turns the frosted effect on the
+                  // moment it is picked (setGlass keeps a tuned opacity if
+                  // the user already set one; otherwise drops to the
+                  // readable default). They can still switch it off after.
+                  if (mode.prefersGlass) {
+                    ref.read(appGlassStyleProvider.notifier).setGlass(true);
+                  }
+                },
               ),
             )),
 
