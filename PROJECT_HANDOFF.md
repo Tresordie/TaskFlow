@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-09-28 · 当前版本 **v1.12.29**（琉璃玻璃升级为 iPhone 液态玻璃态：签名通透度 0.60 + 磨砂 22；14 款主题；307 测试；已发版双推）
+> 最后更新：2026-09-28 · 当前版本 **v1.12.30**（删除琉璃玻璃主题 frostedGlass；13 款主题；303 测试；已发版双推）
 
 ---
 
@@ -10,7 +10,7 @@
 - **项目**：TaskFlow —— Flutter Windows 桌面任务管理应用，面向硬件测试工程师（NPI 电动自行车项目）的个人任务/日志/周报工具。
 - **位置**：`outputs/taskflow/`（工作区根 = `c:\Users\Administrator\.qoderworkcn\workspace\mrtw67znp8zrkqp4`）。
 - **跑起来**：`cd outputs/taskflow && flutter run -d windows`（或 `flutter build windows --release` 后运行 `build\windows\x64\runner\Release\taskflow.exe`）。
-- **发版闭环（每次变更必做）**：升版本（`pubspec.yaml` + `lib/core/version.dart` 的 `kAppVersion` **必须同步**）→ `flutter test`（307 个）→ 构建 → `git commit` → **显式单 URL 双推** GitHub + Gitee → `Compress-Archive` 打包 zip 到 `outputs/` → 启动 exe 验证。
+- **发版闭环（每次变更必做）**：升版本（`pubspec.yaml` + `lib/core/version.dart` 的 `kAppVersion` **必须同步**）→ `flutter test`（303 个）→ 构建 → `git commit` → **显式单 URL 双推** GitHub + Gitee → `Compress-Archive` 打包 zip 到 `outputs/` → 启动 exe 验证。
 - **最高危五条**：① Isar 嵌入对象字段冻结（见禁忌 9.1）；② 禁用全局 SelectionArea（9.2）；③ 杀进程后立即构建会“拒绝访问”，等 15–25 秒重试（8.1）；④ 可能出现中文的 TextStyle 禁只设 `fontFamily`，必须带 `FontStack` 回退链（9.11）；⑤ 两渲染链共用的 `GfmExtensions.prepare` 管线（多行公式展平 → 表格行归一 → 硬换行硬化）顺序不可乱改，表格行/alert 起始行/`$$` 行豁免硬化（8.19-8.20）。
 
 ---
@@ -51,7 +51,7 @@ outputs/taskflow/
 │   ├── main.dart                 # 启动：AttachmentService.init() 预热附件目录
 │   ├── app/                      # TaskFlowApp（主题/字体/字号缩放注入）、router、AppShell 之外的壳
 │   ├── core/
-│   │   ├── theme/app_colors.dart # ThemePalette 定义（14 个主题调色板）+ 遗留硬编码别名
+│   │   ├── theme/app_colors.dart # ThemePalette 定义（13 个主题调色板）+ 遗留硬编码别名
 │   │   ├── theme/app_theme.dart  # AppThemeMode 枚举（label/labelZh/palette/brightness）+ buildTheme
 │   │   ├── theme/font_stack.dart # 中英混排链单一事实源（v1.5.2，拉丁/中文/回退链常量）
 │   │   ├── markdown/             # html_sanitize（HTML混入清洗）、line_breaks（硬换行硬化+结构行豁免）、rich_markdown（含上下标语法）、latex_support（严格定界+多行展平）、gfm_extensions（alerts 大小写敏感语法/任务清单 checkbox hoist/`<br>`/prepare 管线）、table_support（多行行归一+列宽）
@@ -67,7 +67,7 @@ outputs/taskflow/
 │       ├── task_detail/          # task_detail_screen、execution_log_widget（内联编辑）
 │       ├── reports/              # reports_screen（分栏编辑器 + AI 生成）
 │       ├── work_log/ calendar/ heatmap/ ai_parse/ settings/
-├── test/                         # 29 个测试文件，307 个测试（含 extended_markdown/selectable_spacing/font_upgrade/gfm_extensions/theme_palette/kanban_board/board_card_style 契约）
+├── test/                         # 29 个测试文件，303 个测试（含 extended_markdown/selectable_spacing/font_upgrade/gfm_extensions/theme_palette/kanban_board/board_card_style 契约）
 └── pubspec.yaml                  # version 字段与 kAppVersion 必须同步；fonts + FONT_LICENSES.md 声明
 ```
 
@@ -79,7 +79,7 @@ outputs/taskflow/
 
 ```powershell
 cd outputs\taskflow
-flutter test                                    # 307 个，约 30–40 秒
+flutter test                                    # 303 个，约 30–40 秒
 dart analyze lib                                # 要求 0 error（task.g.dart 的 experimental 警告为既有）
 flutter build windows --release                 # 约 60–110 秒
 
@@ -121,7 +121,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 
 1. **双远程同步**：每次提交必须推 GitHub（`https://github.com/Tresordie/TaskFlow.git`）+ Gitee（`https://gitee.com/simonyuan2019/TaskFlow.git`），显式单 URL 分别推，不用 `origin` 多 URL。
 2. **版本显示**：只在 Settings → About 显示 `kAppVersion`；侧边栏不显示版本号（用户明确要求，v1.4.93）。
-3. **主题体系**：14 个主题（v1.12.28）= 3 浅色（warmSand 暖沙/inkBlue 黛蓝/**frostedGlass 琉璃玻璃**，v1.12.28 新增冷调近白+琉璃青蓝 #2E7DA3、boardTinted、**选中自动开全局玻璃**——见 prefersGlass）+ 2 暗色基础（dark/nordNight）+ **看板着色系 2 款**（notionBoard 墨板/midnightBoard 午夜看板，列底按语义 accent 着色）+ 6 Catppuccin 暗色（Frappe 木槿紫/蓝晶、Macchiato 木槿紫/青碧、Mocha 木槿紫/薰衣草）+ **glassDashboard 奶油玻璃**（v1.12.27，暖炭玻璃阶梯+奶油 primary #EFE9DA+深炭 onPrimary——全目录唯一"深字压浅 accent"的主题）。v1.12.21 删除奶油/珍珠看板（v1.12.20 已让全部浅色看板化，独立的浅色看板款冗余）；v1.12.25 删除可可看板。已删除：v1.12.17 用户点名删 11 款（indigoLight/freshGreen/sunsetOrange/lavenderPurple/celadon/dustyRose/mintFresh/clearSky/peachCream/双 Latte）；**默认主题改为 inkBlue 黛蓝**（原默认 freshGreen 已删）。已删除：oceanBlue、sakuraPink、blueDark、purpleDark（v1.4.98）及 v1.7.0 曾上线的 espresso/deepSea/aubergine（v1.8.0 用户实测后要求删除）。主题按 `mode.name` 字符串持久化，删除枚举值安全（回退默认）；枚举按组插入（浅接 warmSand 后、深接 nordNight 后），Settings 列表/亮度/GFM alert 色自动适配。v1.12.27 起 ThemePalette 携带 `onPrimary`（压 primary 的前景色，默认白）——白字压 primary 的组件一律读它，不得硬编码 Colors.white。v1.12.28 起 AppThemeMode 携带 `prefersGlass`（v1.12.29 改为 `glassPreset != null`）——Settings 选中该主题时自动 `setGlass(true)` 并套用其 `glassPreset`（frostedGlass=opacity 0.60/blur 22 的 iPhone 液态玻璃签名参数），透明磨砂开箱即得。
+3. **主题体系**：13 个主题（v1.12.30）= 2 浅色（warmSand 暖沙/inkBlue 黛蓝）+ 2 暗色基础（dark/nordNight）+ **看板着色系 2 款**（notionBoard 墨板/midnightBoard 午夜看板，列底按语义 accent 着色）+ 6 Catppuccin 暗色（Frappe 木槿紫/蓝晶、Macchiato 木槿紫/青碧、Mocha 木槿紫/薰衣草）+ **glassDashboard 奶油玻璃**（v1.12.27，暖炭玻璃阶梯+奶油 primary #EFE9DA+深炭 onPrimary——全目录唯一"深字压浅 accent"的主题）。v1.12.21 删除奶油/珍珠看板（v1.12.20 已让全部浅色看板化，独立的浅色看板款冗余）；v1.12.25 删除可可看板；**v1.12.30 删除琉璃玻璃 frostedGlass**（连同其专用的 prefersGlass/glassPreset 机制与 Settings 选中自动开玻璃逻辑一并移除，全局 Interface Glass 开关本身保留）。已删除：v1.12.17 用户点名删 11 款（indigoLight/freshGreen/sunsetOrange/lavenderPurple/celadon/dustyRose/mintFresh/clearSky/peachCream/双 Latte）；**默认主题改为 inkBlue 黛蓝**（原默认 freshGreen 已删）。已删除：oceanBlue、sakuraPink、blueDark、purpleDark（v1.4.98）及 v1.7.0 曾上线的 espresso/deepSea/aubergine（v1.8.0 用户实测后要求删除）。主题按 `mode.name` 字符串持久化，删除枚举值安全（回退默认）；枚举按组插入（浅接 warmSand 后、深接 nordNight 后），Settings 列表/亮度/GFM alert 色自动适配。v1.12.27 起 ThemePalette 携带 `onPrimary`（压 primary 的前景色，默认白）——白字压 primary 的组件一律读它，不得硬编码 Colors.white。
 4. **报告**：AI 总结必须基于描述+全部日志；技术要点（料号/固件版本/参数/测量值/测试条件/结果/根因）绝不过度压缩，照抄原文；5 章节齐备不可省。
 5. **编辑记录**：Execution Log 记录编辑为**输入区内联模式**（v1.4.90）：点编辑 → 内容/类型/附件载入底部输入区，记录高亮 + "Editing" 徽标 → Update 原位更新（保留 uid+时间戳）/ Cancel 取消。编辑对话框已删除。按钮布局：Cancel（描边）左 + Update（主题色）右（v1.4.95 等高等圆角）。
 6. **导出同源**：Export.md / Export.html / Email.html 均来自 `s.markdown`；Email 版适配 Gmail（表格布局+内联样式+无 `<style>` 块）。
@@ -136,6 +136,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 
 | 日期/版本 | 决策 | 理由 |
 |---|---|---|
+| v1.12.30 | **删除琉璃玻璃主题 frostedGlass**（用户："删除琉璃玻璃主题"）：v1.12.28/29 上线的浅色透明玻璃主题按用户要求整体移除，回到 13 款。① **frostedGlass 多处同步删除**——app_colors 调色板常量、app_theme 枚举值 + label/labelZh/palette/brightness/boardTinted 五处 case；② **连同其专用机制一并清除**（frostedGlass 是唯一消费者，留下即死代码）：AppThemeMode 的 `glassPreset`/`prefersGlass` getter、Settings 主题卡 onTap 里"选中玻璃主题自动 setGlass+套预设"的分支（还原为单纯 `setTheme(mode)`）、theme_palette_test 的 frostedGlass 签名测试 + glass-theme 契约组（−4 测试，307→303）+ 随之无用的 app_glass_provider import；③ **全局 Interface Glass 开关与其 opacity/blur 滑块保留不动**（那是正交的全局能力，不属于本主题）；④ README(EN/CN) 主题列表回退到 13 款 2 浅色、目录树/测试计数同步、handoff 表头/目录/进度同步。主题按 name 持久化，曾选 frostedGlass 的用户下次启动回退默认 inkBlue，安全 | 删主题要连根拔：只删枚举会漏掉 palette 常量/标签 case（编译直接挂），只删主题会留下 glassPreset/prefersGlass 这套只为它存在的死 getter 和 onTap 分支——按"删除自己引入的东西"原则一并清干净；但全局玻璃效果是独立特性不能误删（其它主题也靠它出磨砂），故只移除"主题自动开玻璃"的耦合，保留手动开关 |
 | v1.12.29 | **琉璃玻璃升级为 iPhone 液态玻璃态（glassPreset 签名通透度）**（用户："浅色透明玻璃主题，类似iphone的玻璃态"）：v1.12.28 的 frostedGlass 选中后只吃到通用玻璃默认（opacity 0.75/blur 14），偏"半透明"不够通透。① **AppThemeMode 新增 `glassPreset` getter**——返回 `({double opacity, double blur})?`，frostedGlass=(0.60, 22.0)，其余 null；`prefersGlass` 改为 `glassPreset != null`（语义不变，单一真相源）；② Settings 主题卡 onTap 选中玻璃主题时除 `setGlass(true)` 外再 `setOpacity/setBlur` 套用签名预设——高通透（0.60，远低于通用 0.75）+ 强磨砂（22>默认 14），面板呈奶白玻璃、内容透入又被模糊成柔光；用户之后仍可手动调两滑块；③ **调色板提亮**：border #D8E2EC→#DEE7F0、surface #F2F6FA→#F4F8FB，让环境画布（base/deep=border 叠 surface）更明亮透气，贴近 Apple 高调玻璃底。测试：+glassPreset 契约（opacity<0.75 且≥0.5、blur>defaultBlur、prefersGlass≡有预设）；307 全过 | iPhone 玻璃态=通透+磨砂+高光边，三要素里通透度是主开关，而它属于全局 Interface Glass 而非调色板（alpha 不能进 palette，见 v1.12.28）；解法=让玻璃主题自带一套签名参数，选中即套用，把"选主题"与"调到最佳观感"合并成一步；强 blur 反而让低 opacity 下正文仍可读（背景被糊成均匀柔光）；shell 已有白色高光 rim（light 玻璃 white@0.55）本就是 Apple 边缘光，无需再动 |
 | v1.12.28 | **琉璃玻璃浅色透明玻璃主题（frostedGlass）+ prefersGlass 自动开玻璃**（用户："帮我创建一个浅色主题，透明玻璃主题"）：① **新浅色调色板 frostedGlass**——冷调近白画布 bg #E6EDF4 → surface #F2F6FA → 纯白 card（比 inkBlue 暖瓷更冷更透气），发丝冷边框 #D8E2EC，深板岩文字 #27313B/#66727E，primary **琉璃青蓝 #2E7DA3**（白字压其≈4.6:1、其作文字压白≈4.6:1，双向 AA）；② **boardTinted 家族 +1**（浅色全家本就看板化，新浅色自动继承"白卡浮着色列"配方，无需改组件）；③ **AppThemeMode 新增 `prefersGlass` getter**（仅 frostedGlass=true），Settings 主题卡 onTap 在 `setTheme` 后若 `mode.prefersGlass` 则 `setGlass(true)`——选中即开全局玻璃，面板立刻呈半透明磨砂（setGlass 内部保留用户已调 opacity，否则降到可读默认 75%；用户之后仍可手动关掉）；④ 枚举插在 inkBlue 后（浅色组），第 14 款。测试：主题数 13→14、light 分组 +frostedGlass、签名色（primary #2E7DA3/card 纯白/labelZh 琉璃玻璃/亮度 light）、glass-theme 契约（boardTinted+prefersGlass、且**仅** frostedGlass 自动开玻璃）；306 全过 | "透明玻璃"的透明=alpha，而 palette 颜色被大量当不透明用（scaffold 带 alpha 会透出黑窗），不能直接给 surface/card 加 alpha；正解=复用已有的全局 Interface Glass（surface/card 半透明+背景模糊），主题只负责"冷调透气"的配色身份；prefersGlass 把"选这个主题"和"开玻璃效果"绑定，省掉用户找开关，且是 UI 层一行耦合（不动 theme provider 持久化语义），用户关掉后重选才再开（不持续 fight 用户意图）；浅色主题常驻环境画布（app_shell showCanvas=glassOn||!isDark），玻璃面板磨砂在环境光上成立 |
 | v1.12.27 | **奶油玻璃 dashboard 主题（glassDashboard）+ onPrimary 机制**（用户："参考图片做一个dashboard主题"——深色毛玻璃 dashboard 参考图，暖炭玻璃面板+奶油色 accent 胶囊/按钮，奶油底上是深炭色文字）：① **新调色板 glassDashboard**——bg #2E2B28（深暖灰画布）→ surface #3B3835 → card #4A4640（对应参考图玻璃层层浮起），文字 #F3F0E9/#BCB6AB，primary **#EFE9DA 奶油色**（选中胶囊/选中日/确认按钮），枚举追加为第 13 款（按 `mode.name` 持久化，追加安全）；② **ThemePalette 新增可选 `onPrimary` 字段**（默认白色——其余 12 款零影响；奶油主题设深炭 #33302B，对比度≈11:1），接入 ColorScheme.onPrimary/onSecondary + ElevatedButton 前景；③ **白字压 primary 的硬编码全部改读 onPrimary**——Calendar 选中日徽章/日期数字/任务点/选中格上 `_DuePill`、Settings 主题卡+字体卡对勾、About 渐变图标、6 处按钮 loading spinner（Settings/AI Prompts/AI Parse/Reports/Work Log）；**保持白色**的场景：success 绿按钮（AppColors.success 底，非 primary）、执行日志状态色圆圈（语义色底）、图片查看器关闭按钮（黑色遮罩底）。测试：主题数 12→13、暗色分组+签名色+onPrimary 契约（其余恒白/奶油必深） | 参考图的精髓是"奶油底深字"——与全目录"白字压彩底"相反，逐处改白字会漏且脆；正解=把 on-accent 前景色变成调色板一等公民（Material 本就有 onPrimary 槽位），默认值保住向后兼容；spinner 白字是隐形雷（奶油按钮上白圈直接消失）；主题持久化按 name 所以追加枚举不破坏已存偏好 |
@@ -261,6 +262,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 ## 10. 当前进度与下一步计划
 
 **已完成（近期）**：
+- ✅ v1.12.30：删除琉璃玻璃主题 frostedGlass（枚举/标签/palette/brightness/boardTinted 五处同步删 + 其专用 glassPreset/prefersGlass 机制 + Settings 自动开玻璃分支 + 相关测试 −4；全局 Interface Glass 开关保留）；回到 13 款主题、303 测试全过
 - ✅ v1.12.29（已发版）：琉璃玻璃升级为 iPhone 液态玻璃态——AppThemeMode.glassPreset（frostedGlass 自带 opacity 0.60/blur 22 签名通透度，选中即套用，prefersGlass 改为 glassPreset!=null）+ 调色板提亮（border/surface 更明亮）；307 测试全过、双推 `ac287bb`、包体 36.0MB
 - ✅ v1.12.28（已发版）：琉璃玻璃浅色透明玻璃主题（frostedGlass：冷调近白画布+纯白卡+琉璃青蓝 primary #2E7DA3，第 14 款、boardTinted）+ AppThemeMode.prefersGlass（选中该主题自动 setGlass(true)，透明磨砂开箱即得）；306 测试全过、双推 `f735545`、包体 36.0MB
 - ✅ v1.12.27（已发版）：奶油玻璃 dashboard 主题（glassDashboard：暖炭玻璃阶梯 bg→surface→card + 奶油 primary + 深炭 onPrimary，第 13 款主题）+ ThemePalette.onPrimary 机制（默认白，其余主题零变化）+ 白字压 primary 的 9 处硬编码改读 onPrimary（日历选中态/对勾/spinner）；303 测试全过、双推 `c04236f`、包体 36.0MB

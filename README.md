@@ -37,7 +37,7 @@ lib/
 │   └── router.dart                    # GoRouter navigation
 ├── core/
 │   ├── theme/
-│   │   ├── app_colors.dart            # 14 theme palettes + priority colors
+│   │   ├── app_colors.dart            # 13 theme palettes + priority colors
 │   │   └── app_theme.dart             # ThemeData per palette
 │   └── markdown/
 │       ├── latex_support.dart         # $..$ / $$..$$ LaTeX in Markdown
@@ -85,7 +85,7 @@ test/
 - Sub-step checklists within tasks
 - Today kanban dashboard, Timeline, Calendar and Activity (heatmap) views
 - Quick-add bar with priority + due date
-- 14 color themes — 3 Notion-tuned lights (Warm Sand / Ink Blue porcelain / **Frosted Glass** — a cool azure light theme tuned to an iPhone-style "liquid glass" look: picking it turns on Interface Glass at a signature high transparency (60%) with a strong frost, so panels read as milky glass over the ambient canvas) + 2 near-black board themes (Notion Board / Midnight) + Catppuccin darks + Glass Dashboard (warm-charcoal glass ladder with a cream accent and dark text on it); 3 curated CN/EN font pairings with **Inter × MiSans as the app default** (Plus Jakarta Sans × Noto Sans SC and Lexend × Noto Sans SC selectable); global font-size scaling (80–140%)
+- 13 color themes — 2 Notion-tuned lights (Warm Sand / Ink Blue porcelain) + 2 near-black board themes (Notion Board / Midnight) + Catppuccin darks + **Glass Dashboard** (warm-charcoal glass ladder with a cream accent and dark text on it); 3 curated CN/EN font pairings with **Inter × MiSans as the app default** (Plus Jakarta Sans × Noto Sans SC and Lexend × Noto Sans SC selectable); global font-size scaling (80–140%)
 - **Today dashboard themes**: every light theme tints each kanban column with its own semantic accent (status / priority / project) and floats bright task cards over it — the Notion board-template look; two dark board themes (Notion Board / Midnight) do the same with translucent cards
 - Responsive: sidebar on desktop, bottom nav on mobile
 - Local-first persistence via Isar (NoSQL)
@@ -146,7 +146,7 @@ test/
 - **Calendar**: day cells render as tactile tiles — a top-lit body gradient, specular top sheen, bevel border and layered drop shadow step up through rest → hover → today → selected; today / the selected day carry a circular date badge, the selected day reads as a glossy pressed key with an accent glow, and weekends invert the gradient (recessed wells); the month switcher is a floating pill toolbar and the day panel header gets the accent bar + task-count badge
 - **Activity**: heatmap cells light up with a top-left radial highlight and scale on hover, a Less→More legend explains the intensity scale, and the status stat cards are KPI-styled (semantic accent bar + tinted icon chip + accent value)
 - Task cards across all three pages share the Today card skin (left accent bar, top-lit fill, hover lift + layered shadows) via the shared `TaskListCard` / `HoverLift` components
-- 306-test suite including glass/theme/hover regressions
+- 303-test suite including glass/theme/hover regressions
 
 ## Data locations
 

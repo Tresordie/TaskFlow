@@ -6,8 +6,6 @@ enum AppThemeMode {
   warmSand,
   // v1.7.0: muted-quality light theme.
   inkBlue,
-  // v1.12.28: light transparent-glass theme (auto-enables Interface Glass).
-  frostedGlass,
   dark,
   nordNight,
   // v1.12.18: Notion-template near-black kanban (accent-tinted columns).
@@ -36,26 +34,10 @@ enum AppThemeMode {
   bool get boardTinted => switch (this) {
         AppThemeMode.warmSand ||
         AppThemeMode.inkBlue ||
-        AppThemeMode.frostedGlass ||
         AppThemeMode.notionBoard ||
         AppThemeMode.midnightBoard => true,
         _ => false,
       };
-
-  /// v1.12.28: themes whose whole identity is translucency — selecting one
-  /// in Settings turns on the app-wide Interface Glass.
-  /// v1.12.29: a glass theme now also carries its own frosted PRESET
-  /// (opacity + blur) so the look is right out of the box instead of the
-  /// generic 75% / 14 default. The user can still tune both sliders after.
-  ({double opacity, double blur})? get glassPreset => switch (this) {
-        // iPhone "liquid glass": high transparency + a strong frost, so the
-        // panels read as milky glass over the ambient canvas while the
-        // bright shell rim keeps the specular edge.
-        AppThemeMode.frostedGlass => (opacity: 0.60, blur: 22.0),
-        _ => null,
-      };
-
-  bool get prefersGlass => glassPreset != null;
 
   String get label {
     switch (this) {
@@ -63,8 +45,6 @@ enum AppThemeMode {
         return 'Warm Sand';
       case AppThemeMode.inkBlue:
         return 'Ink Blue';
-      case AppThemeMode.frostedGlass:
-        return 'Frosted Glass';
       case AppThemeMode.dark:
         return 'Dark';
       case AppThemeMode.nordNight:
@@ -96,8 +76,6 @@ enum AppThemeMode {
         return '暖沙';
       case AppThemeMode.inkBlue:
         return '黛蓝';
-      case AppThemeMode.frostedGlass:
-        return '琉璃玻璃';
       case AppThemeMode.dark:
         return '暗夜模式';
       case AppThemeMode.nordNight:
@@ -129,8 +107,6 @@ enum AppThemeMode {
         return AppColors.warmSand;
       case AppThemeMode.inkBlue:
         return AppColors.inkBlue;
-      case AppThemeMode.frostedGlass:
-        return AppColors.frostedGlass;
       case AppThemeMode.dark:
         return AppColors.dark;
       case AppThemeMode.nordNight:
@@ -160,7 +136,6 @@ enum AppThemeMode {
     switch (this) {
       case AppThemeMode.warmSand:
       case AppThemeMode.inkBlue:
-      case AppThemeMode.frostedGlass:
         return Brightness.light;
       case AppThemeMode.dark:
       case AppThemeMode.nordNight:
