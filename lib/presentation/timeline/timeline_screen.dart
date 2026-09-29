@@ -196,7 +196,8 @@ class TimelineScreen extends ConsumerWidget {
                       ),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: theme.colorScheme.outline.withOpacity(0.28),
+                        color: theme.colorScheme.outline.withOpacity(
+                            AppColors.cardBorderOpacity(theme.brightness)),
                       ),
                     ),
                     child: Column(
@@ -217,8 +218,7 @@ class TimelineScreen extends ConsumerWidget {
                           'The timeline stays empty until a task is created here.',
                           textAlign: TextAlign.center,
                           style: theme.textTheme.labelSmall?.copyWith(
-                            color:
-                                theme.colorScheme.onSurface.withOpacity(0.45),
+                            color: AppColors.muted(context, faint: true),
                           ),
                         ),
                       ],
@@ -355,11 +355,14 @@ class _TimelineItem extends StatelessWidget {
         task.status == TaskStatus.archived;
     final titleStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
           decoration: isCompleted ? TextDecoration.lineThrough : null,
+          // v1.12.42: at 40% ink a struck-through title was illegible on
+          // paper (user: 暖沙 / 黛蓝 各页面预览效果很差).
           color: isCompleted
-              ? Theme.of(context).colorScheme.onSurface.withOpacity(0.4)
+              ? Theme.of(context).colorScheme.onSurface.withOpacity(
+                  AppColors.dimmedTitleOpacity(Theme.of(context).brightness))
               : null,
-          decorationColor:
-              Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+          decorationColor: Theme.of(context).colorScheme.onSurface.withOpacity(
+              AppColors.dimmedTitleOpacity(Theme.of(context).brightness)),
         );
 
     return IntrinsicHeight(
@@ -385,7 +388,7 @@ class _TimelineItem extends StatelessWidget {
                     TimelineLayout.dateLabel(task.createdAt),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface.withOpacity(0.72),
+                          color: AppColors.muted(context),
                         ),
                   ),
                 ),
@@ -395,7 +398,7 @@ class _TimelineItem extends StatelessWidget {
                   child: Text(
                     TimelineLayout.timeLabel(task.createdAt),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.45),
+                          color: AppColors.muted(context, faint: true),
                         ),
                   ),
                 ),

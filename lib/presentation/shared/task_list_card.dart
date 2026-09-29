@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
+
 /// v1.12.23: the Today-TaskCard skin in miniature, shared by the Timeline,
 /// Calendar and Activity lists — a bright theme-aware card fill with a
 /// subtle top-lit gradient, a left accent bar that fades toward the
@@ -39,10 +41,15 @@ class TaskListCard extends StatelessWidget {
           ],
         ),
         borderRadius: borderRadius,
+        // v1.12.42: on a paper canvas a 30% outline vanished into the
+        // background and the cards floated edge-less — light themes get a
+        // real hairline and a firmer accent on hover.
         border: Border.all(
           color: highlighted
-              ? accentColor.withOpacity(0.5)
-              : theme.colorScheme.outline.withOpacity(0.3),
+              ? accentColor
+                  .withOpacity(AppColors.accentBorderOpacity(theme.brightness))
+              : theme.colorScheme.outline
+                  .withOpacity(AppColors.cardBorderOpacity(theme.brightness)),
         ),
       ),
       // v1.12.24: IntrinsicHeight bounds the stretch Row so the card also

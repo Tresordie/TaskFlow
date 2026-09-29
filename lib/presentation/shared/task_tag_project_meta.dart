@@ -43,7 +43,15 @@ class TaskTagProjectMeta extends ConsumerWidget {
     final fontSize = compact ? 10.5 : 11.0;
     final gap = compact ? 8.0 : 12.0;
 
-    final projectColor = colors.projectColor(project) ?? muted;
+    // v1.12.42: the colour picker offers pastels, and an 11px pastel
+    // label is invisible on a white card (the dark themes never had that
+    // problem). The ink walks toward black/white until it clears AA; the
+    // hue stays recognisable.
+    final labelSurface = theme.brightness == Brightness.dark
+        ? theme.colorScheme.surface
+        : Colors.white;
+    final projectColor = AppColors.legibleInk(
+        colors.projectColor(project) ?? muted, labelSurface);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -76,7 +84,9 @@ class TaskTagProjectMeta extends ConsumerWidget {
                       text: '#${task.tags[i]}',
                       style: TextStyle(
                         fontSize: fontSize,
-                        color: colors.tagColor(task.tags[i]) ?? muted,
+                        color: AppColors.legibleInk(
+                            colors.tagColor(task.tags[i]) ?? muted,
+                            labelSurface),
                       ),
                     ),
                   ],

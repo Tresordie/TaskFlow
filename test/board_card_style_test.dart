@@ -174,7 +174,8 @@ void main() {
           home: Scaffold(body: Center(child: child)),
         );
 
-    testWidgets('glass mode wraps the card in a BackdropFilter', (tester) async {
+    testWidgets('glass mode wraps the card in a BackdropFilter',
+        (tester) async {
       SharedPreferences.setMockInitialValues({});
       final notifier = BoardCardStyleNotifier()..setGlass(true);
       await tester.pumpWidget(
@@ -237,8 +238,9 @@ void main() {
       // v1.12.33: the shared GlassSheen is what makes the frost read as a lit
       // slab; it must sit inside the glass card and not swallow pointer events
       // (IgnorePointer is built into the widget).
-      expect(find.descendant(
-          of: find.byType(TaskCard), matching: find.byType(GlassSheen)),
+      expect(
+          find.descendant(
+              of: find.byType(TaskCard), matching: find.byType(GlassSheen)),
           findsOneWidget);
       expect(find.text('Sample task'), findsOneWidget);
     });
@@ -308,8 +310,8 @@ void main() {
     });
 
     test('board-glass theme honors a slider the user has tuned', () {
-      final spec = BoardGlassSpec.resolve(
-          const BoardCardStyle(opacity: 0.95), themeGlass: true);
+      final spec = BoardGlassSpec.resolve(const BoardCardStyle(opacity: 0.95),
+          themeGlass: true);
       expect(spec.glass, isTrue);
       expect(spec.opacity, 0.95);
     });
@@ -327,14 +329,35 @@ void main() {
       final spec = BoardGlassSpec.resolve(
           const BoardCardStyle(opacity: 0.15, glass: true, blur: 12),
           themeGlass: false,
-          appGlass: const AppGlassStyle(
-              glass: true, opacity: 0.6, blur: 22));
+          appGlass: const AppGlassStyle(glass: true, opacity: 0.6, blur: 22));
       // The card fill stays at the user's 15%…
       expect(spec.opacity, 0.15);
       // …but the KPI strip / quick-add bar are interface panels: they take the
       // interface opacity and blur.
       expect(spec.panelOpacity, 0.6);
       expect(spec.panelBlur, 22);
+    });
+
+    test('v1.12.42: the untuned theme-glass default is brightness-aware', () {
+      const untuned = BoardCardStyle();
+      expect(
+          BoardGlassSpec.resolve(untuned,
+                  themeGlass: true, brightness: Brightness.light)
+              .opacity,
+          BoardCardStyle.iosGlassDefaultOpacityLight);
+      expect(
+          BoardGlassSpec.resolve(untuned,
+                  themeGlass: true, brightness: Brightness.dark)
+              .opacity,
+          BoardCardStyle.iosGlassDefaultOpacity);
+      // A slider the user actually tuned is honoured on either canvas.
+      expect(
+          BoardGlassSpec.resolve(
+                  const BoardCardStyle(opacity: 0.4, glass: true),
+                  themeGlass: true,
+                  brightness: Brightness.light)
+              .opacity,
+          0.4);
     });
 
     test('v1.12.33: panel fill never drops below the readability floor', () {
@@ -344,12 +367,16 @@ void main() {
       expect(spec.opacity, 0.15);
       expect(spec.panelOpacity, BoardGlassSpec.panelOpacityFloor);
       // Interface Glass can also be dragged low — same floor applies.
-      final lowInterface = BoardGlassSpec.resolve(
-          const BoardCardStyle(),
+      final lowInterface = BoardGlassSpec.resolve(const BoardCardStyle(),
           themeGlass: false,
           appGlass: const AppGlassStyle(glass: true, opacity: 0.2));
-      expect(lowInterface.panelOpacity,
-          BoardGlassSpec.panelOpacityFloor);
+      expect(lowInterface.panelOpacity, BoardGlassSpec.panelOpacityFloor);
+      // ...and the paper floor is much firmer (v1.12.42).
+      final light = BoardGlassSpec.resolve(
+          const BoardCardStyle(opacity: 0.15, glass: true),
+          themeGlass: true,
+          brightness: Brightness.light);
+      expect(light.panelOpacity, BoardGlassSpec.panelOpacityFloorLight);
     });
 
     test('the resolved spec is what the provider exposes for inkBlue',
@@ -358,9 +385,13 @@ void main() {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       // Default theme is inkBlue (a board-glass theme) with an untuned style.
+      // v1.12.42: paper needs a firmer fill — at the dark 72% default the
+      // card was the same colour as the canvas and the board lost hierarchy.
       final spec = container.read(boardGlassSpecProvider);
       expect(spec.glass, isTrue);
-      expect(spec.opacity, BoardCardStyle.iosGlassDefaultOpacity);
+      expect(spec.opacity, BoardCardStyle.iosGlassDefaultOpacityLight);
+      expect(spec.panelOpacity,
+          greaterThanOrEqualTo(BoardGlassSpec.panelOpacityFloorLight));
       // ...and the same recipe reaches the whole board through one provider.
       container.read(themeModeProvider.notifier).setTheme(AppThemeMode.dark);
       await Future<void>.delayed(const Duration(milliseconds: 50));

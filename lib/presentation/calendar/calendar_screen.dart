@@ -219,8 +219,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             decoration: BoxDecoration(
               color: palette.surface,
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                  color: palette.outline.withOpacity(0.35)),
+              border: Border.all(color: palette.outline.withOpacity(0.35)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(
@@ -273,8 +272,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             d,
                             style: theme.textTheme.labelSmall?.copyWith(
                               fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface
-                                  .withOpacity(0.65),
+                              color:
+                                  theme.colorScheme.onSurface.withOpacity(0.65),
                             ),
                           ),
                         ),
@@ -320,8 +319,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 isWeekend: date.weekday >= 6,
                 createdCount: createdCount,
                 dueTasks: dueTasks,
-                onTap: () => _setNav(
-                    nav.copyWith(selectedDate: date, clearRange: true)),
+                onTap: () =>
+                    _setNav(nav.copyWith(selectedDate: date, clearRange: true)),
               );
             },
           ),
@@ -346,14 +345,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       title = DateFormat('EEE, MMM d').format(nav.selectedDate);
       // Show tasks created on this day AND tasks due on this day.
       final selected = nav.selectedDate;
-      final createdOnDay = tasks
-          .where((t) => _isSameDay(t.createdAt, selected))
-          .toSet();
+      final createdOnDay =
+          tasks.where((t) => _isSameDay(t.createdAt, selected)).toSet();
       final dueOnDay = tasks
           .where((t) => t.dueDate != null && _isSameDay(t.dueDate!, selected))
           .toSet();
-      dayTasks = [...createdOnDay, ...dueOnDay.where((t) => !createdOnDay.contains(t))]
-        ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      dayTasks = [
+        ...createdOnDay,
+        ...dueOnDay.where((t) => !createdOnDay.contains(t))
+      ]..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
       emptyLabel = 'No tasks on this day';
     }
 
@@ -365,11 +365,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         // soft shadow) — module differentiation over the page surface.
         color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.35)),
+        border: Border.all(
+            color: theme.colorScheme.outline
+                .withOpacity(AppColors.cardBorderOpacity(theme.brightness))),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(
-                theme.brightness == Brightness.dark ? 0.15 : 0.05),
+            color: Colors.black
+                .withOpacity(theme.brightness == Brightness.dark ? 0.15 : 0.05),
             blurRadius: 12,
             offset: const Offset(0, 3),
           ),
@@ -401,8 +403,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   color: palette.primary.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(999),
                 ),
+                // v1.12.42: the count and its unit live in the pill — the
+                // separate line below read as a stray wrapped label.
                 child: Text(
-                  '${dayTasks.length}',
+                  '${dayTasks.length} task${dayTasks.length == 1 ? '' : 's'}',
                   style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
@@ -411,14 +415,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 4),
-          Padding(
-            padding: const EdgeInsets.only(left: 14),
-            child: Text(
-              'task${dayTasks.length == 1 ? '' : 's'}',
-              style: theme.textTheme.bodyMedium,
-            ),
           ),
           const SizedBox(height: 16),
           if (dayTasks.isEmpty)
@@ -433,8 +429,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           else
             Expanded(
               child: ListView(
-                children:
-                    dayTasks.map((task) => _DayTaskItem(task: task, selectedDate: nav.rangeMode ? null : nav.selectedDate)).toList(),
+                children: dayTasks
+                    .map((task) => _DayTaskItem(
+                        task: task,
+                        selectedDate: nav.rangeMode ? null : nav.selectedDate))
+                    .toList(),
               ),
             ),
         ],
@@ -490,74 +489,76 @@ class _DayTaskItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           padding: const EdgeInsets.fromLTRB(0, 11, 12, 11),
           child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: isCompleted ? AppColors.success : priorityColor,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    task.title,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontSize: 14.5,
-                      decoration:
-                          isCompleted ? TextDecoration.lineThrough : null,
-                      color: isCompleted
-                          ? theme.colorScheme.onSurface.withOpacity(0.4)
-                          : null,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                // Due-date badge when the task is due on the selected day.
-                if (selectedDate != null &&
-                    task.dueDate != null &&
-                    _CalendarScreenState._isSameDayStatic(task.dueDate!, selectedDate!))
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
                   Container(
-                    margin: const EdgeInsets.only(right: 6),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2),
+                    width: 8,
+                    height: 8,
                     decoration: BoxDecoration(
-                      color: AppColors.warning.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(4),
+                      color: isCompleted ? AppColors.success : priorityColor,
+                      shape: BoxShape.circle,
                     ),
-                    child: Text('Due',
-                        style: TextStyle(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.warning)),
                   ),
-                Icon(
-                  isCompleted ? Icons.check_circle : Icons.circle_outlined,
-                  size: 16,
-                  color: isCompleted ? AppColors.success : priorityColor,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      task.title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontSize: 14.5,
+                        decoration:
+                            isCompleted ? TextDecoration.lineThrough : null,
+                        color: isCompleted
+                            ? theme.colorScheme.onSurface.withOpacity(
+                                AppColors.dimmedTitleOpacity(theme.brightness))
+                            : null,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  // Due-date badge when the task is due on the selected day.
+                  if (selectedDate != null &&
+                      task.dueDate != null &&
+                      _CalendarScreenState._isSameDayStatic(
+                          task.dueDate!, selectedDate!))
+                    Container(
+                      margin: const EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text('Due',
+                          style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.warning)),
+                    ),
+                  Icon(
+                    isCompleted ? Icons.check_circle : Icons.circle_outlined,
+                    size: 16,
+                    color: isCompleted ? AppColors.success : priorityColor,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              if (task.project.trim().isNotEmpty || task.tags.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.only(left: 18),
+                  child: TaskTagProjectMeta(task: task, compact: true),
                 ),
+                const SizedBox(height: 4),
               ],
-            ),
-            const SizedBox(height: 6),
-            if (task.project.trim().isNotEmpty || task.tags.isNotEmpty) ...[
               Padding(
                 padding: const EdgeInsets.only(left: 18),
-                child: TaskTagProjectMeta(task: task, compact: true),
+                child: TaskDateMeta(task: task, compact: true),
               ),
-              const SizedBox(height: 4),
             ],
-            Padding(
-              padding: const EdgeInsets.only(left: 18),
-              child: TaskDateMeta(task: task, compact: true),
-            ),
-          ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -693,15 +694,22 @@ class _DayCellState extends State<_DayCell> {
         ),
       ];
     } else if (widget.inRange) {
+      // v1.12.42: on paper a 16% accent tint laid over the
+      // ambient page gradient is grey mush, and a 30-day range tints almost
+      // every cell — the grid read as one slab. Composite the tint onto white
+      // so the tile stays a tile, and keep the wash pale.
+      final rangeTop = dark
+          ? palette.primary.withOpacity(0.16)
+          : Color.alphaBlend(palette.primary.withOpacity(0.10), Colors.white);
+      final rangeBottom = dark
+          ? palette.primary.withOpacity(0.07)
+          : Color.alphaBlend(palette.primary.withOpacity(0.045), Colors.white);
       bodyGradient = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [
-          palette.primary.withOpacity(0.16),
-          palette.primary.withOpacity(0.07),
-        ],
+        colors: [rangeTop, rangeBottom],
       );
-      borderColor = palette.primary.withOpacity(0.25);
+      borderColor = palette.primary.withOpacity(dark ? 0.25 : 0.22);
       sheen = 0.06;
       shadows = [
         BoxShadow(
@@ -732,11 +740,11 @@ class _DayCellState extends State<_DayCell> {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          palette.onSurface.withOpacity(0.045),
-          palette.onSurface.withOpacity(0.012),
+          palette.onSurface.withOpacity(dark ? 0.045 : 0.035),
+          palette.onSurface.withOpacity(dark ? 0.012 : 0.012),
         ],
       );
-      borderColor = palette.outline.withOpacity(0.18);
+      borderColor = palette.outline.withOpacity(dark ? 0.18 : 0.45);
       sheen = 0.0;
       shadows = const [];
     } else {
@@ -745,8 +753,7 @@ class _DayCellState extends State<_DayCell> {
         end: Alignment.bottomCenter,
         colors: [tileTop, tileBottom],
       );
-      borderColor =
-          palette.outline.withOpacity(dark ? 0.28 : 0.42);
+      borderColor = palette.outline.withOpacity(dark ? 0.28 : 0.42);
       sheen = 0.06;
       shadows = [
         BoxShadow(
@@ -822,8 +829,7 @@ class _DayCellState extends State<_DayCell> {
                                         : palette.primary.withOpacity(0.14),
                                     border: Border.all(
                                       color: isSelected
-                                          ? palette.onPrimary
-                                              .withOpacity(0.45)
+                                          ? palette.onPrimary.withOpacity(0.45)
                                           : palette.primary.withOpacity(0.50),
                                     ),
                                   )
@@ -948,9 +954,8 @@ class _DuePill extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
       decoration: BoxDecoration(
-        color: onSelected
-            ? onAccent.withOpacity(0.2)
-            : accent.withOpacity(0.12),
+        color:
+            onSelected ? onAccent.withOpacity(0.2) : accent.withOpacity(0.12),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
           color: onSelected

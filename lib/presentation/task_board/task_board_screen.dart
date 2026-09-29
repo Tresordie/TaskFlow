@@ -80,11 +80,13 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     final glassActive = appGlass.glass || boardGlass.glass;
     final canvasColor = isDark
         ? appPalette.bg
-        : Color.alphaBlend(appPalette.border.withOpacity(glassActive ? 0.50 : 0.38),
+        : Color.alphaBlend(
+            appPalette.border.withOpacity(glassActive ? 0.50 : 0.38),
             appPalette.bg);
     final canvasDeepColor = isDark
         ? appPalette.bg
-        : Color.alphaBlend(appPalette.border.withOpacity(glassActive ? 0.64 : 0.52),
+        : Color.alphaBlend(
+            appPalette.border.withOpacity(glassActive ? 0.64 : 0.52),
             appPalette.bg);
     // v1.12.12: the canvas stays OPAQUE — a translucent canvas let the
     // blurred shell ambient fog through the whole dashboard, which read as
@@ -127,9 +129,8 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
         // all content and ignoring the pointer.
         Positioned.fill(
           child: IgnorePointer(
-            child: _buildBackdrop(
-                theme, appPalette, canvasColor, canvasDeepColor, isDark,
-                glassActive),
+            child: _buildBackdrop(theme, appPalette, canvasColor,
+                canvasDeepColor, isDark, glassActive),
           ),
         ),
         Column(
@@ -148,12 +149,19 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
 
             Expanded(
               child: tasksAsync.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(child: Text('Error: $e')),
-                data: (_) => _buildBody(theme, board, filter, quickFilter,
-                    dimension, colorSettings, cardColor, columnColor,
-                    boardGlass, notionTint),
+                data: (_) => _buildBody(
+                    theme,
+                    board,
+                    filter,
+                    quickFilter,
+                    dimension,
+                    colorSettings,
+                    cardColor,
+                    columnColor,
+                    boardGlass,
+                    notionTint),
               ),
             ),
           ],
@@ -170,8 +178,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
   /// v1.12.6: in glass mode the orbs double in presence — they are what
   /// the frosted columns and cards blur through.
   Widget _buildBackdrop(ThemeData theme, ThemePalette appPalette,
-      Color canvasColor, Color canvasDeepColor, bool isDark,
-      bool glassActive) {
+      Color canvasColor, Color canvasDeepColor, bool isDark, bool glassActive) {
     final palette = theme.colorScheme;
     final orbBoost = glassActive ? 3.0 : 1.0;
     // v1.12.33: on a glass board the orbs ARE the wallpaper — frost is only
@@ -191,9 +198,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
             ],
           ),
         ),
-      )
-          .animate(onPlay: (controller) => controller.repeat(reverse: true))
-          .moveX(
+      ).animate(onPlay: (controller) => controller.repeat(reverse: true)).moveX(
             begin: -18,
             end: 18,
             duration: 14000.ms,
@@ -236,14 +241,10 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
         // three corner orbs sit outside the columns' footprint.
         if (glassActive)
           Positioned(
-              top: 260,
-              left: 240,
-              child: orb(AppColors.info, 560, 0.055)),
+              top: 260, left: 240, child: orb(AppColors.info, 560, 0.055)),
         if (glassActive)
           Positioned(
-              bottom: 120,
-              right: 320,
-              child: orb(palette.primary, 520, 0.05)),
+              bottom: 120, right: 320, child: orb(palette.primary, 520, 0.05)),
       ],
     );
   }
@@ -296,8 +297,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
         ),
         child: Row(
           children: [
-            Icon(Icons.filter_alt,
-                size: 16, color: theme.colorScheme.primary),
+            Icon(Icons.filter_alt, size: 16, color: theme.colorScheme.primary),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -314,8 +314,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                   ref.read(taskFilterProvider.notifier).state = TaskFilter(),
               borderRadius: BorderRadius.circular(6),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Text(
                   'Clear',
                   style: TextStyle(
@@ -385,9 +384,8 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                   ),
                   child: KeyedSubtree(
                     key: ValueKey('board-${dimension.name}'),
-                    child: _buildBoard(
-                        theme, board, dimension, colorSettings, columnColor,
-                        notionTint, boardGlass.glass),
+                    child: _buildBoard(theme, board, dimension, colorSettings,
+                        columnColor, notionTint, boardGlass.glass),
                   ),
                 ),
         ),
@@ -397,8 +395,8 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
 
   // ─── Toolbar: quick filter pills + dimension switcher ─────────────────────
 
-  Widget _buildToolbar(ThemeData theme, BoardQuickFilter quickFilter,
-      BoardDimension dimension) {
+  Widget _buildToolbar(
+      ThemeData theme, BoardQuickFilter quickFilter, BoardDimension dimension) {
     final pills = _buildQuickFilterPills(theme, quickFilter);
     final dimensionControl = _buildDimensionControl(theme, dimension);
     return Padding(
@@ -638,9 +636,14 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
 
   // ─── Board ────────────────────────────────────────────────────────────────
 
-  Widget _buildBoard(ThemeData theme, KanbanBoardData board,
-      BoardDimension dimension, ColorSettings colorSettings, Color columnColor,
-      bool notionTint, bool glassTray) {
+  Widget _buildBoard(
+      ThemeData theme,
+      KanbanBoardData board,
+      BoardDimension dimension,
+      ColorSettings colorSettings,
+      Color columnColor,
+      bool notionTint,
+      bool glassTray) {
     const gap = 14.0;
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 8, 28, 14),
@@ -663,9 +666,8 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
                   if (i > 0) const SizedBox(width: gap),
                   SizedBox(
                     width: colWidth,
-                    child: _buildColumn(
-                        col, dimension, colorSettings, columnColor, notionTint,
-                        theme, glassTray),
+                    child: _buildColumn(col, dimension, colorSettings,
+                        columnColor, notionTint, theme, glassTray),
                   ),
                 ],
               ],
@@ -676,11 +678,15 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     );
   }
 
-  Widget _buildColumn(KanbanColumnData col, BoardDimension dimension,
-      ColorSettings colorSettings, Color columnColor, bool notionTint,
-      ThemeData theme, bool glassTray) {
-    final (title, icon, accent) =
-        _columnVisual(col, dimension, colorSettings);
+  Widget _buildColumn(
+      KanbanColumnData col,
+      BoardDimension dimension,
+      ColorSettings colorSettings,
+      Color columnColor,
+      bool notionTint,
+      ThemeData theme,
+      bool glassTray) {
+    final (title, icon, accent) = _columnVisual(col, dimension, colorSettings);
     // v1.12.18/v1.12.19: Notion-board family — each column is tinted by
     // its own semantic accent over the surface (status / priority / project
     // color), so the board reads as colored glass columns like the
@@ -705,8 +711,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
       onStartAdd: () => setState(() => _addingColumnKey = col.key),
       onCancelAdd: () => setState(() => _addingColumnKey = null),
       onDropTask: (task) => _handleColumnDrop(col, task, dimension),
-      onSubmitAdd: (title) =>
-          _handleColumnSubmitAdd(col, title, dimension),
+      onSubmitAdd: (title) => _handleColumnSubmitAdd(col, title, dimension),
     );
   }
 
@@ -737,8 +742,11 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
   (String, IconData, Color) _statusColumnVisual(TaskStatus status) {
     switch (status) {
       case TaskStatus.planned:
-        return ('To Do', Icons.radio_button_unchecked,
-            AppColors.statusColor(TaskStatus.planned));
+        return (
+          'To Do',
+          Icons.radio_button_unchecked,
+          AppColors.statusColor(TaskStatus.planned)
+        );
       case TaskStatus.inProgress:
         return ('In Progress', Icons.play_arrow_rounded, AppColors.info);
       case TaskStatus.completed:
@@ -906,69 +914,69 @@ class _KpiCardState extends State<_KpiCard> {
                   ),
                 ),
               ),
-            // Accent icon chip (top-right).
-            Positioned(
-              right: 10,
-              top: 10,
-              child: Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  color: data.accent.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(9),
+              // Accent icon chip (top-right).
+              Positioned(
+                right: 10,
+                top: 10,
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: data.accent.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Icon(data.icon, size: 15, color: data.accent),
                 ),
-                child: Icon(data.icon, size: 15, color: data.accent),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 11, 14, 11),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // v1.12.35: the label is the only row that shares its
-                  // vertical band with the top-right accent chip, so it
-                  // reserves the chip's width and ellipsizes instead of
-                  // running underneath it (narrow window / big user font).
-                  Padding(
-                    padding: const EdgeInsets.only(right: 32),
-                    child: Text(
-                      data.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
-                        color: muted,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 11, 14, 11),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // v1.12.35: the label is the only row that shares its
+                    // vertical band with the top-right accent chip, so it
+                    // reserves the chip's width and ellipsizes instead of
+                    // running underneath it (narrow window / big user font).
+                    Padding(
+                      padding: const EdgeInsets.only(right: 32),
+                      child: Text(
+                        data.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                          color: muted,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    data.value,
-                    style: TextStyle(
-                      fontSize: 21,
-                      fontWeight: FontWeight.w800,
-                      color: palette.onSurface,
+                    const SizedBox(height: 5),
+                    Text(
+                      data.value,
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
+                        color: palette.onSurface,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    data.sub,
-                    style: TextStyle(
-                        fontSize: 11, color: data.subColor ?? muted),
-                  ),
-                  if (data.progress != null) ...[
-                    const SizedBox(height: 8),
-                    _progressBar(data.progress!, palette),
+                    const SizedBox(height: 2),
+                    Text(
+                      data.sub,
+                      style: TextStyle(
+                          fontSize: 11, color: data.subColor ?? muted),
+                    ),
+                    if (data.progress != null) ...[
+                      const SizedBox(height: 8),
+                      _progressBar(data.progress!, palette),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -981,8 +989,9 @@ class _KpiCardState extends State<_KpiCard> {
         end: Alignment.bottomRight,
         colors: [
           widget.cardColor,
-          Color.alphaBlend(widget.data.accent
-              .withOpacity(widget.isDark ? 0.07 : 0.09), widget.cardColor),
+          Color.alphaBlend(
+              widget.data.accent.withOpacity(widget.isDark ? 0.07 : 0.09),
+              widget.cardColor),
         ],
       );
 
@@ -1073,9 +1082,8 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
     // v1.12.33: reads the RESOLVED spec — on warmSand / inkBlue the bar is an
     // iOS glass container by default, like the KPI strip and the cards.
     final boardGlass = ref.watch(boardGlassSpecProvider);
-    final cardColor = isDark
-        ? ref.watch(themeModeProvider).palette.card
-        : Colors.white;
+    final cardColor =
+        isDark ? ref.watch(themeModeProvider).palette.card : Colors.white;
     final fillColor = boardGlass.glass
         ? cardColor.withOpacity(boardGlass.panelOpacity)
         : cardColor;
@@ -1089,330 +1097,333 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
         decoration: BoxDecoration(
           // v1.12.33: in glass mode the fill carries the shared specular
           // profile (bright top face, refraction rim along the bottom edge).
-          gradient:
-              boardGlass.glass ? GlassSheen.fillOver(fillColor) : null,
+          gradient: boardGlass.glass
+              ? GlassSheen.fillOver(fillColor, brightness: theme.brightness)
+              : null,
           color: boardGlass.glass ? null : fillColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: _expanded
-              ? theme.colorScheme.primary.withOpacity(0.4)
-              : theme.colorScheme.outline.withOpacity(0.55),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.05 : 0.07),
-            blurRadius: isDark ? 7 : 9,
-            offset: const Offset(0, 2),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _expanded
+                ? theme.colorScheme.primary.withOpacity(0.4)
+                : theme.colorScheme.outline.withOpacity(0.55),
           ),
-          if (_expanded)
+          boxShadow: [
             BoxShadow(
-              color: theme.colorScheme.primary.withOpacity(0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: Colors.black.withOpacity(isDark ? 0.05 : 0.07),
+              blurRadius: isDark ? 7 : 9,
+              offset: const Offset(0, 2),
             ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Main input row
-          Row(
-            children: [
-              const SizedBox(width: 14),
-              Icon(Icons.add_circle_outline,
-                  size: 20, color: theme.colorScheme.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  decoration: InputDecoration(
-                    hintText: 'Add a task...',
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+            if (_expanded)
+              BoxShadow(
+                color: theme.colorScheme.primary.withOpacity(0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Main input row
+            Row(
+              children: [
+                const SizedBox(width: 14),
+                Icon(Icons.add_circle_outline,
+                    size: 20, color: theme.colorScheme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: InputDecoration(
+                      hintText: 'Add a task...',
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onTap: () => setState(() => _expanded = true),
+                    onSubmitted: (_) => _addTask(),
                   ),
-                  onTap: () => setState(() => _expanded = true),
-                  onSubmitted: (_) => _addTask(),
                 ),
-              ),
-              // Expand/collapse options
-              IconButton(
-                icon: Icon(
-                  _expanded
-                      ? Icons.keyboard_arrow_up
-                      : Icons.keyboard_arrow_down,
-                  size: 20,
-                ),
-                color: theme.colorScheme.onSurface.withOpacity(0.5),
-                onPressed: () => setState(() => _expanded = !_expanded),
-              ),
-              // Submit button
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ElevatedButton(
-                  onPressed: _addTask,
-                  style: ElevatedButton.styleFrom(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    minimumSize: Size.zero,
+                // Expand/collapse options
+                IconButton(
+                  icon: Icon(
+                    _expanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    size: 20,
                   ),
-                  child: const Text('Add', style: TextStyle(fontSize: 13)),
+                  color: theme.colorScheme.onSurface.withOpacity(0.5),
+                  onPressed: () => setState(() => _expanded = !_expanded),
                 ),
-              ),
-            ],
-          ),
+                // Submit button
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ElevatedButton(
+                    onPressed: _addTask,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      minimumSize: Size.zero,
+                    ),
+                    child: const Text('Add', style: TextStyle(fontSize: 13)),
+                  ),
+                ),
+              ],
+            ),
 
-          // Expanded options: priority + due date
-          if (_expanded)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      // Priority selector
-                      Text('Priority:',
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(fontSize: 12)),
-                      const SizedBox(width: 8),
-                      ...Priority.values.map((p) {
-                        final color = AppColors.priorityColor(p.index);
-                        final isSelected = _priority == p;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: GestureDetector(
-                            onTap: () => setState(() => _priority = p),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? color.withOpacity(0.15)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? color
-                                      : color.withOpacity(0.3),
-                                ),
-                              ),
-                              child: Text(
-                                p.shortLabel,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: color,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                      const SizedBox(width: 20),
-                      // Due date picker
-                      GestureDetector(
-                        onTap: _pickDueDate,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: _dueDate != null
-                                ? theme.colorScheme.primary.withOpacity(0.1)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: _dueDate != null
-                                  ? theme.colorScheme.primary.withOpacity(0.4)
-                                  : theme.colorScheme.outline.withOpacity(0.4),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.calendar_today,
-                                  size: 13,
-                                  color: _dueDate != null
-                                      ? theme.colorScheme.primary
-                                      : theme.colorScheme.onSurface
-                                          .withOpacity(0.5)),
-                              const SizedBox(width: 6),
-                              Text(
-                                _dueDate != null
-                                    ? DateFormat('MMM d').format(_dueDate!)
-                                    : 'Due date',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: _dueDate != null
-                                      ? theme.colorScheme.primary
-                                      : theme.colorScheme.onSurface
-                                          .withOpacity(0.5),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      if (_dueDate != null) ...[
-                        const SizedBox(width: 6),
-                        GestureDetector(
-                          onTap: () => setState(() => _dueDate = null),
-                          child: Icon(Icons.close,
-                              size: 14,
-                              color:
-                                  theme.colorScheme.onSurface.withOpacity(0.4)),
-                        ),
-                      ],
-                      const Spacer(),
-                      // Tags input (comma-separated, with history autocomplete)
-                      SizedBox(
-                        width: 150,
-                        height: 30,
-                        child: SuggestionField(
-                          controller: _tagController,
-                          commaSeparated: true,
-                          suggestions: ref.watch(distinctTagsProvider),
-                          optionIcon: Icons.label_outline,
-                          headerText: 'Recent tags',
-                          style: const TextStyle(fontSize: 12),
-                          decoration: InputDecoration(
-                            hintText: 'Tags (a, b)',
-                            prefixIcon: Icon(Icons.label_outline,
-                                size: 14,
-                                color: theme.colorScheme.onSurface
-                                    .withOpacity(0.5)),
-                            prefixIconConstraints: const BoxConstraints(
-                                minWidth: 30, minHeight: 0),
-                            isDense: true,
-                            contentPadding:
-                                const EdgeInsets.symmetric(vertical: 6),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(6),
-                              borderSide: BorderSide(
-                                  color: theme.colorScheme.outline
-                                      .withOpacity(0.4)),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(6),
-                              borderSide: BorderSide(
-                                  color: theme.colorScheme.outline
-                                      .withOpacity(0.4)),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Project name input (sticky across quick-adds, with history autocomplete)
-                      SizedBox(
-                        width: 170,
-                        height: 30,
-                        child: SuggestionField(
-                          controller: _projectController,
-                          suggestions: ref.watch(distinctProjectsProvider),
-                          optionIcon: Icons.folder_outlined,
-                          headerText: 'Recent projects',
-                          style: const TextStyle(fontSize: 12),
-                          decoration: InputDecoration(
-                            hintText: 'Project (e.g. Cosmo)',
-                            prefixIcon: Icon(Icons.folder_outlined,
-                                size: 14,
-                                color: theme.colorScheme.onSurface
-                                    .withOpacity(0.5)),
-                            prefixIconConstraints: const BoxConstraints(
-                                minWidth: 30, minHeight: 0),
-                            isDense: true,
-                            contentPadding:
-                                const EdgeInsets.symmetric(vertical: 6),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(6),
-                              borderSide: BorderSide(
-                                  color: theme.colorScheme.outline
-                                      .withOpacity(0.4)),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(6),
-                              borderSide: BorderSide(
-                                  color: theme.colorScheme.outline
-                                      .withOpacity(0.4)),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Sub-tasks row
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Row(
+            // Expanded options: priority + due date
+            if (_expanded)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Icon(Icons.checklist,
-                            size: 15,
-                            color:
-                                theme.colorScheme.onSurface.withOpacity(0.5)),
+                        // Priority selector
+                        Text('Priority:',
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(fontSize: 12)),
                         const SizedBox(width: 8),
-                        Expanded(
-                          child: SizedBox(
-                            height: 30,
-                            child: TextField(
-                              controller: _subStepController,
-                              style: const TextStyle(fontSize: 12),
-                              decoration: InputDecoration(
-                                hintText:
-                                    'Sub-task, press Enter to add (repeatable)',
-                                isDense: true,
-                                contentPadding:
-                                    const EdgeInsets.symmetric(vertical: 6),
-                                border: OutlineInputBorder(
+                        ...Priority.values.map((p) {
+                          final color = AppColors.priorityColor(p.index);
+                          final isSelected = _priority == p;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: GestureDetector(
+                              onTap: () => setState(() => _priority = p),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? color.withOpacity(0.15)
+                                      : Colors.transparent,
                                   borderRadius: BorderRadius.circular(6),
-                                  borderSide: BorderSide(
-                                      color: theme.colorScheme.outline
-                                          .withOpacity(0.4)),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? color
+                                        : color.withOpacity(0.3),
+                                  ),
                                 ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                  borderSide: BorderSide(
-                                      color: theme.colorScheme.outline
-                                          .withOpacity(0.4)),
+                                child: Text(
+                                  p.shortLabel,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: color,
+                                  ),
                                 ),
                               ),
-                              onSubmitted: (_) => _addSubStep(),
+                            ),
+                          );
+                        }),
+                        const SizedBox(width: 20),
+                        // Due date picker
+                        GestureDetector(
+                          onTap: _pickDueDate,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: _dueDate != null
+                                  ? theme.colorScheme.primary.withOpacity(0.1)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: _dueDate != null
+                                    ? theme.colorScheme.primary.withOpacity(0.4)
+                                    : theme.colorScheme.outline
+                                        .withOpacity(0.4),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.calendar_today,
+                                    size: 13,
+                                    color: _dueDate != null
+                                        ? theme.colorScheme.primary
+                                        : theme.colorScheme.onSurface
+                                            .withOpacity(0.5)),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _dueDate != null
+                                      ? DateFormat('MMM d').format(_dueDate!)
+                                      : 'Due date',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: _dueDate != null
+                                        ? theme.colorScheme.primary
+                                        : theme.colorScheme.onSurface
+                                            .withOpacity(0.5),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.add, size: 16),
-                          visualDensity: VisualDensity.compact,
-                          onPressed: _addSubStep,
+                        if (_dueDate != null) ...[
+                          const SizedBox(width: 6),
+                          GestureDetector(
+                            onTap: () => setState(() => _dueDate = null),
+                            child: Icon(Icons.close,
+                                size: 14,
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.4)),
+                          ),
+                        ],
+                        const Spacer(),
+                        // Tags input (comma-separated, with history autocomplete)
+                        SizedBox(
+                          width: 150,
+                          height: 30,
+                          child: SuggestionField(
+                            controller: _tagController,
+                            commaSeparated: true,
+                            suggestions: ref.watch(distinctTagsProvider),
+                            optionIcon: Icons.label_outline,
+                            headerText: 'Recent tags',
+                            style: const TextStyle(fontSize: 12),
+                            decoration: InputDecoration(
+                              hintText: 'Tags (a, b)',
+                              prefixIcon: Icon(Icons.label_outline,
+                                  size: 14,
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.5)),
+                              prefixIconConstraints: const BoxConstraints(
+                                  minWidth: 30, minHeight: 0),
+                              isDense: true,
+                              contentPadding:
+                                  const EdgeInsets.symmetric(vertical: 6),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(6),
+                                borderSide: BorderSide(
+                                    color: theme.colorScheme.outline
+                                        .withOpacity(0.4)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(6),
+                                borderSide: BorderSide(
+                                    color: theme.colorScheme.outline
+                                        .withOpacity(0.4)),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Project name input (sticky across quick-adds, with history autocomplete)
+                        SizedBox(
+                          width: 170,
+                          height: 30,
+                          child: SuggestionField(
+                            controller: _projectController,
+                            suggestions: ref.watch(distinctProjectsProvider),
+                            optionIcon: Icons.folder_outlined,
+                            headerText: 'Recent projects',
+                            style: const TextStyle(fontSize: 12),
+                            decoration: InputDecoration(
+                              hintText: 'Project (e.g. Cosmo)',
+                              prefixIcon: Icon(Icons.folder_outlined,
+                                  size: 14,
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.5)),
+                              prefixIconConstraints: const BoxConstraints(
+                                  minWidth: 30, minHeight: 0),
+                              isDense: true,
+                              contentPadding:
+                                  const EdgeInsets.symmetric(vertical: 6),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(6),
+                                borderSide: BorderSide(
+                                    color: theme.colorScheme.outline
+                                        .withOpacity(0.4)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(6),
+                                borderSide: BorderSide(
+                                    color: theme.colorScheme.outline
+                                        .withOpacity(0.4)),
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                  if (_subSteps.isNotEmpty)
+                    // Sub-tasks row
                     Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: _subSteps
-                            .map((s) => Chip(
-                                  avatar: const Icon(Icons.checklist, size: 13),
-                                  label: Text(s,
-                                      style: const TextStyle(fontSize: 11)),
-                                  materialTapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                  visualDensity: VisualDensity.compact,
-                                  onDeleted: () =>
-                                      setState(() => _subSteps.remove(s)),
-                                ))
-                            .toList(),
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Row(
+                        children: [
+                          Icon(Icons.checklist,
+                              size: 15,
+                              color:
+                                  theme.colorScheme.onSurface.withOpacity(0.5)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: SizedBox(
+                              height: 30,
+                              child: TextField(
+                                controller: _subStepController,
+                                style: const TextStyle(fontSize: 12),
+                                decoration: InputDecoration(
+                                  hintText:
+                                      'Sub-task, press Enter to add (repeatable)',
+                                  isDense: true,
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(vertical: 6),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                    borderSide: BorderSide(
+                                        color: theme.colorScheme.outline
+                                            .withOpacity(0.4)),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                    borderSide: BorderSide(
+                                        color: theme.colorScheme.outline
+                                            .withOpacity(0.4)),
+                                  ),
+                                ),
+                                onSubmitted: (_) => _addSubStep(),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.add, size: 16),
+                            visualDensity: VisualDensity.compact,
+                            onPressed: _addSubStep,
+                          ),
+                        ],
                       ),
                     ),
-                ],
+                    if (_subSteps.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: _subSteps
+                              .map((s) => Chip(
+                                    avatar:
+                                        const Icon(Icons.checklist, size: 13),
+                                    label: Text(s,
+                                        style: const TextStyle(fontSize: 11)),
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    visualDensity: VisualDensity.compact,
+                                    onDeleted: () =>
+                                        setState(() => _subSteps.remove(s)),
+                                  ))
+                              .toList(),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }

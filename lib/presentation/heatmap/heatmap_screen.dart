@@ -280,7 +280,9 @@ class _ActivityTaskItem extends StatelessWidget {
                       decoration:
                           isCompleted ? TextDecoration.lineThrough : null,
                       color: isCompleted
-                          ? theme.colorScheme.onSurface.withOpacity(0.4)
+                          ? theme.colorScheme.onSurface.withOpacity(
+                              AppColors.dimmedTitleOpacity(
+                                  theme.brightness))
                           : null,
                     ),
                     maxLines: 1,

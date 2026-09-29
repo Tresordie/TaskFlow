@@ -328,4 +328,74 @@ class AppColors {
         return error;
     }
   }
+
+  /// ─── Light-paper contrast rules (v1.12.42) ───
+  ///
+  /// An alpha that reads as tastefully quiet on a dark board turns into
+  /// unreadable fog on a paper canvas — the light themes (暖沙 / 黛蓝) looked
+  /// washed out on every page while the dark ones were fine (user report).
+  /// Every surface / text role that needs more ink on light resolves through
+  /// these, so the rule lives in one place instead of 40 call sites.
+
+  /// Struck-through (completed / archived) titles. Paper needs 72% ink
+  /// for the strikethrough itself to carry the âdoneâ signal â below that the
+  /// title drops under 4.5:1 and simply disappears (measured in
+  /// light_theme_contrast_test).
+  static double dimmedTitleOpacity(Brightness b) =>
+      b == Brightness.light ? 0.72 : 0.40;
+
+  /// Secondary text: dates, counts, hints.
+  static double mutedTextOpacity(Brightness b) =>
+      b == Brightness.light ? 0.74 : 0.55;
+
+  /// Tertiary text: placeholders, empty states, decorative glyphs.
+  static double faintTextOpacity(Brightness b) =>
+      b == Brightness.light ? 0.58 : 0.42;
+
+  /// Card / panel hairline. On paper a 30% outline disappears into the
+  /// canvas, which is what left the cards floating without edges.
+  /// (The light `outline` itself already carries ink — see app_theme.)
+  static double cardBorderOpacity(Brightness b) =>
+      b == Brightness.light ? 0.55 : 0.30;
+
+  /// Hovered / selected accent border.
+  static double accentBorderOpacity(Brightness b) =>
+      b == Brightness.light ? 0.70 : 0.50;
+
+  /// Recessed groove fill (the timeline spine channel).
+  static double grooveFillOpacity(Brightness b) =>
+      b == Brightness.light ? 0.055 : 0.030;
+
+  /// Muted `onSurface` ink for the current theme.
+  static Color muted(BuildContext context, {bool faint = false}) {
+    final theme = Theme.of(context);
+    return theme.colorScheme.onSurface.withOpacity(faint
+        ? faintTextOpacity(theme.brightness)
+        : mutedTextOpacity(theme.brightness));
+  }
+
+  /// WCAG 2.1 contrast ratio between two colors (alpha is ignored).
+  static double contrast(Color a, Color b) {
+    final l1 = a.computeLuminance();
+    final l2 = b.computeLuminance();
+    final hi = l1 > l2 ? l1 : l2;
+    final lo = l1 > l2 ? l2 : l1;
+    return (hi + 0.05) / (lo + 0.05);
+  }
+
+  /// Push a user-chosen accent (project / tag colour) until it is readable on
+  /// [surface]. The palette picker offers pastels, and a 10.5px pastel label
+  /// vanishes on a white card — the dark themes never had that problem.
+  /// Hues stay recognisable: the color only walks toward black or white.
+  static Color legibleInk(Color ink, Color surface, {double target = 4.5}) {
+    if (contrast(ink, surface) >= target) return ink;
+    final pole = surface.computeLuminance() > 0.5
+        ? const Color(0xFF000000)
+        : Colors.white;
+    for (var step = 0.04; step <= 1.0; step += 0.04) {
+      final candidate = Color.lerp(ink, pole, step)!;
+      if (contrast(candidate, surface) >= target) return candidate;
+    }
+    return pole;
+  }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show Brightness;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_glass_provider.dart';
@@ -49,11 +50,15 @@ class BoardCardStyle {
   /// iOS frosted glass over the tinted column, still high enough for text.
   static const iosGlassDefaultOpacity = 0.72;
 
-  bool get isDefault =>
-      opacity == 1.0 && !glass && blur == defaultBlur;
+  /// v1.12.42: on a paper canvas a 72% white card is the same colour as the
+  /// page behind it, so the light themes lost all surface hierarchy (user:
+  /// 暖沙 / 黛蓝 预览效果很差). Light glass keeps the frosting (blur + sheen +
+  /// edge) but stays nearly solid.
+  static const iosGlassDefaultOpacityLight = 0.92;
 
-  BoardCardStyle copyWith(
-          {double? opacity, bool? glass, double? blur}) =>
+  bool get isDefault => opacity == 1.0 && !glass && blur == defaultBlur;
+
+  BoardCardStyle copyWith({double? opacity, bool? glass, double? blur}) =>
       BoardCardStyle(
         opacity: opacity ?? this.opacity,
         glass: glass ?? this.glass,
@@ -91,6 +96,10 @@ class BoardGlassSpec {
   /// Readability floor for [panelOpacity].
   static const panelOpacityFloor = 0.5;
 
+  /// v1.12.42: panels carry text straight onto the canvas, and on paper a
+  /// 50% fill lets the ambient gradient bleed through as haze.
+  static const panelOpacityFloorLight = 0.88;
+
   const BoardGlassSpec({
     required this.glass,
     required this.opacity,
@@ -100,24 +109,28 @@ class BoardGlassSpec {
   });
 
   static BoardGlassSpec resolve(BoardCardStyle style,
-      {required bool themeGlass, AppGlassStyle? appGlass}) {
+      {required bool themeGlass,
+      AppGlassStyle? appGlass,
+      Brightness brightness = Brightness.dark}) {
+    final isLight = brightness == Brightness.light;
     // The theme can lead with glass even when the global toggle is off; the
     // user's own choice always wins when it is on.
     final glass = style.glass || themeGlass;
     // Theme-led glass on an untouched slider falls back to the iOS default so
     // the surface is actually translucent out of the box; a tuned slider is
     // honored as-is (1.0 → solid).
-    final opacity =
-        (themeGlass && !style.glass && style.opacity >= 1.0)
-            ? BoardCardStyle.iosGlassDefaultOpacity
-            : style.opacity;
+    final opacity = (themeGlass && !style.glass && style.opacity >= 1.0)
+        ? (isLight
+            ? BoardCardStyle.iosGlassDefaultOpacityLight
+            : BoardCardStyle.iosGlassDefaultOpacity)
+        : style.opacity;
     // Panels: the Interface Glass domain owns the surfaces around the cards
     // (v1.12.10), so when it is on they take its opacity/blur; otherwise they
     // follow the card recipe, floored for readability.
     final interface = appGlass != null && appGlass.glass;
     final rawPanel = interface ? appGlass.opacity : opacity;
-    final panelOpacity =
-        rawPanel < panelOpacityFloor ? panelOpacityFloor : rawPanel;
+    final floor = isLight ? panelOpacityFloorLight : panelOpacityFloor;
+    final panelOpacity = rawPanel < floor ? floor : rawPanel;
     final panelBlur = interface ? appGlass.blur : style.blur;
     return BoardGlassSpec(
       glass: glass,
@@ -135,8 +148,10 @@ final boardGlassSpecProvider = Provider<BoardGlassSpec>((ref) {
   final style = ref.watch(boardCardStyleProvider);
   final themeGlass = ref.watch(themeModeProvider.select((m) => m.boardGlass));
   final appGlass = ref.watch(appGlassStyleProvider);
+  // v1.12.42: the recipe is brightness-aware — paper needs a firmer fill.
+  final brightness = ref.watch(themeModeProvider.select((m) => m.brightness));
   return BoardGlassSpec.resolve(style,
-      themeGlass: themeGlass, appGlass: appGlass);
+      themeGlass: themeGlass, appGlass: appGlass, brightness: brightness);
 });
 
 final boardCardStyleProvider =
@@ -187,8 +202,8 @@ class BoardCardStyleNotifier extends StateNotifier<BoardCardStyle> {
   /// on disk (mock store) — awaited by tests to dodge the async race.
   Future<void> setOpacity(double value) {
     state = state.copyWith(
-        opacity: value.clamp(BoardCardStyle.minOpacity,
-            BoardCardStyle.maxOpacity));
+        opacity:
+            value.clamp(BoardCardStyle.minOpacity, BoardCardStyle.maxOpacity));
     return _persist();
   }
 
@@ -207,8 +222,7 @@ class BoardCardStyleNotifier extends StateNotifier<BoardCardStyle> {
   /// v1.12.4: backdrop blur strength for glass mode.
   Future<void> setBlur(double value) {
     state = state.copyWith(
-        blur:
-            value.clamp(BoardCardStyle.minBlur, BoardCardStyle.maxBlur));
+        blur: value.clamp(BoardCardStyle.minBlur, BoardCardStyle.maxBlur));
     return _persist();
   }
 

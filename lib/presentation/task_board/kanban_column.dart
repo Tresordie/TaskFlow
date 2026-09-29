@@ -20,9 +20,11 @@ class KanbanColumn extends ConsumerStatefulWidget {
   final String title;
   final IconData icon;
   final Color accent;
+
   /// Glassy column surface (between canvas and cards), resolved by the
   /// screen per brightness.
   final Color backgroundColor;
+
   /// v1.12.33: paint the shared iOS specular layer (top wash + rim light) on
   /// the column tray so the glass columns read as frosted trays holding
   /// frosted cards, not as flat tinted rectangles.
@@ -129,14 +131,16 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
               // the cards (softer, since it is the backdrop they frost
               // against). Clipped to the tray's own corner radius.
               if (widget.sheen)
-                const Positioned.fill(
+                Positioned.fill(
                   child: ClipRRect(
                     borderRadius: BorderRadius.all(Radius.circular(18)),
+                    // v1.12.42: on paper the white specular is haze — the
+                    // tray keeps its edge light and loses the wash.
                     child: GlassSheen(
                       borderRadius: 17,
-                      topAlpha: 0.14,
-                      bottomAlpha: 0.03,
-                      rimAlpha: 0.30,
+                      topAlpha: GlassSheen.topAlphaFor(theme.brightness),
+                      bottomAlpha: GlassSheen.bottomAlphaFor(theme.brightness),
+                      rimAlpha: isDark ? 0.30 : 0.55,
                       asPositioned: false,
                     ),
                   ),
@@ -314,8 +318,8 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(13),
           border: Border.all(
-            color: palette.outline.withOpacity(
-                theme.brightness == Brightness.dark ? 0.45 : 0.6),
+            color: palette.outline
+                .withOpacity(theme.brightness == Brightness.dark ? 0.45 : 0.6),
           ),
         ),
         alignment: Alignment.center,

@@ -93,17 +93,30 @@ class GlassSheen extends StatelessWidget {
 
   /// [base] (a translucent glass fill) with the specular profile composited
   /// over it — the same wash [GlassSheen] paints, folded into the fill.
+  /// v1.12.42: a white wash is what makes glass read as glass on a dark
+  /// board; on a paper canvas the same 14% is pure haze sitting on an
+  /// already-white fill, which is why the light themes looked fogged and
+  /// edge-less (user: 暖沙 / 黛蓝 各页面预览效果很差). One rule for both.
+  static double topAlphaFor(Brightness b) =>
+      b == Brightness.light ? 0.05 : 0.14;
+
+  static double bottomAlphaFor(Brightness b) =>
+      b == Brightness.light ? 0.015 : 0.03;
+
   static LinearGradient fillOver(Color base,
-      {double topAlpha = 0.14,
-      double bottomAlpha = 0.03,
+      {Brightness brightness = Brightness.dark,
+      double? topAlpha,
+      double? bottomAlpha,
       double topFade = 0.45}) {
+    final top = topAlpha ?? topAlphaFor(brightness);
+    final bottom = bottomAlpha ?? bottomAlphaFor(brightness);
     return LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: [
-        Color.alphaBlend(Colors.white.withOpacity(topAlpha), base),
+        Color.alphaBlend(Colors.white.withOpacity(top), base),
         base,
-        Color.alphaBlend(Colors.white.withOpacity(bottomAlpha), base),
+        Color.alphaBlend(Colors.white.withOpacity(bottom), base),
       ],
       stops: [0.0, topFade, 1.0],
     );
@@ -153,19 +166,27 @@ class GlassSurface extends StatelessWidget {
     assert(color == null || gradient == null,
         'GlassSurface takes either a fill color or a fill gradient');
     final radius = BorderRadius.circular(borderRadius);
+    final theme = Theme.of(context);
     return ClipRRect(
       borderRadius: radius,
       child: BackdropFilter(
         filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
         child: DecoratedBox(
-          decoration:
-              BoxDecoration(color: color, gradient: gradient, borderRadius: radius),
+          decoration: BoxDecoration(
+              color: color, gradient: gradient, borderRadius: radius),
           child: Stack(
             children: [
               // Specular layer behind the content: text stays crisp and
               // hit-testing is untouched (GlassSheen is Positioned.fill).
               if (rimAlpha != null)
-                GlassSheen(borderRadius: borderRadius, rimAlpha: rimAlpha!),
+                GlassSheen(
+                  borderRadius: borderRadius,
+                  rimAlpha: rimAlpha!,
+                  // v1.12.42: paper canvases take a whisper of top light,
+                  // dark boards the full specular wash.
+                  topAlpha: GlassSheen.topAlphaFor(theme.brightness),
+                  bottomAlpha: GlassSheen.bottomAlphaFor(theme.brightness),
+                ),
               SizedBox(width: double.infinity, child: content),
             ],
           ),

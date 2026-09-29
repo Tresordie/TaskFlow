@@ -33,7 +33,8 @@ enum AppThemeMode {
         AppThemeMode.warmSand ||
         AppThemeMode.inkBlue ||
         AppThemeMode.notionBoard ||
-        AppThemeMode.midnightBoard => true,
+        AppThemeMode.midnightBoard =>
+          true,
         _ => false,
       };
 
@@ -170,13 +171,23 @@ class AppTheme {
         // v1.12.27: palettes own their on-accent foreground — cream / pastel
         // accents carry dark text instead of the white convention.
         onPrimary: p.onPrimary,
-        secondary: p.primaryLight,
+        // v1.12.42: the pale primaryLight that reads as a pleasant highlight
+        // on a dark board is illegible as text on paper (it was the Timeline
+        // status chip, 暖沙 / 黛蓝). Light themes carry the deep accent in
+        // secondary instead; dark themes keep the light one.
+        secondary: isDark ? p.primaryLight : p.primaryDark,
         onSecondary: p.onPrimary,
         surface: surfaceColor,
         onSurface: p.textPrimary,
         error: AppColors.error,
         onError: Colors.white,
-        outline: p.border,
+        // v1.12.42: roughly forty call sites paint structure as `outline` at
+        // 20–35%, and that recipe was tuned on a dark board. On paper the
+        // palette border at 30% sits a few RGB points from the canvas, so
+        // every card edge, divider and groove faded away — the washed-out
+        // light themes the user reported. Light themes therefore carry a
+        // hairline with real ink in it; dark keeps the designed border.
+        outline: isDark ? p.border : Color.lerp(p.border, p.textPrimary, 0.42)!,
       ),
       cardTheme: CardThemeData(
         // v1.4.24: gentle lift instead of pure-flat — a soft tinted shadow

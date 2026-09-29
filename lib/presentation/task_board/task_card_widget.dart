@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -36,8 +35,8 @@ class _TaskCardState extends ConsumerState<TaskCard> {
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
-    final isDone =
-        task.status == TaskStatus.completed || task.status == TaskStatus.archived;
+    final isDone = task.status == TaskStatus.completed ||
+        task.status == TaskStatus.archived;
     final priorityColor = AppColors.priorityColor(task.priority.index);
     // Completed cards switch their accent bar to green, like translate_tool's
     // `.is-done` cards.
@@ -139,9 +138,11 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     // v1.11.1: pure white in light themes so cards pop off the bg canvas;
     // dark themes keep the palette card color.
     final isDark = theme.brightness == Brightness.dark;
-    final cardColor = isDark
-        ? ref.watch(themeModeProvider).palette.card
-        : Colors.white;
+    // v1.12.42: user-picked project / tag pastels read fine on a dark
+    // board and vanish on a white card — walk them to AA.
+    final chipSurface = isDark ? palette.surface : Colors.white;
+    final cardColor =
+        isDark ? ref.watch(themeModeProvider).palette.card : Colors.white;
     // v1.12.3/1.12.10: independent per-card style (Settings → Today Board
     // Cards) — background opacity below 100% lets the board canvas show
     // through; glass mode renders the card as frosted glass (backdrop blur
@@ -242,131 +243,131 @@ class _TaskCardState extends ConsumerState<TaskCard> {
               fillColor: fillColor,
               isDark: isDark,
               content: Stack(
-              children: [
-                // Content (bottom of the stack).
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 11, 12, 11),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        task.title,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontSize: 13.5,
-                          decoration: isDone
-                              ? TextDecoration.lineThrough
-                              : null,
-                          color: isDone
-                              ? palette.onSurface.withOpacity(0.4)
-                              : null,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (task.description != null &&
-                          task.description!.trim().isNotEmpty) ...[
-                        const SizedBox(height: 5),
-                        // v1.12.0: three-line preview content (reference
-                        // kanban cards show the description prominently).
-                        Text(
-                          task.description!,
-                          style: TextStyle(
-                              fontSize: 12,
-                              height: 1.45,
-                              color: muted),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                      // v1.12.1: latest execution-log note preview.
-                      if (_latestEntry(task) != null) ...[
-                        const SizedBox(height: 6),
-                        _notePreview(palette, _latestEntry(task)!),
-                      ],
-                      const SizedBox(height: 7),
-                      Wrap(
-                        spacing: 5,
-                        runSpacing: 4,
-                        children: [
-                          _chip(
-                            icon: null,
-                            label: task.priority.shortLabel,
-                            color: AppColors.priorityColor(
-                                task.priority.index),
-                            background: AppColors
-                                .priorityColor(task.priority.index)
-                                .withOpacity(0.10),
-                          ),
-                          if (task.dueDate != null)
-                            _dueChip(theme, palette, task, muted),
-                          if (task.project.trim().isNotEmpty)
-                            _chip(
-                              icon: Icons.folder_outlined,
-                              label: task.project.trim(),
-                              color: colorSettings
-                                      .projectColor(task.project.trim()) ??
-                                  muted,
-                              background:
-                                  palette.outline.withOpacity(0.10),
-                            ),
-                          for (final tag in task.tags)
-                            _chip(
-                              icon: null,
-                              dotColor:
-                                  colorSettings.tagColor(tag) ?? muted,
-                              label: tag,
-                              color: muted,
-                              background:
-                                  palette.outline.withOpacity(0.10),
-                            ),
-                        ],
-                      ),
-                      if (_hasStats(task)) ...[
-                        const SizedBox(height: 8),
-                        _buildStatsRow(palette, task, muted),
-                      ],
-                    ],
-                  ),
-                ),
-                // Hover actions (top-right, overlaying the title tail like
-                // translate_tool's kb-actions).
-                Positioned(
-                  right: 6,
-                  top: 5,
-                  child: AnimatedOpacity(
-                    opacity: _isHovered ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 150),
-                    child: Row(
+                children: [
+                  // Content (bottom of the stack).
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 11, 12, 11),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _actionIcon(
-                          icon: isDone ? Icons.undo : Icons.check,
-                          tooltip: isDone ? 'Move to To Do' : 'Mark done',
-                          color: isDone
-                              ? muted
-                              : AppColors.success.withOpacity(0.9),
-                          onTap: _toggleStatus,
+                        Text(
+                          task.title,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontSize: 13.5,
+                            decoration:
+                                isDone ? TextDecoration.lineThrough : null,
+                            color: isDone
+                                ? palette.onSurface.withOpacity(
+                                    AppColors.dimmedTitleOpacity(
+                                        palette.brightness))
+                                : null,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 8),
-                        _actionIcon(
-                          icon: Icons.edit_outlined,
-                          tooltip: 'Edit',
-                          color: muted,
-                          onTap: _openEditDialog,
+                        if (task.description != null &&
+                            task.description!.trim().isNotEmpty) ...[
+                          const SizedBox(height: 5),
+                          // v1.12.0: three-line preview content (reference
+                          // kanban cards show the description prominently).
+                          Text(
+                            task.description!,
+                            style: TextStyle(
+                                fontSize: 12, height: 1.45, color: muted),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                        // v1.12.1: latest execution-log note preview.
+                        if (_latestEntry(task) != null) ...[
+                          const SizedBox(height: 6),
+                          _notePreview(palette, _latestEntry(task)!),
+                        ],
+                        const SizedBox(height: 7),
+                        Wrap(
+                          spacing: 5,
+                          runSpacing: 4,
+                          children: [
+                            _chip(
+                              icon: null,
+                              label: task.priority.shortLabel,
+                              color:
+                                  AppColors.priorityColor(task.priority.index),
+                              background:
+                                  AppColors.priorityColor(task.priority.index)
+                                      .withOpacity(0.10),
+                            ),
+                            if (task.dueDate != null)
+                              _dueChip(theme, palette, task, muted),
+                            if (task.project.trim().isNotEmpty)
+                              _chip(
+                                icon: Icons.folder_outlined,
+                                label: task.project.trim(),
+                                color: AppColors.legibleInk(
+                                    colorSettings.projectColor(
+                                            task.project.trim()) ??
+                                        muted,
+                                    chipSurface),
+                                background: palette.outline.withOpacity(0.10),
+                              ),
+                            for (final tag in task.tags)
+                              _chip(
+                                icon: null,
+                                dotColor: AppColors.legibleInk(
+                                    colorSettings.tagColor(tag) ?? muted,
+                                    chipSurface),
+                                label: tag,
+                                color: muted,
+                                background: palette.outline.withOpacity(0.10),
+                              ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        _actionIcon(
-                          icon: Icons.delete_outline,
-                          tooltip: 'Delete',
-                          color: AppColors.error.withOpacity(0.8),
-                          onTap: _confirmDelete,
-                        ),
+                        if (_hasStats(task)) ...[
+                          const SizedBox(height: 8),
+                          _buildStatsRow(palette, task, muted),
+                        ],
                       ],
                     ),
                   ),
-                ),
-              ],
+                  // Hover actions (top-right, overlaying the title tail like
+                  // translate_tool's kb-actions).
+                  Positioned(
+                    right: 6,
+                    top: 5,
+                    child: AnimatedOpacity(
+                      opacity: _isHovered ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 150),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _actionIcon(
+                            icon: isDone ? Icons.undo : Icons.check,
+                            tooltip: isDone ? 'Move to To Do' : 'Mark done',
+                            color: isDone
+                                ? muted
+                                : AppColors.success.withOpacity(0.9),
+                            onTap: _toggleStatus,
+                          ),
+                          const SizedBox(width: 8),
+                          _actionIcon(
+                            icon: Icons.edit_outlined,
+                            tooltip: 'Edit',
+                            color: muted,
+                            onTap: _openEditDialog,
+                          ),
+                          const SizedBox(width: 8),
+                          _actionIcon(
+                            icon: Icons.delete_outline,
+                            tooltip: 'Delete',
+                            color: AppColors.error.withOpacity(0.8),
+                            onTap: _confirmDelete,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -409,8 +410,8 @@ class _TaskCardState extends ConsumerState<TaskCard> {
   /// The most recent execution-log entry, or null when there is none.
   ExecutionEntry? _latestEntry(Task task) {
     if (task.executionLog.isEmpty) return null;
-    return task.executionLog.reduce(
-        (a, b) => a.timestamp.isAfter(b.timestamp) ? a : b);
+    return task.executionLog
+        .reduce((a, b) => a.timestamp.isAfter(b.timestamp) ? a : b);
   }
 
   /// v1.12.1: latest execution-log note preview — a quote-style block with
@@ -596,8 +597,8 @@ class _TaskCardState extends ConsumerState<TaskCard> {
             Container(
               width: 6,
               height: 6,
-              decoration: BoxDecoration(
-                  color: dotColor, shape: BoxShape.circle),
+              decoration:
+                  BoxDecoration(color: dotColor, shape: BoxShape.circle),
             ),
             const SizedBox(width: 3),
           ],
@@ -636,8 +637,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     final notifier = ref.read(taskListProvider.notifier);
     // v1.4.79: atomic conversion — the dragged task's sub-step tree AND
     // its Execution Log notes are merged into the target before deletion.
-    final merged =
-        await notifier.convertTaskToSubStep(dragged.id, target.id);
+    final merged = await notifier.convertTaskToSubStep(dragged.id, target.id);
     if (!mounted) return;
     final parts = <String>[
       if (merged.notes > 0)
@@ -692,8 +692,8 @@ class _TaskCardState extends ConsumerState<TaskCard> {
 
   void _toggleStatus() {
     final task = widget.task;
-    final isDone =
-        task.status == TaskStatus.completed || task.status == TaskStatus.archived;
+    final isDone = task.status == TaskStatus.completed ||
+        task.status == TaskStatus.archived;
     final newStatus = isDone ? TaskStatus.planned : TaskStatus.completed;
     ref.read(taskListProvider.notifier).updateStatus(task.id, newStatus);
   }

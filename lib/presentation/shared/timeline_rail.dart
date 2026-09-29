@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
+
 /// v1.12.39: ONE timeline rail shared by the Timeline page and the task
 /// Execution Log, so both read as the same design system instead of two
 /// hand-drawn variants.
@@ -70,20 +72,25 @@ class TimelineRail extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
+            // v1.12.42: the old light recipe ended in 50% WHITE, which
+            // rendered as a bright blob on a paper canvas. A recessed
+            // channel on light is just a touch of ink.
             colors: isDark
                 ? [
                     Colors.white.withOpacity(0.045),
                     Colors.black.withOpacity(0.10),
                   ]
                 : [
-                    Colors.black.withOpacity(0.030),
-                    Colors.white.withOpacity(0.50),
+                    Colors.black.withOpacity(
+                        AppColors.grooveFillOpacity(Brightness.light)),
+                    Colors.black.withOpacity(
+                        AppColors.grooveFillOpacity(Brightness.light) * 0.55),
                   ],
             stops: const [0.0, 0.75],
           ),
           borderRadius: BorderRadius.circular(grooveWidth / 2),
           border: Border.all(
-            color: theme.colorScheme.outline.withOpacity(isDark ? 0.14 : 0.12),
+            color: theme.colorScheme.outline.withOpacity(isDark ? 0.14 : 0.55),
           ),
         ),
         child: Column(
