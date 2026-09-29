@@ -15,8 +15,7 @@ enum AppThemeMode {
   midnightBoard,
   // v1.4.96: Catppuccin — four flavours × two accents.
   // v1.12.17: both Latte (light) flavours removed.
-  catFrappeMauve,
-  catFrappeSapphire,
+  // v1.12.36: both Frappé (冰沙) flavours removed per user request.
   catMacchiatoMauve,
   catMacchiatoTeal,
   catMochaMauve,
@@ -63,10 +62,6 @@ enum AppThemeMode {
         return 'Notion Board';
       case AppThemeMode.midnightBoard:
         return 'Midnight Board';
-      case AppThemeMode.catFrappeMauve:
-        return 'Catppuccin Frappé · Mauve';
-      case AppThemeMode.catFrappeSapphire:
-        return 'Catppuccin Frappé · Sapphire';
       case AppThemeMode.catMacchiatoMauve:
         return 'Catppuccin Macchiato · Mauve';
       case AppThemeMode.catMacchiatoTeal:
@@ -94,10 +89,6 @@ enum AppThemeMode {
         return '墨板';
       case AppThemeMode.midnightBoard:
         return '午夜看板';
-      case AppThemeMode.catFrappeMauve:
-        return '冰沙 · 木槿紫';
-      case AppThemeMode.catFrappeSapphire:
-        return '冰沙 · 蓝晶';
       case AppThemeMode.catMacchiatoMauve:
         return '玛奇朵 · 木槿紫';
       case AppThemeMode.catMacchiatoTeal:
@@ -125,10 +116,6 @@ enum AppThemeMode {
         return AppColors.notionBoard;
       case AppThemeMode.midnightBoard:
         return AppColors.midnightBoard;
-      case AppThemeMode.catFrappeMauve:
-        return AppColors.catFrappeMauve;
-      case AppThemeMode.catFrappeSapphire:
-        return AppColors.catFrappeSapphire;
       case AppThemeMode.catMacchiatoMauve:
         return AppColors.catMacchiatoMauve;
       case AppThemeMode.catMacchiatoTeal:
@@ -151,8 +138,6 @@ enum AppThemeMode {
       case AppThemeMode.nordNight:
       case AppThemeMode.notionBoard:
       case AppThemeMode.midnightBoard:
-      case AppThemeMode.catFrappeMauve:
-      case AppThemeMode.catFrappeSapphire:
       case AppThemeMode.catMacchiatoMauve:
       case AppThemeMode.catMacchiatoTeal:
       case AppThemeMode.catMochaMauve:

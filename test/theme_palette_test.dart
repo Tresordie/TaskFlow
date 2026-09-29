@@ -16,11 +16,12 @@ import 'package:taskflow/core/theme/app_theme.dart';
 ///  - the three kept light palettes carry their designed signature colors
 ///    so a refactor can't silently flatten them into each other.
 void main() {
-  group('AppThemeMode catalog (v1.7.0, trimmed v1.8.0)', () {
-    test('13 themes with unique names and non-empty bilingual labels', () {
-      expect(AppThemeMode.values.length, 13);
+  group('AppThemeMode catalog (v1.7.0, trimmed v1.8.0 / v1.12.17 / v1.12.36)',
+      () {
+    test('11 themes with unique names and non-empty bilingual labels', () {
+      expect(AppThemeMode.values.length, 11);
       final names = AppThemeMode.values.map((m) => m.name).toSet();
-      expect(names.length, 13);
+      expect(names.length, 11);
       for (final mode in AppThemeMode.values) {
         expect(mode.label.isNotEmpty, isTrue, reason: '${mode.name}.label');
         expect(mode.labelZh.isNotEmpty, isTrue, reason: '${mode.name}.labelZh');
@@ -90,8 +91,6 @@ void main() {
         AppThemeMode.nordNight,
         AppThemeMode.notionBoard,
         AppThemeMode.midnightBoard,
-        AppThemeMode.catFrappeMauve,
-        AppThemeMode.catFrappeSapphire,
         AppThemeMode.catMacchiatoMauve,
         AppThemeMode.catMacchiatoTeal,
         AppThemeMode.catMochaMauve,
@@ -104,6 +103,33 @@ void main() {
       }
       for (final mode in dark) {
         expect(mode.brightness, Brightness.dark, reason: mode.name);
+      }
+    });
+
+    // Deleted themes must STAY deleted: the selection persists by enum name,
+    // and an unknown stored value falls back to the default (inkBlue), so a
+    // resurrected enum slot would silently re-adopt an old user choice — and a
+    // re-added one would reappear in Settings without anyone asking.
+    test('removed themes stay removed', () {
+      const removed = [
+        // v1.4.98 / v1.4.99 era
+        'blueDark', 'greenDark', 'oceanBlue', 'orangeDark', 'pinkDark',
+        'purpleDark', 'sakuraPink',
+        // v1.8.0
+        'aubergine', 'deepSea', 'espresso',
+        // v1.12.17 (11 light themes the user named)
+        'celadon', 'dustyRose', 'freshGreen', 'indigoLight', 'lavenderPurple',
+        'sunsetOrange',
+        // v1.12.17: both Catppuccin Latte (light) flavours
+        'catLatteMauve', 'catLatteLavender',
+        // v1.12.30
+        'frostedGlass',
+        // v1.12.36 (this round)
+        'catFrappeMauve', 'catFrappeSapphire',
+      ];
+      final names = AppThemeMode.values.map((m) => m.name).toSet();
+      for (final gone in removed) {
+        expect(names, isNot(contains(gone)), reason: '$gone was deleted');
       }
     });
   });
