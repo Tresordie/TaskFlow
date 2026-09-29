@@ -405,4 +405,79 @@ void main() {
       expect(bottomGain, lessThanOrEqualTo(0.05));
     });
   });
+
+  // v1.12.35 regression (user screenshot: the KPI accent icon printed ON TOP
+  // of "TO DO" / "IN PROGRESS"). A Stack sizes itself to its non-positioned
+  // children under LOOSENED constraints, so wrapping the card content in the
+  // glass shell made the content shrink-wrap to the label text — and the
+  // `Positioned(right: 10)` chip resolved against that narrow box instead of
+  // the card. GlassSurface now pins the content to the full card width, so the
+  // chip lands in the same place with glass on and with glass off.
+  group('GlassSurface pins the content to the card width', () {
+    Widget content() => Stack(
+          children: const [
+            Positioned(
+              right: 10,
+              top: 10,
+              child: SizedBox(key: Key('chip'), width: 26, height: 26),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 11, 14, 11),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('IN PROGRESS', style: TextStyle(fontSize: 10)),
+                  Text('8', style: TextStyle(fontSize: 21)),
+                  Text('1 high priority', style: TextStyle(fontSize: 11)),
+                ],
+              ),
+            ),
+          ],
+        );
+
+    Widget harness(bool glass) => MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                key: const Key('cardBox'),
+                width: 300,
+                height: 90,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: glass
+                          ? GlassSurface(
+                              borderRadius: 16,
+                              blur: 8,
+                              color: Colors.white24,
+                              rimAlpha: 0.30,
+                              content: content(),
+                            )
+                          : content(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+    for (final glass in [false, true]) {
+      testWidgets('top-right chip hugs the card edge (glass: $glass)',
+          (tester) async {
+        await tester.pumpWidget(harness(glass));
+        await tester.pumpAndSettle();
+        expect(find.text('IN PROGRESS'), findsOneWidget);
+        if (glass) expect(find.byType(BackdropFilter), findsOneWidget);
+
+        final box = tester.getRect(find.byKey(const Key('cardBox')));
+        final chip = tester.getRect(find.byKey(const Key('chip')));
+        final label = tester.getRect(find.text('IN PROGRESS'));
+        // The bug: the chip followed the text instead of the card edge.
+        expect(chip.right, closeTo(box.right - 10, 0.5));
+        expect(chip.left, greaterThan(label.right));
+      });
+    }
+  });
 }

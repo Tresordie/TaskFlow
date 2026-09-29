@@ -147,7 +147,8 @@ test/
 - **Activity**: heatmap cells light up with a top-left radial highlight and scale on hover, a Less→More legend explains the intensity scale, and the status stat cards are KPI-styled (semantic accent bar + tinted icon chip + accent value)
 - Task cards across all three pages share the Today card skin (left accent bar, top-lit fill, hover lift + layered shadows) via the shared `TaskListCard` / `HoverLift` components
 - **Page selector with depth**: sidebar nav items are physical keys — the active one is a primary-gradient pill with an accent glow, a contact shadow and an accent rim, its leading bar is a glowing gradient sliver, hovered rows lift 1px with a soft shadow, and the sheet itself floats on a two-layer shadow; the two Today segmented controls (quick filter / board dimension) match the language — a recessed groove holding raised keys (selected segment in a primary gradient with a glow, text reading `onPrimary`)
-- 322-test suite including glass/theme/hover regressions, with a contract pinning the flat specular profile
+- **One glass shell for every panel**: task cards and KPI stat cards both route through the shared `GlassSurface` (clip → backdrop blur → translucent fill → specular sheen), and the shell pins its content to the full panel width — otherwise a `Stack` shrink-wraps to the text and the top-right accent chip lands on top of "TO DO" / "IN PROGRESS" (fixed in v1.12.35)
+- 324-test suite including glass/theme/hover regressions, with contracts pinning the flat specular profile and the full-width glass content
 
 ## Data locations
 

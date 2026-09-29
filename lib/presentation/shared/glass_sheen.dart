@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 /// v1.12.33: the specular layer shared by every iOS-style glass surface on the
@@ -104,6 +106,71 @@ class GlassSheen extends StatelessWidget {
         Color.alphaBlend(Colors.white.withOpacity(bottomAlpha), base),
       ],
       stops: [0.0, topFade, 1.0],
+    );
+  }
+}
+
+/// v1.12.35: the frosted-glass shell shared by every glass surface on the
+/// Today dashboard (task cards, KPI stat strip). One place owns the recipe:
+/// clip → backdrop blur → translucent fill → [GlassSheen] specular → content.
+///
+/// It also pins [content] to the surface's full width, and that is load-bearing.
+/// A [Stack] sizes itself to its non-positioned children under *loosened*
+/// constraints, so the moment a host wraps its content in this shell the
+/// content's `Positioned(right: …)` children stop resolving against the card and
+/// start resolving against the text column — which is exactly how the KPI
+/// accent icon ended up printed over "IN PROGRESS" (v1.12.34, user screenshot).
+/// The shell is the only place those constraints get loosened, so it is the only
+/// place that has to undo it.
+class GlassSurface extends StatelessWidget {
+  /// Corner radius of the clip, the fill and the inner rim light.
+  final double borderRadius;
+
+  /// Backdrop blur sigma (user-adjustable via the glass style settings).
+  final double blur;
+
+  /// Opaque-ish fill under the content; use [color] or [gradient].
+  final Color? color;
+  final Gradient? gradient;
+
+  /// Inner rim light. Null paints no rim at all.
+  final double? rimAlpha;
+
+  final Widget content;
+
+  const GlassSurface({
+    super.key,
+    this.borderRadius = 14,
+    this.blur = 14,
+    this.color,
+    this.gradient,
+    this.rimAlpha,
+    required this.content,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    assert(color == null || gradient == null,
+        'GlassSurface takes either a fill color or a fill gradient');
+    final radius = BorderRadius.circular(borderRadius);
+    return ClipRRect(
+      borderRadius: radius,
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+        child: DecoratedBox(
+          decoration:
+              BoxDecoration(color: color, gradient: gradient, borderRadius: radius),
+          child: Stack(
+            children: [
+              // Specular layer behind the content: text stays crisp and
+              // hit-testing is untouched (GlassSheen is Positioned.fill).
+              if (rimAlpha != null)
+                GlassSheen(borderRadius: borderRadius, rimAlpha: rimAlpha!),
+              SizedBox(width: double.infinity, child: content),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

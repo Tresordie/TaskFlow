@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -927,13 +926,22 @@ class _KpiCardState extends State<_KpiCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    data.label,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.8,
-                      color: muted,
+                  // v1.12.35: the label is the only row that shares its
+                  // vertical band with the top-right accent chip, so it
+                  // reserves the chip's width and ellipsizes instead of
+                  // running underneath it (narrow window / big user font).
+                  Padding(
+                    padding: const EdgeInsets.only(right: 32),
+                    child: Text(
+                      data.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: muted,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 5),
@@ -982,28 +990,17 @@ class _KpiCardState extends State<_KpiCard> {
   /// the translucent gradient fill painted over it; plain mode untouched.
   /// v1.12.33: the same [GlassSheen] specular layer as the task cards, so the
   /// stat strip and the kanban cards are literally one material.
+  /// v1.12.35: that recipe now lives in the shared [GlassSurface], which also
+  /// pins the content to the card's full width — see the note there for why
+  /// the accent icon was landing on top of the label.
   Widget _wrapGlass(Widget content) {
     if (!widget.glass) return content;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: widget.blur, sigmaY: widget.blur),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: _kpiFillGradient,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Stack(
-            children: [
-              GlassSheen(
-                borderRadius: 16,
-                rimAlpha: widget.isDark ? 0.12 : 0.30,
-              ),
-              content,
-            ],
-          ),
-        ),
-      ),
+    return GlassSurface(
+      borderRadius: 16,
+      blur: widget.blur,
+      gradient: _kpiFillGradient,
+      rimAlpha: widget.isDark ? 0.12 : 0.30,
+      content: content,
     );
   }
 

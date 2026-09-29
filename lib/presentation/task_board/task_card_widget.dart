@@ -1,4 +1,3 @@
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -386,6 +385,10 @@ class _TaskCardState extends ConsumerState<TaskCard> {
   /// bottom refraction rim) so every Today surface uses one glass recipe.
   /// Renders whenever [glass] is on (the theme's boardGlass default or
   /// the user's explicit Settings toggle); otherwise returns plain [content].
+  /// v1.12.35: the recipe moved into the shared [GlassSurface] (blur + fill +
+  /// sheen in one place); the shell also pins the content to the card's full
+  /// width, which is what keeps the hover-action `Positioned(right: 6)` glued
+  /// to the card edge instead of to the end of the title text.
   Widget _wrapGlass({
     required bool glass,
     required double blur,
@@ -394,29 +397,12 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     required Widget content,
   }) {
     if (!glass) return content;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: fillColor,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Stack(
-            children: [
-              // Specular layer — BEHIND the content so text stays crisp and
-              // hit-testing is unaffected. The inner rim light is what turns a
-              // translucent rectangle into a glass slab.
-              GlassSheen(
-                borderRadius: 14,
-                rimAlpha: isDark ? 0.12 : 0.30,
-              ),
-              content,
-            ],
-          ),
-        ),
-      ),
+    return GlassSurface(
+      borderRadius: 14,
+      blur: blur,
+      color: fillColor,
+      rimAlpha: isDark ? 0.12 : 0.30,
+      content: content,
     );
   }
 
