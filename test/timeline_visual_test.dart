@@ -161,24 +161,62 @@ void main() {
     });
   });
 
-  test('v1.12.43: the spine is a recess, not a drawn capsule', () {
-    // The hairline outline around the groove read as an ugly stroked tube on
-    // both the Timeline and the task Event Log (user: 时间线加外框难看 /
-    // Notes 时间线外框难看). The recess now comes from the fill alone, and
-    // the 1px inset that keeps the node centred is padding, not a border.
-    const rail = TimelineRail(
-      node: SizedBox.shrink(),
-      accentColor: Color(0xFF3F6C99),
-    );
-    for (final brightness in Brightness.values) {
-      final decoration = rail.grooveDecoration(brightness);
-      expect(decoration.border, isNull,
-          reason: 'no outline on ${brightness.name}');
-      expect(decoration.gradient, isNotNull,
-          reason: 'the channel still needs its recessed fill');
-    }
+  /// The shared rail draws one `TimelineSpine` segment per visible line.
+  const accent = Color(0xFF3F6C99);
 
+  Future<void> pumpRail(
+    WidgetTester tester, {
+    required bool isFirst,
+    required bool isLast,
+  }) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 240,
+            child: TimelineRail(
+              node: const TimelineNode(glyph: '✅', accentColor: accent),
+              accentColor: accent,
+              isFirst: isFirst,
+              isLast: isLast,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  test('v1.12.45: the rail is a line, never a channel', () {
+    // v1.12.42 dropped the white blob, v1.12.43 dropped the stroke, and the
+    // fill that survived still read as a pale pillar per row (user: 时间线外框
+    // 还是存在). So the channel is gone; the 1px inset constant only exists so
+    // the node geometry never moves again.
+    const rail = TimelineRail(node: SizedBox.shrink(), accentColor: accent);
+    // The channel is gone; the only width left on the rail is the spine column,
+    // and the 1px inset constant exists solely so node geometry never moves.
+    expect(rail.grooveWidth, greaterThan(8));
     expect(rail.grooveInset, TimelineRail.grooveBorderWidth);
+  });
+
+  testWidgets('v1.12.45: the spine is continuous across rows', (tester) async {
+    // The broken line between rows was the other half of the complaint: the
+    // connector used to stop 4px under the node and 2px above the row edge, so
+    // every row gap punched a hole in it. A middle row now draws spine both
+    // above and below its node.
+    await pumpRail(tester, isFirst: false, isLast: false);
+    expect(find.byType(TimelineSpine), findsNWidgets(2));
+  });
+
+  testWidgets('v1.12.45: first row starts at its node, last row ends',
+      (tester) async {
+    await pumpRail(tester, isFirst: true, isLast: false);
+    expect(find.byType(TimelineSpine), findsOneWidget,
+        reason: 'no line climbs above the first node');
+
+    await pumpRail(tester, isFirst: false, isLast: true);
+    expect(find.byType(TimelineSpine), findsOneWidget,
+        reason: 'the run ends in a fading tail, not a connector');
   });
 
   group('Timeline page — date + time on the left of every task', () {

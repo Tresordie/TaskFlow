@@ -91,8 +91,6 @@ void main() {
           greaterThan(AppColors.mutedTextOpacity(Brightness.dark)));
       expect(AppColors.cardBorderOpacity(Brightness.light),
           greaterThan(AppColors.cardBorderOpacity(Brightness.dark)));
-      expect(AppColors.grooveFillOpacity(Brightness.light),
-          greaterThan(AppColors.grooveFillOpacity(Brightness.dark)));
     });
   });
 
@@ -122,7 +120,11 @@ void main() {
   });
 
   group('timeline spine on paper', () {
-    testWidgets('the groove never renders as a white blob', (tester) async {
+    testWidgets('the spine renders no channel at all', (tester) async {
+      // v1.12.42 killed the near-white blob, v1.12.43 the stroke, v1.12.45 the
+      // recess itself: a wide pale pillar per row is exactly what the user kept
+      // calling 外框. The rail is now line + node, so nothing in it may be as
+      // wide as the old channel, and nothing may be stroked.
       await tester.pumpWidget(MaterialApp(
         theme: AppTheme.buildTheme(AppThemeMode.inkBlue),
         home: const Scaffold(
@@ -136,13 +138,17 @@ void main() {
         ),
       ));
 
-      final groove = tester.widget<Container>(find.byType(Container).first);
-      final gradient =
-          (groove.decoration as BoxDecoration).gradient as LinearGradient;
-      for (final c in gradient.colors) {
-        expect(c.computeLuminance(), lessThan(0.9),
-            reason: 'a near-white stop on paper reads as a bright pill');
+      const channelWidth =
+          26.0; // the default TimelineRail.grooveWidth - the old pillar
+      for (final box in tester.widgetList<Container>(find.byType(Container))) {
+        final maxW = box.constraints?.maxWidth ?? -1;
+        expect(maxW < channelWidth, isTrue,
+            reason: 'a box as wide as the old channel came back ($maxW)');
+        final d = box.decoration;
+        expect(d is BoxDecoration && d.border != null, isFalse,
+            reason: 'an outline came back');
       }
+      expect(find.byType(TimelineSpine), findsNWidgets(2));
     });
   });
 

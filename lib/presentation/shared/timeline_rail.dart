@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
-
 /// v1.12.39: ONE timeline rail shared by the Timeline page and the task
 /// Execution Log, so both read as the same design system instead of two
 /// hand-drawn variants.
@@ -34,12 +32,17 @@ class TimelineRail extends StatelessWidget {
   /// connector so the line ends cleanly instead of running on.
   final bool isLast;
 
+  /// First event of the run: the spine starts AT its node instead of
+  /// climbing up through the gap above it (v1.12.45).
+  final bool isFirst;
+
   const TimelineRail({
     super.key,
     this.grooveWidth = 26,
     required this.node,
     required this.accentColor,
     this.isLast = false,
+    this.isFirst = false,
   });
 
   /// Width of the groove's hairline border — it insets the column, so it
@@ -57,98 +60,77 @@ class TimelineRail extends StatelessWidget {
   static double nodeCenterY({bool emphasized = false}) =>
       nodeInset + (emphasized ? nodeDiameterEmphasized : nodeDiameter) / 2;
 
-  /// The channel's 1px inset. It used to be a painted border; it is padding
-  /// now, so the spine reads as a recess instead of a stroked capsule
-  /// (v1.12.43) while [nodeCenterY] keeps the exact same value.
+  /// The channel's 1px inset. It was a painted border, then a padded recess;
+  /// both are gone now (v1.12.45) but the constant stays so [nodeInset] and
+  /// [nodeCenterY] never move again.
   double get grooveInset => grooveBorderWidth;
-
-  /// The recessed channel itself: a gradient fill and nothing else — no
-  /// stroke, ever. Exposed so a test can fail if an outline comes back.
-  BoxDecoration grooveDecoration(Brightness brightness) {
-    final isDark = brightness == Brightness.dark;
-    return BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        // v1.12.42: the old light recipe ended in 50% WHITE, which rendered
-        // as a bright blob on a paper canvas. A recess on light is a touch of
-        // ink; the border that used to define it is gone (v1.12.43), so the
-        // fill steps down a little further to stay quiet.
-        colors: isDark
-            ? [
-                Colors.white.withOpacity(0.045),
-                Colors.black.withOpacity(0.10),
-              ]
-            : [
-                Colors.black.withOpacity(
-                    AppColors.grooveFillOpacity(Brightness.light) * 0.8),
-                Colors.black.withOpacity(
-                    AppColors.grooveFillOpacity(Brightness.light) * 0.4),
-              ],
-        stops: const [0.0, 0.75],
-      ),
-      borderRadius: BorderRadius.circular(grooveWidth / 2),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    // v1.12.45: the recessed channel is gone entirely. It survived the
+    // stroke removal (v1.12.43) only to become the ugly part on its own - a
+    // wide pale pillar per row, and between rows a broken line, because the
+    // connector stopped 4px under the node and 2px above the row edge
+    // (user: 时间线外框难看, twice). The rail is now just the spine: one
+    // continuous line with each node opaque base strung on it.
+    final rail = Column(
+      mainAxisSize: isLast ? MainAxisSize.min : MainAxisSize.max,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // The stub above the node belongs to the spine on every row but the
+        // first, where the line has nowhere to come from.
+        SizedBox(
+          height: nodeInset,
+          child: isFirst
+              ? const SizedBox.shrink()
+              : TimelineSpine(accentColor: accentColor),
+        ),
+        node,
+        if (isLast)
+          // Terminating tail: short, fading out downward.
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 6),
+            child: Container(
+              width: 2,
+              height: 14,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    accentColor.withOpacity(0.28),
+                    accentColor.withOpacity(0.0),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+          )
+        else
+          Expanded(
+            child: TimelineSpine(accentColor: accentColor),
+          ),
+      ],
+    );
 
     return SizedBox(
       width: grooveWidth,
-      child: Container(
-        width: grooveWidth,
-        decoration: grooveDecoration(theme.brightness),
-        padding: EdgeInsets.all(grooveInset),
-        child: Column(
-          // A group-ending rail hugs its own content: without this the groove
-          // stretches down the whole row and leaves an empty channel under the
-          // fading tail.
-          mainAxisSize: isLast ? MainAxisSize.min : MainAxisSize.max,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 8), // + the 1px groove inset = nodeInset
-            node,
-            if (isLast)
-              // Terminating tail: short, fading out downward.
-              Padding(
-                padding: const EdgeInsets.only(top: 4, bottom: 6),
-                child: Container(
-                  width: 2,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        accentColor.withOpacity(0.28),
-                        accentColor.withOpacity(0.0),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(1),
-                  ),
-                ),
-              )
-            else
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 4, bottom: 2),
-                  child: _Connector(accentColor: accentColor),
-                ),
-              ),
-          ],
-        ),
-      ),
+      // A group-ending rail must not be stretched to the full row height by
+      // the surrounding Row, or the empty margin under its tail would still
+      // draw a line.
+      child: isLast ? Align(alignment: Alignment.topCenter, child: rail) : rail,
     );
   }
 }
 
 /// Soft light bleed + crisp core: two stacked gradients read as one lit line.
-class _Connector extends StatelessWidget {
+/// One segment of the spine. Public because the shared rail is now *only* these
+/// segments plus nodes - so "is the line continuous across rows?" is a
+/// contract worth testing from the outside (v1.12.45).
+class TimelineSpine extends StatelessWidget {
   final Color accentColor;
 
-  const _Connector({required this.accentColor});
+  const TimelineSpine({super.key, required this.accentColor});
 
   @override
   Widget build(BuildContext context) {

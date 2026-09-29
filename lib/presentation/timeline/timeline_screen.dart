@@ -329,6 +329,7 @@ class _TimelineList extends StatelessWidget {
       itemCount: tasks.length,
       itemBuilder: (context, index) => _TimelineItem(
         task: tasks[index],
+        isFirst: index == 0,
         isLast: index == tasks.length - 1,
       ),
     );
@@ -338,15 +339,16 @@ class _TimelineList extends StatelessWidget {
 class _TimelineItem extends StatelessWidget {
   final Task task;
   final bool isLast;
+  final bool isFirst;
 
   const _TimelineItem({
     required this.task,
     required this.isLast,
+    this.isFirst = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final statusColor = _statusColor(task.status);
     final priorityColor = AppColors.priorityColor(task.priority.index);
     // v1.9.0: completed AND archived titles strike through + dim, matching
@@ -412,6 +414,7 @@ class _TimelineItem extends StatelessWidget {
           TimelineRail(
             grooveWidth: TimelineLayout.railWidth,
             accentColor: statusColor,
+            isFirst: isFirst,
             isLast: isLast,
             node: TimelineNode(
               glyph: statusGlyph(task.status),

@@ -53,6 +53,13 @@ class AppColors {
   static const Color error = Color(0xFFEF4444);
   static const Color info = Color(0xFF3B82F6);
 
+  /// v1.12.45: the backlog / planned accent. It used to borrow
+  /// [lightTextSecondary] - a neutral grey - which disappears as an identity
+  /// bar: the KPI "TO DO" rail, the planned spine + node and the To Do
+  /// column tint all read as "nothing there". Indigo is the usual backlog
+  /// hue and stays clear of blue / green / red / amber.
+  static const Color planned = Color(0xFF6366F1);
+
   // ─── GFM alert semantic colors (v1.5.3) ───
   // The five `> [!TYPE]` alert accents, defined centrally (never hardcoded
   // at call sites) with light/dark variants tuned for readable contrast on
@@ -317,7 +324,7 @@ class AppColors {
   static Color statusColor(TaskStatus status) {
     switch (status) {
       case TaskStatus.planned:
-        return lightTextSecondary;
+        return planned;
       case TaskStatus.inProgress:
         return info;
       case TaskStatus.completed:
@@ -362,10 +369,6 @@ class AppColors {
   static double accentBorderOpacity(Brightness b) =>
       b == Brightness.light ? 0.70 : 0.50;
 
-  /// Recessed groove fill (the timeline spine channel).
-  static double grooveFillOpacity(Brightness b) =>
-      b == Brightness.light ? 0.055 : 0.030;
-
   /// Muted `onSurface` ink for the current theme.
   static Color muted(BuildContext context, {bool faint = false}) {
     final theme = Theme.of(context);
@@ -387,7 +390,10 @@ class AppColors {
   /// [surface]. The palette picker offers pastels, and a 10.5px pastel label
   /// vanishes on a white card — the dark themes never had that problem.
   /// Hues stay recognisable: the color only walks toward black or white.
-  static Color legibleInk(Color ink, Color surface, {double target = 4.5}) {
+  /// [target] 6.0 is the small-text budget: 4.5:1 is the AA floor for body
+  /// copy, but a 10-11px chip label at 4.5:1 still reads as a watermark on
+  /// paper (measured against the v1.12.42 light-theme screenshots).
+  static Color legibleInk(Color ink, Color surface, {double target = 6.0}) {
     if (contrast(ink, surface) >= target) return ink;
     final pole = surface.computeLuminance() > 0.5
         ? const Color(0xFF000000)

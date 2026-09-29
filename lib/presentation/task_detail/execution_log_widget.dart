@@ -193,7 +193,9 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  // v1.12.45: the list ended flush against the input panel,
+                  // so the last entry was always clipped by it.
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
                   itemCount: entries.length,
                   itemBuilder: (context, index) {
                     final entry = entries[index];
@@ -201,6 +203,7 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
                       entry: entry,
                       isLatest: index == 0,
                       isLast: index == entries.length - 1,
+                      isFirst: index == 0,
                       isEditing: _editingEntry?.uid == entry.uid,
                       onEdit: () => _editEntry(entry),
                       onDelete: () => _deleteEntry(entry),
@@ -796,6 +799,7 @@ class _LogEntryItem extends StatelessWidget {
 
   /// Oldest entry — its rail ends in a fading tail instead of a connector.
   final bool isLast;
+  final bool isFirst;
 
   /// v1.4.90: this record is currently loaded in the input area for
   /// re-editing — highlighted so the user sees which record they edit.
@@ -807,6 +811,7 @@ class _LogEntryItem extends StatelessWidget {
     required this.entry,
     required this.isLatest,
     required this.isLast,
+    required this.isFirst,
     this.isEditing = false,
     required this.onEdit,
     required this.onDelete,
@@ -828,6 +833,7 @@ class _LogEntryItem extends StatelessWidget {
         children: [
           TimelineRail(
             accentColor: color,
+            isFirst: isFirst,
             isLast: isLast,
             node: TimelineNode(
               glyph: entryGlyph(entry.type),
@@ -1039,7 +1045,10 @@ class _EntryMetaRow extends StatelessWidget {
         const SizedBox(width: 4),
         AnimatedOpacity(
           duration: const Duration(milliseconds: 150),
-          opacity: revealed ? 1.0 : 0.42,
+          // v1.12.45: 0.42 multiplied by the icons own 0.60 ink left the row
+          // actions at ~0.25 ink - invisible on paper, so copy / edit / delete
+          // read as missing (user screenshots).
+          opacity: revealed ? 1.0 : 0.72,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 2),
             decoration: BoxDecoration(

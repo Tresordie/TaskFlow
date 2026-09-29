@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../core/theme/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -81,7 +83,9 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
     final palette = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final accent = widget.accent;
-    final muted = palette.onSurface.withOpacity(0.5);
+    // v1.12.45: 0.5 ink sat below the faint budget on paper, which made the
+    // empty column "Drag tasks here" look like a rendering glitch.
+    final muted = AppColors.muted(context, faint: true);
 
     return DragTarget<Task>(
       onWillAcceptWithDetails: (_) => true,

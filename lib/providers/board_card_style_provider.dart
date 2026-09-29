@@ -54,7 +54,12 @@ class BoardCardStyle {
   /// page behind it, so the light themes lost all surface hierarchy (user:
   /// 暖沙 / 黛蓝 预览效果很差). Light glass keeps the frosting (blur + sheen +
   /// edge) but stays nearly solid.
-  static const iosGlassDefaultOpacityLight = 0.92;
+  /// v1.12.45: 0.92 -> 0.97. Every column is tinted by its own accent
+  /// (accent @ 10% over surface), so an 8% bleed painted the Done cards
+  /// green-grey and the To Do cards grey - the same card read differently in
+  /// different columns, which is what still looked too faint (user).
+  /// Frosting stays (blur + sheen + edge); the fill stops dyeing.
+  static const iosGlassDefaultOpacityLight = 0.97;
 
   bool get isDefault => opacity == 1.0 && !glass && blur == defaultBlur;
 
