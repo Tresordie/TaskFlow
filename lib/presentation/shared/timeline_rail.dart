@@ -10,9 +10,14 @@ import 'package:flutter/material.dart';
 /// 3. a crisp gradient core that fades toward the next event.
 ///
 /// The node is a glyph chip: surface fill + accent ring + accent glow, so the
-/// emoji/status icon stays readable instead of becoming a flat dot.
-/// [height] lets the caller cap the connector when the rail is not inside an
-/// IntrinsicHeight row (see TimelineScreen's origin marker).
+/// emoji stays readable instead of becoming a flat dot.
+///
+/// Alignment contract: the node always sits exactly [nodeInset] logical pixels
+/// below the top of the row, whether it is the first event of a group or not —
+/// so a label placed beside the spine (the time column, the log meta row) can
+/// centre itself on the node with [nodeCenterY]. The rail must live in a row
+/// that resolves a definite height (IntrinsicHeight + a stretched sibling),
+/// which is how both pages build their rows.
 class TimelineRail extends StatelessWidget {
   /// Width of the recessed groove column.
   final double grooveWidth;
@@ -23,17 +28,9 @@ class TimelineRail extends StatelessWidget {
   /// Accent colour for the connector and the node ring/glow.
   final Color accentColor;
 
-  /// Last event in the list: draws a short fading tail instead of a full
-  /// connector so the line ends cleanly.
+  /// Last event of the run: draws a short fading tail instead of a full
+  /// connector so the line ends cleanly instead of running on.
   final bool isLast;
-
-  /// First event of a run: draws a short fading stub ABOVE the node so the
-  /// spine starts as a soft origin instead of a hard cut.
-  final bool capTop;
-
-  /// Fixed rail height, or null to stretch with the sibling content
-  /// (requires unbounded-height-safe parent + IntrinsicHeight).
-  final double? height;
 
   const TimelineRail({
     super.key,
@@ -41,9 +38,22 @@ class TimelineRail extends StatelessWidget {
     required this.node,
     required this.accentColor,
     this.isLast = false,
-    this.capTop = false,
-    this.height,
   });
+
+  /// Width of the groove's hairline border — it insets the column, so it
+  /// counts toward where the node lands.
+  static const double grooveBorderWidth = 1;
+
+  /// Distance from the top of the row to the top of the node.
+  static const double nodeInset = grooveBorderWidth + 8;
+
+  /// Diameter of a normal / emphasized node (mirrors [TimelineNode]).
+  static const double nodeDiameter = 22;
+  static const double nodeDiameterEmphasized = 26;
+
+  /// Vertical centre of the node inside the row — side labels align to this.
+  static double nodeCenterY({bool emphasized = false}) =>
+      nodeInset + (emphasized ? nodeDiameterEmphasized : nodeDiameter) / 2;
 
   @override
   Widget build(BuildContext context) {
@@ -52,97 +62,68 @@ class TimelineRail extends StatelessWidget {
 
     return SizedBox(
       width: grooveWidth,
-      height: height,
-      child: _column(theme, isDark),
-    );
-  }
-
-  Widget _column(ThemeData theme, bool isDark) {
-    // Recessed channel: a touch darker than the page at the top, lighter
-    // hairline at the bottom-left edge — the carved look.
-    return Container(
-      width: grooveWidth,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [
-                  Colors.white.withOpacity(0.045),
-                  Colors.black.withOpacity(0.10),
-                ]
-              : [
-                  Colors.black.withOpacity(0.030),
-                  Colors.white.withOpacity(0.50),
-                ],
-          stops: const [0.0, 0.75],
+      child: Container(
+        width: grooveWidth,
+        decoration: BoxDecoration(
+          // Recessed channel: a touch darker at the top, a lit hairline
+          // toward the bottom — the carved look.
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [
+                    Colors.white.withOpacity(0.045),
+                    Colors.black.withOpacity(0.10),
+                  ]
+                : [
+                    Colors.black.withOpacity(0.030),
+                    Colors.white.withOpacity(0.50),
+                  ],
+            stops: const [0.0, 0.75],
+          ),
+          borderRadius: BorderRadius.circular(grooveWidth / 2),
+          border: Border.all(
+            color: theme.colorScheme.outline.withOpacity(isDark ? 0.14 : 0.12),
+          ),
         ),
-        borderRadius: BorderRadius.circular(grooveWidth / 2),
-        border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(isDark ? 0.14 : 0.12),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          if (capTop)
-            Padding(
-              padding: const EdgeInsets.only(top: 2, bottom: 4),
-              child: Align(
-                alignment: Alignment.topCenter,
+        child: Column(
+          // A group-ending rail hugs its own content: without this the groove
+          // stretches down the whole row and leaves an empty channel under the
+          // fading tail.
+          mainAxisSize: isLast ? MainAxisSize.min : MainAxisSize.max,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(height: 8), // + the 1px groove border = nodeInset
+            node,
+            if (isLast)
+              // Terminating tail: short, fading out downward.
+              Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 6),
                 child: Container(
                   width: 2,
-                  height: 10,
+                  height: 14,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
                       colors: [
-                        accentColor.withOpacity(0.30),
+                        accentColor.withOpacity(0.28),
                         accentColor.withOpacity(0.0),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(1),
                   ),
                 ),
-              ),
-            )
-          else
-            const SizedBox(height: 8),
-          node,
-          if (isLast)
-            // Terminating tail: short, fading out downward.
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 4, bottom: 6),
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: Container(
-                    width: 2,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          accentColor.withOpacity(0.28),
-                          accentColor.withOpacity(0.0),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(1),
-                    ),
-                  ),
+              )
+            else
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 2),
+                  child: _Connector(accentColor: accentColor),
                 ),
               ),
-            )
-          else
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 4, bottom: 2),
-                child: _Connector(accentColor: accentColor),
-              ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -213,7 +194,9 @@ class TimelineNode extends StatelessWidget {
     this.emphasized = false,
   });
 
-  double get _diameter => emphasized ? 26 : 22;
+  double get _diameter => emphasized
+      ? TimelineRail.nodeDiameterEmphasized
+      : TimelineRail.nodeDiameter;
 
   double get _glyphSize => emphasized ? 14 : 12;
 
@@ -224,35 +207,33 @@ class TimelineNode extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
-      child: Center(
-        child: Container(
-          decoration: BoxDecoration(
-            // Filled with the card surface so the ring + glyph stay legible
-            // on any page background.
-            color: theme.colorScheme.surface,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: accentColor.withOpacity(emphasized ? 0.85 : 0.55),
-              width: emphasized ? 2.4 : 2,
+      child: Container(
+        decoration: BoxDecoration(
+          // Filled with the card surface so the ring + glyph stay legible on
+          // any page background.
+          color: theme.colorScheme.surface,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: accentColor.withOpacity(emphasized ? 0.85 : 0.55),
+            width: emphasized ? 2.4 : 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: accentColor.withOpacity(emphasized ? 0.38 : 0.22),
+              blurRadius: emphasized ? 12 : 8,
+              offset: const Offset(0, 1),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: accentColor.withOpacity(emphasized ? 0.38 : 0.22),
-                blurRadius: emphasized ? 12 : 8,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Center(
-            child: icon != null
-                ? Icon(icon,
-                    size: _glyphSize,
-                    color: accentColor.withOpacity(emphasized ? 1.0 : 0.9))
-                : Text(
-                    glyph ?? '',
-                    style: TextStyle(fontSize: _glyphSize, height: 1.0),
-                  ),
-          ),
+          ],
+        ),
+        child: Center(
+          child: icon != null
+              ? Icon(icon,
+                  size: _glyphSize,
+                  color: accentColor.withOpacity(emphasized ? 1.0 : 0.9))
+              : Text(
+                  glyph ?? '',
+                  style: TextStyle(fontSize: _glyphSize, height: 1.0),
+                ),
         ),
       ),
     );

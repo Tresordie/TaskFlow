@@ -8,8 +8,10 @@ import 'package:taskflow/presentation/timeline/timeline_screen.dart';
 
 /// v1.12.39: the Timeline page and the task Execution Log were re-skinned onto
 /// ONE shared spine (TimelineRail + TimelineNode) with an emoji vocabulary, and
-/// the Timeline list now groups by day in range mode. These tests lock the
-/// contracts that the visual change depends on.
+/// the Timeline list now groups by day. v1.12.39 follow-up: the alignment pass
+/// — the node sits at a fixed offset, the time label centres on it, the day
+/// header lines up with the cards, and every group ends its own spine.
+/// These tests lock those contracts.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -82,23 +84,44 @@ void main() {
       expect(rows.whereType<TimelineDayRow>().length, 2);
     });
 
-    test('first/last markers drive the rail caps', () {
+    test('each day group ends its own spine', () {
       final tasks = [
         task(1, DateTime(2026, 9, 29, 10)),
-        task(2, DateTime(2026, 9, 28, 10)),
+        task(2, DateTime(2026, 9, 29, 8)),
+        task(3, DateTime(2026, 9, 27, 20)),
       ];
       final rows = TimelineRows.build(tasks, showDayHeaders: true);
-      // rows: day, task1, day, task2
-      expect(TimelineRows.isFirstOfRun(rows, 0), isFalse);
-      expect(TimelineRows.isFirstOfRun(rows, 1), isTrue);
-      expect(TimelineRows.isFirstOfRun(rows, 3), isTrue);
-      expect(TimelineRows.isLastEvent(rows, 1), isFalse);
-      expect(TimelineRows.isLastEvent(rows, 3), isTrue);
+      // rows: day, t1, t2, day, t3
+      expect(TimelineRows.isLastOfGroup(rows, 1), isFalse);
+      expect(TimelineRows.isLastOfGroup(rows, 2), isTrue,
+          reason: 't2 is the last event of Sep 29 — the connector must stop');
+      expect(TimelineRows.isLastOfGroup(rows, 4), isTrue);
+    });
+  });
+
+  group('alignment budget', () {
+    test('the day header indent equals the columns left of the card', () {
+      expect(
+        TimelineRows.cardIndent,
+        TimelineRows.timeColumnWidth +
+            TimelineRows.timeGap +
+            TimelineRows.railWidth +
+            TimelineRows.railGap,
+      );
+    });
+
+    test('the node centre is a fixed distance from the row top', () {
+      expect(TimelineRail.nodeCenterY(),
+          TimelineRail.nodeInset + TimelineRail.nodeDiameter / 2);
+      expect(
+        TimelineRail.nodeCenterY(emphasized: true),
+        greaterThan(TimelineRail.nodeCenterY()),
+      );
     });
   });
 
   group('TimelineRail rendering', () {
-    Widget harness({required Widget node, bool isLast = false, double h = 200}) {
+    Widget row({required List<Widget> children, double h = 220}) {
       return MaterialApp(
         home: Scaffold(
           body: Center(
@@ -106,15 +129,7 @@ void main() {
               height: h,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TimelineRail(
-                    accentColor: Colors.blue,
-                    isLast: isLast,
-                    node: node,
-                  ),
-                  const SizedBox(width: 8),
-                  const SizedBox(width: 120, height: 60),
-                ],
+                children: children,
               ),
             ),
           ),
@@ -122,16 +137,63 @@ void main() {
       );
     }
 
-    testWidgets('glyph node renders without overflow errors',
-        (tester) async {
-      await tester.pumpWidget(harness(
-        node: const TimelineNode(glyph: '🚧', accentColor: Colors.blue),
-      ));
+    Widget rail({bool isLast = false, Widget? node}) => TimelineRail(
+          accentColor: Colors.blue,
+          isLast: isLast,
+          node:
+              node ?? const TimelineNode(glyph: '🚧', accentColor: Colors.blue),
+        );
+
+    testWidgets('glyph node renders without overflow errors', (tester) async {
+      await tester.pumpWidget(row(children: [rail()]));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(find.text('🚧'), findsOneWidget);
-      // The groove keeps its declared width whatever the content does.
       expect(tester.getSize(find.byType(TimelineRail)).width, 26);
+    });
+
+    testWidgets('the time label sits level with the node', (tester) async {
+      await tester.pumpWidget(row(children: [
+        SizedBox(
+          width: TimelineRows.timeColumnWidth,
+          height: TimelineRail.nodeCenterY() * 2,
+          child: const Align(
+            alignment: Alignment.centerRight,
+            child: Text('17:52'),
+          ),
+        ),
+        const SizedBox(width: TimelineRows.timeGap),
+        rail(),
+      ]));
+      await tester.pumpAndSettle();
+      final node = tester.getCenter(find.byType(TimelineNode));
+      final label = tester.getCenter(find.text('17:52'));
+      expect((node.dy - label.dy).abs(), lessThan(1.0),
+          reason: 'a label boxed to 2x nodeCenterY must centre on the node');
+      // ...and it hugs the spine instead of floating at the page margin.
+      expect(
+        tester.getRect(find.text('17:52')).right,
+        closeTo(
+            tester.getRect(find.byType(TimelineRail)).left -
+                TimelineRows.timeGap,
+            1.0),
+      );
+    });
+
+    testWidgets('every row centres its label on the same line', (tester) async {
+      await tester.pumpWidget(row(children: [
+        rail(),
+        const SizedBox(width: 8),
+        rail(isLast: true),
+      ]));
+      await tester.pumpAndSettle();
+      final centers = [
+        tester.getCenter(find.byType(TimelineNode).first).dy,
+        tester.getCenter(find.byType(TimelineNode).last).dy,
+      ];
+      expect(centers[0], closeTo(centers[1], 0.01),
+          reason: 'no row may push its node down — that is what made the '
+              'spine and the labels read as misaligned');
     });
 
     testWidgets('emphasized node is the larger chip', (tester) async {
@@ -144,11 +206,6 @@ void main() {
           ]),
         ),
       ));
-      final nodes = tester.widgetList<TimelineNode>(find.byType(TimelineNode));
-      final sizes = nodes
-          .map((n) => n.emphasized ? 'big' : 'small')
-          .toList();
-      expect(sizes, ['small', 'big']);
       expect(
         tester.getSize(find.byType(TimelineNode).last).height,
         greaterThan(tester.getSize(find.byType(TimelineNode).first).height),
@@ -157,10 +214,7 @@ void main() {
 
     testWidgets('last event ends the spine instead of continuing it',
         (tester) async {
-      await tester.pumpWidget(harness(
-        node: const TimelineNode(glyph: '📝', accentColor: Colors.blue),
-        isLast: true,
-      ));
+      await tester.pumpWidget(row(children: [rail(isLast: true)]));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(find.byType(TimelineRail), findsOneWidget);
@@ -171,9 +225,13 @@ void main() {
       await tester.pumpWidget(
         MediaQuery(
           data: const MediaQueryData(textScaler: TextScaler.linear(1.4)),
-          child: harness(
-            node: const TimelineNode(glyph: '⛔', accentColor: Colors.red),
+          child: row(
             h: 90,
+            children: [
+              rail(
+                  node:
+                      const TimelineNode(glyph: '⛔', accentColor: Colors.red)),
+            ],
           ),
         ),
       );

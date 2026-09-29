@@ -829,7 +829,6 @@ class _LogEntryItem extends StatelessWidget {
           TimelineRail(
             accentColor: color,
             isLast: isLast,
-            capTop: isLatest,
             node: TimelineNode(
               glyph: entryGlyph(entry.type),
               accentColor: color,

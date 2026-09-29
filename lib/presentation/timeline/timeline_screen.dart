@@ -328,15 +328,27 @@ class TimelineRows {
     return rows;
   }
 
-  /// First event of the list (or right after a day separator) — the rail gets
-  /// its soft top cap there. False for non-task rows.
-  static bool isFirstOfRun(List<Object> rows, int index) =>
-      rows[index] is Task && (index == 0 || rows[index - 1] is! Task);
+  /// Last event of its day group: a day separator (or the end of the list)
+  /// comes next. Each group is its own spine, so the connector must NOT run
+  /// through a day header into the next group.
+  static bool isLastOfGroup(List<Object> rows, int index) {
+    for (var i = index + 1; i < rows.length; i++) {
+      final r = rows[i];
+      if (r is TimelineDayRow) return true;
+      if (r is Task) return false;
+    }
+    return true;
+  }
 
-  /// Last event overall — nothing task-shaped below it, so the rail ends in a
-  /// fading tail.
-  static bool isLastEvent(List<Object> rows, int index) =>
-      !rows.skip(index + 1).any((r) => r is Task);
+  /// Horizontal budget of everything left of the card: time column + gaps +
+  /// rail groove. The day header is indented by this much so its chip lines
+  /// up with the cards it introduces.
+  static const double timeColumnWidth = 54;
+  static const double timeGap = 12;
+  static const double railWidth = 26;
+  static const double railGap = 14;
+  static const double cardIndent =
+      timeColumnWidth + timeGap + railWidth + railGap;
 }
 
 /// v1.12.39: the Timeline spine is drawn by the shared [TimelineRail] (the
@@ -366,9 +378,7 @@ class _TimelineList extends StatelessWidget {
         final task = row as Task;
         return _TimelineItem(
           task: task,
-          isLast: TimelineRows.isLastEvent(rows, index),
-          capTop: TimelineRows.isFirstOfRun(rows, index),
-          showDate: !showDayHeaders,
+          isLast: TimelineRows.isLastOfGroup(rows, index),
         );
       },
     );
@@ -388,7 +398,7 @@ class _TimelineDayHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final accent = theme.colorScheme.primary;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 14, 0, 12),
+      padding: const EdgeInsets.fromLTRB(TimelineRows.cardIndent, 14, 0, 12),
       child: Row(
         children: [
           Container(
@@ -465,19 +475,9 @@ class _TimelineItem extends StatelessWidget {
   final Task task;
   final bool isLast;
 
-  /// First event of the list (or of a day group) — the rail gets a soft
-  /// fading stub above the node instead of starting at a hard cut.
-  final bool capTop;
-
-  /// Whether the left column repeats the date. Range mode already prints a
-  /// `📅 Fri, Sep 11` header per group, so the row keeps only the time.
-  final bool showDate;
-
   const _TimelineItem({
     required this.task,
     required this.isLast,
-    this.capTop = false,
-    this.showDate = true,
   });
 
   @override
@@ -502,58 +502,38 @@ class _TimelineItem extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Date + time column. Width fits yyyy-MM-dd at the 140% font scale.
+          // Time column: right-aligned so it hugs the spine, and boxed to
+          // exactly twice the node centre so the text sits level with the
+          // node. The date is NOT repeated here - range mode prints a day
+          // header per group, single-day mode says the date up top.
           SizedBox(
-            width: 96,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (showDate) ...[
-                  Text(
-                    _dayLabel(task.createdAt),
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface.withOpacity(0.72),
-                        ),
-                  ),
-                  const SizedBox(height: 3),
-                ] else
-                  const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Text(
-                      '🕐',
-                      style: const TextStyle(
-                          fontSize: 9,
-                          height: 1.2,
-                          color: AppColors.lightTextSecondary),
+            width: TimelineRows.timeColumnWidth,
+            height: TimelineRail.nodeCenterY() * 2,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                DateFormat('HH:mm').format(task.createdAt),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface.withOpacity(0.62),
                     ),
-                    const SizedBox(width: 3),
-                    Text(
-                      DateFormat('HH:mm').format(task.createdAt),
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: AppColors.lightTextSecondary,
-                          ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: TimelineRows.timeGap),
 
           // Timeline spine: recessed groove + emoji status node + two-layer
           // (glow bed / crisp core) connector, ending in a fading tail.
           TimelineRail(
+            grooveWidth: TimelineRows.railWidth,
             accentColor: statusColor,
             isLast: isLast,
-            capTop: capTop,
             node: TimelineNode(
               glyph: statusGlyph(task.status),
               accentColor: statusColor,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: TimelineRows.railGap),
 
           // Task card — v1.12.13: hover lift + accent border highlight.
           Expanded(
@@ -694,18 +674,5 @@ class _TimelineItem extends StatelessWidget {
 
   Color _statusColor(TaskStatus status) {
     return AppColors.statusColor(status);
-  }
-
-  /// Absolute date, except today / yesterday which say so — "Today 14:05" is
-  /// read faster than "2026-09-29 14:05".
-  static String _dayLabel(DateTime d) {
-    final now = DateTime.now();
-    final day = DateTime(d.year, d.month, d.day);
-    if (day == DateTime(now.year, now.month, now.day)) return 'Today';
-    if (day.add(const Duration(days: 1)) ==
-        DateTime(now.year, now.month, now.day)) {
-      return 'Yesterday';
-    }
-    return DateFormat('yyyy-MM-dd').format(d);
   }
 }
