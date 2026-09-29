@@ -8,9 +8,9 @@
 ## 0. 快速上手（TL;DR）
 
 - **项目**：TaskFlow —— Flutter Windows 桌面任务管理应用，面向硬件测试工程师（NPI 电动自行车项目）的个人任务/日志/周报工具。
-- **位置**：`outputs/taskflow/`（工作区根 = `c:\Users\Administrator\.qoderworkcn\workspace\mrtw67znp8zrkqp4`）。
+- **位置**：`F:/gitee/taskflow/TaskFlow`（远端：GitHub `Tresordie/TaskFlow` + Gitee `simonyuan2019/TaskFlow`，发版时两处都要显式单 URL 推 `HEAD`）。
 - **跑起来**：`cd outputs/taskflow && flutter run -d windows`（或 `flutter build windows --release` 后运行 `build\windows\x64\runner\Release\taskflow.exe`）。
-- **发版闭环（每次变更必做）**：升版本（`pubspec.yaml` + `lib/core/version.dart` 的 `kAppVersion` **必须同步**）→ `flutter test`（329 个）→ 构建 → `git commit` → **显式单 URL 双推** GitHub + Gitee → `Compress-Archive` 打包 zip 到 `outputs/` → 启动 exe 验证。
+- **发版闭环（每次变更必做）**：升版本（`pubspec.yaml` + `lib/core/version.dart` 的 `kAppVersion` **必须同步**）→ `flutter test`（368 个）→ 构建 → `git commit` → **显式单 URL 双推** GitHub + Gitee → `Compress-Archive` 打包 zip 到 `outputs/` → 启动 exe 验证。
 - **最高危五条**：① Isar 嵌入对象字段冻结（见禁忌 9.1）；② 禁用全局 SelectionArea（9.2）；③ 杀进程后立即构建会“拒绝访问”，等 15–25 秒重试（8.1）；④ 可能出现中文的 TextStyle 禁只设 `fontFamily`，必须带 `FontStack` 回退链（9.11）；⑤ 两渲染链共用的 `GfmExtensions.prepare` 管线（多行公式展平 → 表格行归一 → 硬换行硬化）顺序不可乱改，表格行/alert 起始行/`$$` 行豁免硬化（8.19-8.20）。
 
 ---
@@ -51,7 +51,7 @@ outputs/taskflow/
 │   ├── main.dart                 # 启动：AttachmentService.init() 预热附件目录
 │   ├── app/                      # TaskFlowApp（主题/字体/字号缩放注入）、router、AppShell 之外的壳
 │   ├── core/
-│   │   ├── theme/app_colors.dart # ThemePalette 定义（9 个主题调色板）+ 遗留硬编码别名
+│   │   ├── theme/app_colors.dart # ThemePalette 定义（9 个主题调色板）+ 遗留硬编码别名 + 亮度感知墨色规则（dimmedTitle / muted / faint / cardBorder / accentBorder opacity、`contrast` WCAG、`legibleInk` 小字号 6.0 预算）
 │   │   ├── theme/app_theme.dart  # AppThemeMode 枚举（label/labelZh/palette/brightness）+ buildTheme
 │   │   ├── theme/font_stack.dart # 中英混排链单一事实源（v1.5.2，拉丁/中文/回退链常量）
 │   │   ├── markdown/             # html_sanitize（HTML混入清洗）、line_breaks（硬换行硬化+结构行豁免）、rich_markdown（含上下标语法）、latex_support（严格定界+多行展平）、gfm_extensions（alerts 大小写敏感语法/任务清单 checkbox hoist/`<br>`/prepare 管线）、table_support（多行行归一+列宽）
@@ -63,11 +63,11 @@ outputs/taskflow/
 │   │   └── services/             # sync_service（Drive同步）、attachment_service、backup_service、ai_service、report_service
 │   ├── providers/                # task_providers、theme_provider、font_provider、typography_provider、board_card_style_provider、work_log_provider、sync_providers、ai_provider
 │   └── presentation/
-│       ├── shared/               # app_markdown_body（块级渲染）、selectable_markdown_body（整篇可选）、markdown_editor_field（Write/Preview 输入）、markdown_input
+│       ├── shared/               # app_markdown_body（块级渲染）、selectable_markdown_body（整篇可选）、markdown_editor_field（Write/Preview 输入）、markdown_input、timeline_rail（`TimelineRail` / `TimelineNode` / `TimelineSpine` 共用脊柱，v1.12.45 起无凹槽）、glass_sheen（`GlassSurface` 玻璃外壳 + 随亮度分支的高光）
 │       ├── task_detail/          # task_detail_screen、execution_log_widget（内联编辑）
 │       ├── reports/              # reports_screen（分栏编辑器 + AI 生成）
 │       ├── work_log/ calendar/ heatmap/ ai_parse/ settings/
-├── test/                         # 30 个测试文件，322 个测试（含 extended_markdown/selectable_spacing/font_upgrade/gfm_extensions/theme_palette/kanban_board/board_card_style/calendar_day_cell 契约）
+├── test/                         # 32 个测试文件，368 个测试（含 extended_markdown/selectable_spacing/font_upgrade/gfm_extensions/theme_palette/kanban_board/board_card_style/calendar_day_cell/light_theme_contrast/timeline_visual 契约）
 └── pubspec.yaml                  # version 字段与 kAppVersion 必须同步；fonts + FONT_LICENSES.md 声明
 ```
 
@@ -253,6 +253,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | 8.24 | 可选链表格 ASCII 文本网格中文列错位、观感如字符画（用户实机否决） | 等宽拉丁字体的 advance 与 CJK 字形 advance 不是精确 2:1（MiSans ≈1em vs Courier ≈0.6em），TextSpan 纯文本列对齐在混排下数学上就不可靠 | v1.5.4 弃文本网格，WidgetSpan 嵌真实 Table（IntrinsicColumnWidth 天然对齐） | 跨字体"按显示宽度补空格对齐"的方案在 CJK 混排下不可行，直接用真组件渲染 |
 | 8.26 | Material 日期范围选择器在桌面端的观感问题（全屏留白→反复调尺寸→最终弃用） | ① 日历模式 `size = MediaQuery.sizeOf`（整窗）+ `insetPadding = EdgeInsets.zero`，月份网格宽上限 384/480 居中 → 全屏弹层+巨幅侧留白；② 且日历模式只读 `rangePicker*` 主题槽位，普通 `headerBackgroundColor` 等对它不生效 | v1.6.1–1.6.3 三连调尺寸（420×520→1.5× 放大 660×690→480×500×1.1 视觉 528×550）均未能让用户满意；**v1.6.4 最终方案：弃用 `showDateRangePicker`**，改用 Reports Daily/Weekly 同款 `showDatePicker` 单日期弹窗（自动继承应用 ColorScheme），两步流：先选开始日期（helpText=Start Date）、再选结束日期（firstDate=开始日期，只能选不早于开始），任一步取消则整体返回 null；API 签名不变三处调用零改动 | 用 Material 复合弹层前先读 SDK 源码的尺寸/inset 取值；用户对观感不满意时，换用已被用户认可的同类现成弹窗比反复调样式更可靠 |:`Border` 非统一色 + `borderRadius` 抛 "uniform colors" 断言;Row `CrossAxisAlignment.stretch` 在无界高度视口抛 "infinite height" | Flutter 规定各边颜色不一致的 Border 不能配圆角;stretch 需要有界高度约束 | 外层 Container 统一色发丝描边(可配圆角)+ 内层 ClipRRect 左色条;Row 外包 `IntrinsicHeight` 让色条取内容高 | 非 uniform 边框/圆角组合与无界高度下 stretch 是 Flutter 布局两大经典坑,容器类 UI 先想约束 |
 | 8.27 | 玻璃模式下 KPI 状态卡的右上角图标盖住 `TO DO` / `IN PROGRESS` 标签（用户截图；非玻璃模式正常） | `RenderStack._computeSize`：`Stack` 在 **loose fit** 下把非定位子节点用 `constraints.loosen()` 布局，尺寸取子节点实测宽——所以给卡片内容再套一层玻璃壳（`ClipRRect/BackdropFilter/DecoratedBox/Stack`）后，内层 Stack 从「铺满卡片」退化成「按文字收缩」，`Positioned(right: 10)` 就贴到了标签尾巴上。带进度条的那张卡（卡 1）因为进度条 Container 在有限宽下取 `constraints.biggest` 撑满宽度，反而看不出来 | `GlassSurface` 外壳统一 `SizedBox(width: double.infinity, child: content)` 把内容钉满面板宽；标签另加 `EdgeInsets.only(right: 32)` + `maxLines/ellipsis` 预留图标芯片位 | 绝对定位（`Positioned`）不能依赖祖先的紧约束——中间插一层容器就可能变松；遇到「只在某种模式下才错位」先查约束传播，而不是查坐标常量；widget 测试看不见重叠，截图才能发现（已固化为 `tools/cap_window.ps1`） |
+| 8.28 | 时间线「外框」被投诉三次才修好（v1.12.42 颜色 → v1.12.43 描边 → v1.12.45 才删掉元素） | 症状是「每行一段宽 26 的浅色胶囊 + 行间线断开」，但前两次都把它当成参数问题：改填充色、去描边，元素本身还在。用户说的"外框"指的是**这个元素**，不是它的某条属性 | 第三次换设计：删掉 channel，脊柱 = 连续细线（`TimelineSpine`）+ 不透明白底节点压线，连线内边距清零，新增 `isFirst` 让首行节点上方无线；随凹槽失效的 `grooveDecoration` / `AppColors.grooveFillOpacity` 一并删除，不留死代码 | 同一个症状第二次修不好，就必须怀疑抽象而不是参数（第三次更是）；被反复投诉的视觉元素一定要有可执行契约守着——这次把私有 `_Connector` 提升为公开 `TimelineSpine`，"线是否连续"变成 `findsNWidgets(2)`，凹槽再也回不来 |
 
 ---
 
@@ -273,6 +274,8 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 13. **禁把 GFM alerts 五色语义色硬编码到组件里**——必须经 `AppColors.alertAccent/alertBackground`（亮/暗双套），保证全部 21 主题下可读对比度（v1.5.3）。
 14. **禁改 `GfmExtensions.prepare` 管线顺序或去掉结构行豁免**——会导致表格再次退化为字面 `\|` 行（8.19）。
 15. **禁用 PowerShell Set-Content/Get-Content 批量改源码文件**——去重/替换脚本会把整个文件压成一行（v1.6.0 曾毁掉 timeline/calendar/reports 三文件，靠 git checkout 恢复）；源码编辑一律用 Edit 工具。
+16. **禁把时间线脊柱再做回「每行一段凹槽 / 描边胶囊」**——v1.12.42/43/45 三次投诉换来的结论：脊柱只有连续细线（`TimelineSpine`）+ 不透明白底节点，行边界不得留白；「线是否连续」已有 `findsNWidgets` 契约守着。
+17. **禁用中性灰当身份色**——同一个 `statusColor` 值会同时画 KPI 身份条、列底色和脊柱，灰色在这三个位置等于「什么都没有」（v1.12.45 把 planned 从灰改成靛蓝就是这个原因）。
 
 ---
 
@@ -353,13 +356,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 **进行中**：
 - 用户实机复核 v1.12.45：Timeline / Event Log 的脊柱是否终于是「线 + 珠子」（凹槽已彻底没有）；Today 的 Done 卡片是否不再被列底色染色；TO DO 的靛蓝身份条是否合适（嫌它抢戏可以退回更深的灰，但灰在身份位上等于无色）。
 - 浅色残留还剩两件低优先级：详情页 markdown 嵌套缩进的行宽、滚动条 thumb 偏重。另有一件需要点头才动的布局改动——「空列自动收窄让出 1/3 屏」。
-- 用户实机复核 v1.12.42：暖沙 / 黛蓝下 Today / Timeline / Calendar / Activity / Settings 是否已经不发灰、卡片边界与删除线标题是否够清楚；若仍偏淡，只需调 `AppColors` 里对应的一个函数（全站生效）。
-- 用户实机复核 v1.12.41：Timeline 每行左侧的「日期 / 时间」是否整齐（范围与单日模式同一排版）、节点是否夹在两行中间；不再按日分组，若想要回分组观感需另议（分组与「每行带日期」二者取其一）。若觉得 emoji 太花，只需删 `emoji_glyphs.dart` 里对应字符并改回 `TimelineNode(icon: ...)`（两页共用组件，一处改全生效）。
-- 用户实机试用 v1.12.38 三款新字体（Settings → Font）：manropeMisans（离线）、plexMisans（看数字/日期是否更利落）、serifSourceNoto（报告与正文的衬线观感，注意需要联网下载、头几帧会先回退）；默认仍是 Inter × MiSans，用户已自行选中 serifSourceNoto 在试。
-- 用户实机确认 v1.12.37：Settings → Theme 列表应只剩 9 款（已截图确认：暖沙/黛蓝/暗夜/极夜蓝/墨板/午夜看板/摩卡·木槿紫/摩卡·薰衣草/奶油玻璃，无冰沙无玛奇朵）。
-- v1.12.36 同轮已确认：列表从 13 降到 11（无冰沙两款）。
-- 上一轮（v1.12.35）：Today 四张状态卡的右上角图标是否都贴在卡片角上、不再压住 `TO DO` / `IN PROGRESS` 标签（本轮重启后的黛蓝截图已看到四张卡图标均在右上角）。
-- 上一轮遗留（v1.12.34 观感）：① 开「今日看板卡片 → Glass effect」后任务卡是否不再“弯曲/鼓面”；② 侧边栏菜单与 Today 两组分段控件的立体感是否到位。
+- v1.12.34→v1.12.42 各轮的实机复核项（玻璃弯曲、KPI 图标位置、分段控件立体感、字体三款试用、主题列表 9 款、Timeline 左侧日期时间、浅色五页观感）都已在后续截图轮里确认或被 v1.12.42–45 的改动覆盖，不再逐条挂账；如仍有具体页面不满意，按页面单独提，改动一律走共用出口（`AppColors` / `BoardGlassSpec` / `GlassSheen` / `TimelineRail`）而不是页面内补丁。
 - 本仓库由旧工作区迁至 `F:\gitee\taskflow\TaskFlow`：`build/` 内旧 CMake 缓存指向旧路径会导致 "does not match the source"，删 `build/` 重来即愈；`windows/flutter/ephemeral/.plugin_symlinks` 陈旧符号链接致 errno 183，同删即愈。
 - 环境备注：本机 `flutter` 不在 PATH（用 `C:\flutter\bin`）；用户设置不在注册表而在 `%APPDATA%\com.taskflow\taskflow\shared_preferences.json`（带 `flutter.` 前缀的键），读当前主题/玻璃取值看这里。
 

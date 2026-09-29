@@ -122,7 +122,7 @@ test/
 - Robust Markdown rendering for pasted content: normalizes CRLF line endings and invisible Unicode spaces (non-breaking / full-width) so lists copied from browsers or other apps render correctly
 - Desktop-only chrome guarded for iOS/Android (custom title bar & window_manager skipped on mobile)
 - Custom date-range picker (Timeline / Calendar / Reports): ONE dialog with the same calendar grid as the Daily/Weekly popup — tap the start day, tap the end day, confirm
-- Unit + widget test suite (`flutter test`): report period math, AI config, LaTeX rendering, title bar
+- Unit + widget test suite (`flutter test`, 368 tests as of v1.12.45): report period math, AI config, LaTeX rendering, title bar
 
 ### Phase 7 — Unified rich-text input & record display
 - **Every input area** (Work Log, execution log + edit dialog, task description create/edit dialogs, AI Parse notes, Report editor) supports Markdown + rich text with instant **Write/Preview toggle** — the preview uses the SAME style sheet as the saved content (true WYSIWYG "input-as-preview")
