@@ -85,7 +85,7 @@ test/
 - Sub-step checklists within tasks
 - Today kanban dashboard, Timeline, Calendar and Activity (heatmap) views
 - Quick-add bar with priority + due date
-- 11 color themes — 2 Notion-tuned lights (Warm Sand / Ink Blue porcelain) + 2 near-black board themes (Notion Board / Midnight) + 4 Catppuccin darks (Macchiato · Mauve/Teal, Mocha · Mauve/Lavender) + **Glass Dashboard** (warm-charcoal glass ladder with a cream accent and dark text on it); 3 curated CN/EN font pairings with **Inter × MiSans as the app default** (Plus Jakarta Sans × Noto Sans SC and Lexend × Noto Sans SC selectable); global font-size scaling (80–140%)
+- 9 color themes — 2 Notion-tuned lights (Warm Sand / Ink Blue porcelain) + 2 near-black board themes (Notion Board / Midnight) + 2 Catppuccin Mocha darks (Mauve / Lavender) + **Glass Dashboard** (warm-charcoal glass ladder with a cream accent and dark text on it); 3 curated CN/EN font pairings with **Inter × MiSans as the app default** (Plus Jakarta Sans × Noto Sans SC and Lexend × Noto Sans SC selectable); global font-size scaling (80–140%)
 - **Today dashboard themes**: every light theme tints each kanban column with its own semantic accent (status / priority / project) and floats bright task cards over it — the Notion board-template look; two dark board themes (Notion Board / Midnight) do the same with translucent cards. Warm Sand and Ink Blue go further: the **whole Today dashboard becomes one iOS glass material** — task cards, KPI stat cards, the quick-add bar and the column trays share a single recipe (translucent fill + backdrop blur + a restrained top light wash + a faint inner highlight edge), frosted over drifting ambient light pools, tunable via Settings → Today Board Cards. The specular is deliberately quiet: glass here is a **flat lit slab lying on the page, not a bulging lens**
 - Responsive: sidebar on desktop, bottom nav on mobile
 - Local-first persistence via Isar (NoSQL)
@@ -148,7 +148,7 @@ test/
 - Task cards across all three pages share the Today card skin (left accent bar, top-lit fill, hover lift + layered shadows) via the shared `TaskListCard` / `HoverLift` components
 - **Page selector with depth**: sidebar nav items are physical keys — the active one is a primary-gradient pill with an accent glow, a contact shadow and an accent rim, its leading bar is a glowing gradient sliver, hovered rows lift 1px with a soft shadow, and the sheet itself floats on a two-layer shadow; the two Today segmented controls (quick filter / board dimension) match the language — a recessed groove holding raised keys (selected segment in a primary gradient with a glow, text reading `onPrimary`)
 - **One glass shell for every panel**: task cards and KPI stat cards both route through the shared `GlassSurface` (clip → backdrop blur → translucent fill → specular sheen), and the shell pins its content to the full panel width — otherwise a `Stack` shrink-wraps to the text and the top-right accent chip lands on top of "TO DO" / "IN PROGRESS" (fixed in v1.12.35)
-- 325-test suite including glass/theme/hover regressions, with contracts pinning the flat specular profile, the full-width glass content, and the deleted-theme list (removed themes stay removed)
+- 325-test suite including glass/theme/hover regressions, with contracts pinning the flat specular profile, the full-width glass content, and the deleted-theme list (removed themes stay removed — v1.12.37 dropped Frappé and Macchiato)
 
 ## Data locations
 

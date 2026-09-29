@@ -16,12 +16,12 @@ import 'package:taskflow/core/theme/app_theme.dart';
 ///  - the three kept light palettes carry their designed signature colors
 ///    so a refactor can't silently flatten them into each other.
 void main() {
-  group('AppThemeMode catalog (v1.7.0, trimmed v1.8.0 / v1.12.17 / v1.12.36)',
+  group('AppThemeMode catalog (v1.7.0, trimmed v1.8.0 / v1.12.17 / v1.12.36 / v1.12.37)',
       () {
-    test('11 themes with unique names and non-empty bilingual labels', () {
-      expect(AppThemeMode.values.length, 11);
+    test('9 themes with unique names and non-empty bilingual labels', () {
+      expect(AppThemeMode.values.length, 9);
       final names = AppThemeMode.values.map((m) => m.name).toSet();
-      expect(names.length, 11);
+      expect(names.length, 9);
       for (final mode in AppThemeMode.values) {
         expect(mode.label.isNotEmpty, isTrue, reason: '${mode.name}.label');
         expect(mode.labelZh.isNotEmpty, isTrue, reason: '${mode.name}.labelZh');
@@ -91,8 +91,6 @@ void main() {
         AppThemeMode.nordNight,
         AppThemeMode.notionBoard,
         AppThemeMode.midnightBoard,
-        AppThemeMode.catMacchiatoMauve,
-        AppThemeMode.catMacchiatoTeal,
         AppThemeMode.catMochaMauve,
         AppThemeMode.catMochaLavender,
         AppThemeMode.glassDashboard,
@@ -124,8 +122,10 @@ void main() {
         'catLatteMauve', 'catLatteLavender',
         // v1.12.30
         'frostedGlass',
-        // v1.12.36 (this round)
+        // v1.12.36 (Frappé)
         'catFrappeMauve', 'catFrappeSapphire',
+        // v1.12.37 (Macchiato)
+        'catMacchiatoMauve', 'catMacchiatoTeal',
       ];
       final names = AppThemeMode.values.map((m) => m.name).toSet();
       for (final gone in removed) {

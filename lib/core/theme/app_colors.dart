@@ -204,36 +204,9 @@ class AppColors {
   // v1.12.17: both Latte (light) flavours removed per user request — the
   // kept dark flavours start here.
   // v1.12.36: Frappé (冰沙) removed per user request — the two accents only
-  // differed in hue (Mauve / Sapphire) on one identical canvas, so Macchiato
-  // and Mocha carry the family.
-
-  // ─── Catppuccin Macchiato · Mauve (玛奇朵 · 木槿紫) ───
-  static const ThemePalette catMacchiatoMauve = ThemePalette(
-    bg: Color(0xFF24273A),
-    surface: Color(0xFF363A4F),
-    card: Color(0xFF494D64),
-    border: Color(0xFF5B6078),
-    textPrimary: Color(0xFFCAD3F5),
-    textSecondary: Color(0xFFA5ADCB),
-    primary: Color(0xFFC6A0F6),
-    primaryLight: Color(0xFFD8BDF9),
-    primaryDark: Color(0xFFA982DC),
-    primaryGhost: Color(0xFF41396B),
-  );
-
-  // ─── Catppuccin Macchiato · Teal (玛奇朵 · 青碧) ───
-  static const ThemePalette catMacchiatoTeal = ThemePalette(
-    bg: Color(0xFF24273A),
-    surface: Color(0xFF363A4F),
-    card: Color(0xFF494D64),
-    border: Color(0xFF5B6078),
-    textPrimary: Color(0xFFCAD3F5),
-    textSecondary: Color(0xFFA5ADCB),
-    primary: Color(0xFF8BD5CA),
-    primaryLight: Color(0xFFA7E1D8),
-    primaryDark: Color(0xFF6FB8AC),
-    primaryGhost: Color(0xFF34515B),
-  );
+  // differed in hue (Mauve / Sapphire) on one identical canvas.
+  // v1.12.37: Macchiato (玛奇朵) removed the same way per user request —
+  // Mocha now carries the Catppuccin family on its own.
 
   // ─── Catppuccin Mocha · Mauve (摩卡 · 木槿紫) ───
   static const ThemePalette catMochaMauve = ThemePalette(

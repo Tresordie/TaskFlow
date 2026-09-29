@@ -16,8 +16,7 @@ enum AppThemeMode {
   // v1.4.96: Catppuccin — four flavours × two accents.
   // v1.12.17: both Latte (light) flavours removed.
   // v1.12.36: both Frappé (冰沙) flavours removed per user request.
-  catMacchiatoMauve,
-  catMacchiatoTeal,
+  // v1.12.37: both Macchiato (玛奇朵) flavours removed the same way.
   catMochaMauve,
   catMochaLavender,
   // v1.12.27: frosted-glass dashboard reference — warm charcoal glass with
@@ -62,10 +61,6 @@ enum AppThemeMode {
         return 'Notion Board';
       case AppThemeMode.midnightBoard:
         return 'Midnight Board';
-      case AppThemeMode.catMacchiatoMauve:
-        return 'Catppuccin Macchiato · Mauve';
-      case AppThemeMode.catMacchiatoTeal:
-        return 'Catppuccin Macchiato · Teal';
       case AppThemeMode.catMochaMauve:
         return 'Catppuccin Mocha · Mauve';
       case AppThemeMode.catMochaLavender:
@@ -89,10 +84,6 @@ enum AppThemeMode {
         return '墨板';
       case AppThemeMode.midnightBoard:
         return '午夜看板';
-      case AppThemeMode.catMacchiatoMauve:
-        return '玛奇朵 · 木槿紫';
-      case AppThemeMode.catMacchiatoTeal:
-        return '玛奇朵 · 青碧';
       case AppThemeMode.catMochaMauve:
         return '摩卡 · 木槿紫';
       case AppThemeMode.catMochaLavender:
@@ -116,10 +107,6 @@ enum AppThemeMode {
         return AppColors.notionBoard;
       case AppThemeMode.midnightBoard:
         return AppColors.midnightBoard;
-      case AppThemeMode.catMacchiatoMauve:
-        return AppColors.catMacchiatoMauve;
-      case AppThemeMode.catMacchiatoTeal:
-        return AppColors.catMacchiatoTeal;
       case AppThemeMode.catMochaMauve:
         return AppColors.catMochaMauve;
       case AppThemeMode.catMochaLavender:
@@ -138,8 +125,6 @@ enum AppThemeMode {
       case AppThemeMode.nordNight:
       case AppThemeMode.notionBoard:
       case AppThemeMode.midnightBoard:
-      case AppThemeMode.catMacchiatoMauve:
-      case AppThemeMode.catMacchiatoTeal:
       case AppThemeMode.catMochaMauve:
       case AppThemeMode.catMochaLavender:
       case AppThemeMode.glassDashboard:
