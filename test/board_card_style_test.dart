@@ -210,6 +210,59 @@ void main() {
       expect(find.byType(BackdropFilter), findsNothing);
       expect(find.text('Sample task'), findsOneWidget);
     });
+    // v1.12.44: the whole-card fade applied to completed / archived tasks.
+    Future<void> pumpCardWith(
+        WidgetTester tester, AppThemeMode mode, TaskStatus status) async {
+      SharedPreferences.setMockInitialValues({});
+      final notifier = ThemeModeNotifier()..setTheme(mode);
+      final task = sampleTask()..status = status;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [themeModeProvider.overrideWith((ref) => notifier)],
+          child: MaterialApp(
+            theme: AppTheme.buildTheme(mode),
+            home: Scaffold(
+              body: Center(
+                child: SizedBox(width: 320, child: TaskCard(task: task)),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    /// The card-level fade, found as the nearest [AnimatedOpacity] above the
+    /// title (the drag proxy is a plain Opacity, so it can't be confused).
+    double doneFade(WidgetTester tester) => tester
+        .widget<AnimatedOpacity>(find
+            .ancestor(
+                of: find.text('Sample task'),
+                matching: find.byType(AnimatedOpacity))
+            .first)
+        .opacity;
+
+    testWidgets('v1.12.44: a done card stays solid on paper', (tester) async {
+      await pumpCardWith(tester, AppThemeMode.inkBlue, TaskStatus.completed);
+      expect(
+        doneFade(tester),
+        greaterThanOrEqualTo(0.90),
+        reason: 'the 78% fade stacked on the struck-through title and the ',
+      );
+      await pumpCardWith(tester, AppThemeMode.inkBlue, TaskStatus.archived);
+      expect(doneFade(tester), greaterThanOrEqualTo(0.90));
+    });
+
+    testWidgets('v1.12.44: the dark board keeps its dimmed done card',
+        (tester) async {
+      await pumpCardWith(tester, AppThemeMode.dark, TaskStatus.completed);
+      expect(doneFade(tester), closeTo(0.78, 0.01));
+    });
+
+    testWidgets('an open card is never faded', (tester) async {
+      await pumpCardWith(tester, AppThemeMode.inkBlue, TaskStatus.inProgress);
+      expect(doneFade(tester), 1.0);
+    });
 
     testWidgets('board-glass theme (inkBlue) renders glass by default',
         (tester) async {

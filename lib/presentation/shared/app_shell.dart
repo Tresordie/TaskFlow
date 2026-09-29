@@ -106,8 +106,8 @@ class AppShell extends ConsumerWidget {
                                       // the faint outline — the edge highlight
                                       // is what makes the panel read as glass.
                                       color: glassOn
-                                          ? Colors.white.withOpacity(
-                                              isDark ? 0.16 : 0.55)
+                                          ? Colors.white
+                                              .withOpacity(isDark ? 0.16 : 0.55)
                                           : theme.colorScheme.outline
                                               .withOpacity(0.3),
                                     ),
@@ -422,7 +422,7 @@ class _SidebarState extends ConsumerState<_Sidebar> {
   }
 }
 
-class _NavItem extends StatefulWidget {
+class _NavItem extends ConsumerStatefulWidget {
   final IconData icon;
   final IconData activeIcon;
   final String label;
@@ -438,10 +438,10 @@ class _NavItem extends StatefulWidget {
   });
 
   @override
-  State<_NavItem> createState() => _NavItemState();
+  ConsumerState<_NavItem> createState() => _NavItemState();
 }
 
-class _NavItemState extends State<_NavItem> {
+class _NavItemState extends ConsumerState<_NavItem> {
   bool _hovered = false;
 
   @override
@@ -455,12 +455,23 @@ class _NavItemState extends State<_NavItem> {
     // raised key (top-lit gradient, accent rim, contact shadow + accent glow),
     // hover lifts the row a pixel with a soft shadow, and the leading bar gets
     // its own gradient and glow.
-    final bg = isActive
+    // v1.12.44: the raised-key treatment (tinted gradient + accent glow)
+    // was designed on a dark board and it turns to mud on paper — a pale
+    // 12% tint is barely a fill, so the pill leaned on a 12px accent glow
+    // to look like anything, and that halo is exactly what made the
+    // selector look sloppy (user: 页面选中框不够美观). On light the active
+    // row becomes a FLAT, firmly-tinted pill with a hairline edge and no
+    // glow at all — the Notion sidebar lesson, applied.
+    final isDark = theme.brightness == Brightness.dark;
+    final ghost = isDark
         ? scheme.primary.withOpacity(0.12)
+        : ref.watch(themeModeProvider).palette.primaryGhost;
+    final bg = isActive
+        ? ghost
         : _hovered
             ? scheme.onSurface.withOpacity(0.05)
             : Colors.transparent;
-    final pillGradient = isActive
+    final pillGradient = isActive && isDark
         ? LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -472,18 +483,20 @@ class _NavItemState extends State<_NavItem> {
         : null;
     final shadows = isActive
         ? [
-            // Accent glow — the pill is lit by the theme colour.
-            BoxShadow(
-              color: scheme.primary.withOpacity(0.20),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
+            // Dark only: the accent glow that reads as lighting on a
+            // board and as smudge on paper.
+            if (isDark)
+              BoxShadow(
+                color: scheme.primary.withOpacity(0.20),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
             // Contact shadow — the pill sits ABOVE the sidebar sheet.
             BoxShadow(
-              color: theme.brightness == Brightness.dark
+              color: isDark
                   ? Colors.black.withOpacity(0.30)
-                  : Colors.black.withOpacity(0.07),
-              blurRadius: 4,
+                  : Colors.black.withOpacity(0.05),
+              blurRadius: isDark ? 4 : 2,
               offset: const Offset(0, 1),
             ),
           ]
@@ -524,7 +537,7 @@ class _NavItemState extends State<_NavItem> {
               // cannot carry a borderRadius, pitfall 8.25).
               border: Border.all(
                 color: isActive
-                    ? scheme.primary.withOpacity(0.30)
+                    ? scheme.primary.withOpacity(isDark ? 0.30 : 0.18)
                     : Colors.transparent,
               ),
               boxShadow: shadows,
@@ -541,7 +554,10 @@ class _NavItemState extends State<_NavItem> {
                   decoration: BoxDecoration(
                     // v1.12.34: the bar is a lit sliver (gradient + glow) so
                     // the selected row reads as extruded, not painted.
-                    gradient: isActive
+                    // v1.12.44: on paper the bar is a solid sliver — the
+                    // fade-to-35% tail plus its own glow is what made the
+                    // marker look feathered next to a now-flat pill.
+                    gradient: isActive && isDark
                         ? LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
@@ -551,9 +567,11 @@ class _NavItemState extends State<_NavItem> {
                             ],
                           )
                         : null,
-                    color: isActive ? null : Colors.transparent,
+                    color: isActive && !isDark
+                        ? theme.colorScheme.primary
+                        : (isActive ? null : Colors.transparent),
                     borderRadius: BorderRadius.circular(2),
-                    boxShadow: isActive
+                    boxShadow: isActive && isDark
                         ? [
                             BoxShadow(
                               color:
@@ -582,8 +600,7 @@ class _NavItemState extends State<_NavItem> {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 13.5,
-                      fontWeight:
-                          isActive ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                       color: isActive
                           ? theme.colorScheme.primary
                           : theme.colorScheme.onSurface.withOpacity(0.85),

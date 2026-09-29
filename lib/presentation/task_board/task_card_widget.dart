@@ -193,7 +193,13 @@ class _TaskCardState extends ConsumerState<TaskCard> {
         onTapCancel: () => setState(() => _isPressed = false),
         child: AnimatedOpacity(
           duration: const Duration(milliseconds: 200),
-          opacity: isDone ? 0.78 : 1.0,
+          // v1.12.44: on paper that 78% fade stacked on top of the
+          // struck-through title AND the glass fill, so completed /
+          // archived cards read as washed out (user: 已完成或Archive的
+          // task在dashboard显示太淡). The strikethrough and the green
+          // status bar already carry "done" — a light card stays solid
+          // and only loses a whisper of presence.
+          opacity: isDone ? (isDark ? 0.78 : 0.94) : 1.0,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeOutCubic,
