@@ -36,6 +36,11 @@ class AppFonts {
   /// removed; v1.9.0: the bare 'system' preset was removed too and Inter ×
   /// MiSans became the out-of-the-box default. Deleted ids (including the
   /// old 'system') fall back to the default via the unknown-id path.)
+  ///
+  /// v1.12.38: three designed pairings added on top of the curated three,
+  /// chosen to cover the gaps the old set left — a zero-download option, a
+  /// technical face, and a serif for long-form text. Each one's rationale is
+  /// recorded at its entry below.
   static const List<FontOption> presets = [
     FontOption(
       id: 'interMisans',
@@ -60,6 +65,48 @@ class AppFonts {
       fontFamily: 'Lexend',
       isGoogleFont: true,
       cjkFamily: 'Noto Sans SC',
+    ),
+    // ─── v1.12.38 additions ───
+    // Manrope is the app's bundled variable Latin face (assets/fonts/
+    // Manrope.ttf, wght 200–800) and MiSans the bundled CJK face, so this
+    // pairing needs ZERO network: it renders identically offline and is the
+    // same geometry the base stack already uses — semi-geometric, large
+    // x-height, open apertures, which is exactly how MiSans is drawn, so
+    // mixed CN+EN lines read as one typeface rather than two neighbours.
+    FontOption(
+      id: 'manropeMisans',
+      labelZh: 'Manrope × MiSans（现代均衡）',
+      labelEn: 'Manrope + MiSans',
+      fontFamily: 'Manrope',
+      isGoogleFont: false,
+      cjkFamily: 'MiSans',
+    ),
+    // IBM Plex Sans: flat-sided curves, sturdy stems and the clearest
+    // numerals in the list — for a board built out of counts, dates and
+    // P0/P1/P2 chips. Humanist enough to stay warm at 12px, technical
+    // enough to look like an instrument panel; pairs with the neutral
+    // MiSans grotesque without fighting it.
+    FontOption(
+      id: 'plexMisans',
+      labelZh: 'IBM Plex Sans × MiSans（稳重利落）',
+      labelEn: 'IBM Plex Sans + MiSans',
+      fontFamily: 'IBM Plex Sans',
+      isGoogleFont: true,
+      cjkFamily: 'MiSans',
+    ),
+    // Source Serif 4 × 思源宋体: the only serif in the app, for long-form
+    // reading (reports, work log, Markdown). Source Serif 4 is a scholarly
+    // face with moderate contrast and a tall x-height, so it holds up at UI
+    // sizes where most serifs turn to mush; Noto Serif SC is its proper
+    // Chinese counterpart (same calligraphic skeleton, similar stroke
+    // weight). Opt-in — the default stays sans.
+    FontOption(
+      id: 'serifSourceNoto',
+      labelZh: 'Source Serif 4 × 思源宋体（典雅正式）',
+      labelEn: 'Source Serif 4 + Noto Serif SC',
+      fontFamily: 'Source Serif 4',
+      isGoogleFont: true,
+      cjkFamily: 'Noto Serif SC',
     ),
   ];
 

@@ -98,12 +98,14 @@ class TaskFlowApp extends ConsumerWidget {
   /// CJK family. Once loaded the family name resolves everywhere, so plain
   /// fontFamilyFallback entries work. MiSans needs no download — it is
   /// either bundled as an asset font or installed on the system.
-  /// v1.8.0: only 'Noto Sans SC' remains — every other CJK pairing was
-  /// removed with its preset.
+  /// v1.8.0: only 'Noto Sans SC' remained after the preset cull.
+  /// v1.12.38: 'Noto Serif SC' joins it (the serif pairing's Chinese half).
   void _ensureCjkFontLoaded(String family) {
     switch (family) {
       case 'Noto Sans SC':
         GoogleFonts.notoSansSc();
+      case 'Noto Serif SC':
+        GoogleFonts.notoSerifSc();
       default:
         break;
     }
@@ -176,8 +178,11 @@ class TaskFlowApp extends ConsumerWidget {
   }
 
   TextTheme _googleFontTextTheme(String family, TextTheme base) {
-    // v1.8.0: the curated preset list is the three pairings only, so only
-    // their Latin halves need a download branch.
+    // Every Google-hosted Latin half named by a preset needs a branch here —
+    // v1.6.0 shipped IBM Plex Sans / Outfit without one and the font silently
+    // never loaded (guarded by the `switchCovered` contract in
+    // font_upgrade_test). 'Manrope' is deliberately absent: it is a bundled
+    // asset font, so its preset takes the zero-download path above.
     switch (family) {
       case 'Inter':
         return GoogleFonts.interTextTheme(base);
@@ -185,6 +190,10 @@ class TaskFlowApp extends ConsumerWidget {
         return GoogleFonts.plusJakartaSansTextTheme(base);
       case 'Lexend':
         return GoogleFonts.lexendTextTheme(base);
+      case 'IBM Plex Sans':
+        return GoogleFonts.ibmPlexSansTextTheme(base);
+      case 'Source Serif 4':
+        return GoogleFonts.sourceSerif4TextTheme(base);
       default:
         return base;
     }

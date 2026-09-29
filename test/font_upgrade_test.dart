@@ -46,9 +46,17 @@ void main() {
   });
 
   group('v1.8.0/1.9.0 preset cull — removed ids fall back safely', () {
-    test('the three curated pairings are the only presets', () {
+    test('the six curated pairings are the only presets', () {
       final ids = AppFonts.presets.map((f) => f.id).toSet();
-      expect(ids, {'interMisans', 'jakartaNoto', 'lexendNoto'});
+      expect(ids, {
+        'interMisans',
+        'jakartaNoto',
+        'lexendNoto',
+        // v1.12.38 additions
+        'manropeMisans',
+        'plexMisans',
+        'serifSourceNoto',
+      });
       // v1.8.0/1.9.0: every earlier preset is gone — users who had one
       // selected (including the old bare 'system') fall back to the
       // default through the unknown-id path.
@@ -61,16 +69,18 @@ void main() {
       }
     });
 
-    test('removed ids persist no fonts: presets have no Manrope standalone',
-        () {
-      // The Manrope Latin half now lives only in the bundled FontStack
-      // default (via the 'system' preset), not as a selectable preset.
-      expect(
-        AppFonts.presets
-            .where((f) => f.fontFamily == 'Manrope')
-            .map((f) => f.id),
-        isEmpty,
-      );
+    test('Manrope is selectable only as the zero-download pairing', () {
+      // v1.8.0 removed the bare 'system' preset (whose Latin half was the
+      // bundled Manrope); v1.12.38 brings Manrope back, but only as a full
+      // CN+EN pairing AND on the bundled path — never as a Latin-only
+      // option, and never through google_fonts (an offline user must still
+      // get the font the base stack already renders with).
+      final manrope =
+          AppFonts.presets.where((f) => f.fontFamily == 'Manrope').toList();
+      expect(manrope, hasLength(1));
+      expect(manrope.single.id, 'manropeMisans');
+      expect(manrope.single.isGoogleFont, isFalse);
+      expect(manrope.single.cjkFamily, FontStack.cjk);
     });
   });
 
@@ -101,9 +111,12 @@ void main() {
       // must cover — extending it when you add a preset, not after.
       const switchCovered = {
         'Noto Sans SC', // _ensureCjkFontLoaded (CJK half of two pairings)
+        'Noto Serif SC', // v1.12.38: serif pairing's CJK half
         'Inter', // _googleFontTextTheme (Latin halves)
         'Plus Jakarta Sans',
         'Lexend',
+        'IBM Plex Sans', // v1.12.38
+        'Source Serif 4', // v1.12.38
       };
       final needed = <String>{
         for (final f in AppFonts.presets) ...[
@@ -123,6 +136,53 @@ void main() {
         expect(hosted, contains(family),
             reason: 'google_fonts must host "$family"');
       }
+    });
+  });
+
+  group('v1.12.38 designed pairings', () {
+    test('each new pairing carries the designed halves', () {
+      final byId = {for (final f in AppFonts.presets) f.id: f};
+      final manrope = byId['manropeMisans']!;
+      expect(manrope.fontFamily, 'Manrope');
+      expect(manrope.isGoogleFont, isFalse);
+      expect(manrope.cjkFamily, 'MiSans');
+      final plex = byId['plexMisans']!;
+      expect(plex.fontFamily, 'IBM Plex Sans');
+      expect(plex.isGoogleFont, isTrue);
+      expect(plex.cjkFamily, 'MiSans');
+      final serif = byId['serifSourceNoto']!;
+      expect(serif.fontFamily, 'Source Serif 4');
+      expect(serif.isGoogleFont, isTrue);
+      expect(serif.cjkFamily, 'Noto Serif SC');
+    });
+
+    test('labels follow the existing "Latin × CJK（四字性格）" pattern', () {
+      for (final f in AppFonts.presets) {
+        expect(f.labelZh, contains('×'), reason: f.id);
+        expect(f.labelZh, matches(RegExp(r'（.+）$')), reason: f.id);
+        expect(f.labelEn, contains('+'), reason: f.id);
+      }
+      // The serif is the only one, and it says so in both languages.
+      final serif = AppFonts.presets
+          .where((f) => f.cjkFamily == 'Noto Serif SC')
+          .toList();
+      expect(serif, hasLength(1));
+      expect(serif.single.labelZh, contains('思源宋体'));
+      expect(serif.single.labelEn, contains('Noto Serif SC'));
+    });
+
+    test('the serif pairing still lands on a readable CJK chain', () {
+      // Noto Serif SC is a download; until (or unless) it arrives, Chinese
+      // must fall through to the bundled sans nets rather than to tofu.
+      final fb = FontStack.pairingFallback('Noto Serif SC');
+      expect(fb.first, 'Noto Serif SC');
+      expect(fb, contains('HarmonyOS Sans SC'));
+      expect(fb, contains('Segoe UI Emoji'));
+    });
+
+    test('default font is untouched by the additions', () {
+      expect(AppFonts.defaultFont.id, 'interMisans');
+      expect(AppFonts.presets.first.id, 'interMisans');
     });
   });
 
