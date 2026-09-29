@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 
 import 'package:taskflow/data/models/task.dart';
+import 'package:taskflow/data/repositories/task_repository.dart';
 import 'package:taskflow/presentation/shared/emoji_glyphs.dart';
+import 'package:taskflow/presentation/shared/task_list_card.dart';
 import 'package:taskflow/presentation/shared/timeline_rail.dart';
 import 'package:taskflow/presentation/timeline/timeline_screen.dart';
+import 'package:taskflow/providers/date_nav_providers.dart';
+import 'package:taskflow/providers/task_providers.dart';
 
 /// v1.12.39: the Timeline page and the task Execution Log were re-skinned onto
-/// ONE shared spine (TimelineRail + TimelineNode) with an emoji vocabulary, and
-/// the Timeline list now groups by day. v1.12.39 follow-up: the alignment pass
-/// — the node sits at a fixed offset, the time label centres on it, the day
-/// header lines up with the cards, and every group ends its own spine.
-/// These tests lock those contracts.
+/// ONE shared spine (TimelineRail + TimelineNode) with an emoji vocabulary.
+/// v1.12.40 locked the alignment (fixed node offset, label centred on it).
+/// v1.12.41: the date + time live on the LEFT of every task again — one
+/// aligned two-line column, no day headers — so these tests now check the real
+/// page end to end.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -49,74 +55,21 @@ void main() {
     });
   });
 
-  group('TimelineRows flattening', () {
-    test('single-day mode emits tasks only', () {
-      final tasks = [
-        task(1, DateTime(2026, 9, 29, 10)),
-        task(2, DateTime(2026, 9, 29, 9)),
-      ];
-      final rows = TimelineRows.build(tasks);
-      expect(rows, hasLength(2));
-      expect(rows.every((r) => r is Task), isTrue);
-    });
-
-    test('range mode interleaves a counted day header per run of days', () {
-      final tasks = [
-        task(1, DateTime(2026, 9, 29, 10)),
-        task(2, DateTime(2026, 9, 29, 8)),
-        task(3, DateTime(2026, 9, 27, 20)),
-      ];
-      final rows = TimelineRows.build(tasks, showDayHeaders: true);
-      expect(rows.map((r) => r.runtimeType.toString()).toList(),
-          ['TimelineDayRow', 'Task', 'Task', 'TimelineDayRow', 'Task']);
-      final first = rows.first as TimelineDayRow;
-      expect(first.date, DateTime(2026, 9, 29));
-      expect(first.count, 2);
-      expect((rows[3] as TimelineDayRow).count, 1);
-    });
-
-    test('a day split inside the same week still starts a new group', () {
-      final tasks = [
-        task(1, DateTime(2026, 10, 1, 0, 5)),
-        task(2, DateTime(2026, 9, 30, 23, 55)),
-      ];
-      final rows = TimelineRows.build(tasks, showDayHeaders: true);
-      expect(rows.whereType<TimelineDayRow>().length, 2);
-    });
-
-    test('each day group ends its own spine', () {
-      final tasks = [
-        task(1, DateTime(2026, 9, 29, 10)),
-        task(2, DateTime(2026, 9, 29, 8)),
-        task(3, DateTime(2026, 9, 27, 20)),
-      ];
-      final rows = TimelineRows.build(tasks, showDayHeaders: true);
-      // rows: day, t1, t2, day, t3
-      expect(TimelineRows.isLastOfGroup(rows, 1), isFalse);
-      expect(TimelineRows.isLastOfGroup(rows, 2), isTrue,
-          reason: 't2 is the last event of Sep 29 — the connector must stop');
-      expect(TimelineRows.isLastOfGroup(rows, 4), isTrue);
-    });
-  });
-
   group('alignment budget', () {
-    test('the day header indent equals the columns left of the card', () {
-      expect(
-        TimelineRows.cardIndent,
-        TimelineRows.timeColumnWidth +
-            TimelineRows.timeGap +
-            TimelineRows.railWidth +
-            TimelineRows.railGap,
-      );
-    });
-
-    test('the node centre is a fixed distance from the row top', () {
+    test('the label box is centred on the node centre line', () {
+      expect(TimelineLayout.labelBoxHeight(), TimelineRail.nodeCenterY() * 2);
       expect(TimelineRail.nodeCenterY(),
           TimelineRail.nodeInset + TimelineRail.nodeDiameter / 2);
       expect(
         TimelineRail.nodeCenterY(emphasized: true),
         greaterThan(TimelineRail.nodeCenterY()),
       );
+    });
+
+    test('the label format is fixed width, every row identical', () {
+      final d = DateTime(2026, 9, 5, 7, 8);
+      expect(TimelineLayout.dateLabel(d), '2026-09-05');
+      expect(TimelineLayout.timeLabel(d), '07:08');
     });
   });
 
@@ -152,48 +105,17 @@ void main() {
       expect(tester.getSize(find.byType(TimelineRail)).width, 26);
     });
 
-    testWidgets('the time label sits level with the node', (tester) async {
-      await tester.pumpWidget(row(children: [
-        SizedBox(
-          width: TimelineRows.timeColumnWidth,
-          height: TimelineRail.nodeCenterY() * 2,
-          child: const Align(
-            alignment: Alignment.centerRight,
-            child: Text('17:52'),
-          ),
-        ),
-        const SizedBox(width: TimelineRows.timeGap),
-        rail(),
-      ]));
-      await tester.pumpAndSettle();
-      final node = tester.getCenter(find.byType(TimelineNode));
-      final label = tester.getCenter(find.text('17:52'));
-      expect((node.dy - label.dy).abs(), lessThan(1.0),
-          reason: 'a label boxed to 2x nodeCenterY must centre on the node');
-      // ...and it hugs the spine instead of floating at the page margin.
-      expect(
-        tester.getRect(find.text('17:52')).right,
-        closeTo(
-            tester.getRect(find.byType(TimelineRail)).left -
-                TimelineRows.timeGap,
-            1.0),
-      );
-    });
-
-    testWidgets('every row centres its label on the same line', (tester) async {
+    testWidgets('every row puts its node on the same line', (tester) async {
       await tester.pumpWidget(row(children: [
         rail(),
         const SizedBox(width: 8),
         rail(isLast: true),
       ]));
       await tester.pumpAndSettle();
-      final centers = [
-        tester.getCenter(find.byType(TimelineNode).first).dy,
-        tester.getCenter(find.byType(TimelineNode).last).dy,
-      ];
-      expect(centers[0], closeTo(centers[1], 0.01),
-          reason: 'no row may push its node down — that is what made the '
-              'spine and the labels read as misaligned');
+      final first = tester.getCenter(find.byType(TimelineNode).first);
+      final last = tester.getCenter(find.byType(TimelineNode).last);
+      expect(first.dy, closeTo(last.dy, 0.01),
+          reason: 'a top cap or per-row offset would desync the spine');
     });
 
     testWidgets('emphasized node is the larger chip', (tester) async {
@@ -217,7 +139,6 @@ void main() {
       await tester.pumpWidget(row(children: [rail(isLast: true)]));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      expect(find.byType(TimelineRail), findsOneWidget);
     });
 
     testWidgets('rail stays inside its slot at 140% text scale',
@@ -239,4 +160,114 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+
+  group('Timeline page — date + time on the left of every task', () {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dayA = today.subtract(const Duration(days: 1));
+    final dayB = today.subtract(const Duration(days: 3));
+    final atA = dayA.add(const Duration(hours: 10, minutes: 15));
+    final atB = dayB.add(const Duration(hours: 18, minutes: 40));
+
+    Future<void> pumpTimeline(WidgetTester tester, List<Task> tasks) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            taskRepositoryProvider.overrideWithValue(_FakeRepo(tasks)),
+            timelineDateNavProvider.overrideWith(
+              (ref) => DateNavState(
+                selectedDate: today,
+                dateRange: DateTimeRange(
+                  start: today.subtract(const Duration(days: 10)),
+                  end: today,
+                ),
+              ),
+            ),
+          ],
+          child: const MaterialApp(home: Scaffold(body: TimelineScreen())),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('each row shows its own date and time, no day headers',
+        (tester) async {
+      await pumpTimeline(tester, [task(1, atA), task(2, atB)]);
+      expect(tester.takeException(), isNull);
+
+      final dateA = DateFormat('yyyy-MM-dd').format(atA);
+      final dateB = DateFormat('yyyy-MM-dd').format(atB);
+      expect(find.text(dateA), findsOneWidget);
+      expect(find.text(dateB), findsOneWidget);
+      expect(find.text('10:15'), findsOneWidget);
+      expect(find.text('18:40'), findsOneWidget);
+      // The day-group headers are gone — nothing counts tasks per day.
+      expect(find.textContaining(' tasks'), findsNothing);
+    });
+
+    testWidgets('the label column sits left of the spine, the card right',
+        (tester) async {
+      await pumpTimeline(tester, [task(1, atA), task(2, atB)]);
+      final dateA = DateFormat('yyyy-MM-dd').format(atA);
+
+      final labelRight = tester.getRect(find.text(dateA)).right;
+      final railLeft = tester.getRect(find.byType(TimelineRail).first).left;
+      final cardLeft = tester.getRect(find.byType(TaskListCard).first).left;
+      expect(labelRight, lessThan(railLeft),
+          reason: 'the date/time column must be left of the spine');
+      expect(cardLeft, greaterThan(railLeft),
+          reason: 'the card must sit right of the spine');
+
+      // ...and both rows share one spine x and one label right edge.
+      final rails = find.byType(TimelineRail);
+      expect(tester.getCenter(rails.first).dx,
+          closeTo(tester.getCenter(rails.last).dx, 0.01));
+      expect(
+        tester.getRect(find.text(dateA)).right,
+        closeTo(
+            tester
+                .getRect(find.text(DateFormat('yyyy-MM-dd').format(atB)))
+                .right,
+            0.01),
+      );
+    });
+
+    testWidgets('the node sits between the date and the time', (tester) async {
+      await pumpTimeline(tester, [task(1, atA)]);
+      final date = DateFormat('yyyy-MM-dd').format(atA);
+      final nodeDy = tester.getCenter(find.byType(TimelineNode).first).dy;
+      final mid = (tester.getCenter(find.text(date)).dy +
+              tester.getCenter(find.text('10:15')).dy) /
+          2;
+      expect(mid, closeTo(nodeDy, 3.0),
+          reason: 'date above / time below, straddling the node');
+    });
+
+    testWidgets('single-day mode carries the date too', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            taskRepositoryProvider.overrideWithValue(_FakeRepo([task(1, atA)])),
+            timelineDateNavProvider.overrideWith(
+              (ref) => DateNavState(selectedDate: dayA),
+            ),
+          ],
+          child: const MaterialApp(home: Scaffold(body: TimelineScreen())),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(DateFormat('yyyy-MM-dd').format(atA)), findsOneWidget);
+      expect(find.text('10:15'), findsOneWidget);
+    });
+  });
+}
+
+/// In-memory repo so the page renders real rows without touching Hive.
+class _FakeRepo extends TaskRepository {
+  final List<Task> tasks;
+
+  _FakeRepo(this.tasks);
+
+  @override
+  Future<List<Task>> getAllTasks() async => tasks;
 }

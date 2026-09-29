@@ -227,10 +227,7 @@ class TimelineScreen extends ConsumerWidget {
                 );
               }
 
-              return _TimelineList(
-                tasks: dayTasks,
-                showDayHeaders: nav.rangeMode,
-              );
+              return _TimelineList(tasks: dayTasks);
             },
           ),
         ),
@@ -293,179 +290,46 @@ class TimelineScreen extends ConsumerWidget {
   }
 }
 
-/// Day-group marker in the Timeline row stream (range mode only).
-class TimelineDayRow {
-  final DateTime date;
-  final int count;
-
-  const TimelineDayRow(this.date, this.count);
-}
-
-/// v1.12.39: flattens the filtered tasks into the rows the list renders —
-/// [TimelineDayRow] separators interleaved with [Task] events. Public and pure
-/// so the day-grouping contract is testable without pumping the page.
-class TimelineRows {
-  static DateTime dayKey(DateTime d) => DateTime(d.year, d.month, d.day);
-
-  static bool sameDay(DateTime a, DateTime? b) =>
-      b != null && a.year == b.year && a.month == b.month && a.day == b.day;
-
-  static List<Object> build(List<Task> tasks, {bool showDayHeaders = false}) {
-    if (!showDayHeaders) return List<Object>.from(tasks);
-    final rows = <Object>[];
-    DateTime? runDay;
-    for (var i = 0; i < tasks.length; i++) {
-      final day = dayKey(tasks[i].createdAt);
-      if (i == 0 || !sameDay(day, runDay)) {
-        rows.add(TimelineDayRow(
-          day,
-          tasks.where((t) => sameDay(dayKey(t.createdAt), day)).length,
-        ));
-      }
-      runDay = day;
-      rows.add(tasks[i]);
-    }
-    return rows;
-  }
-
-  /// Last event of its day group: a day separator (or the end of the list)
-  /// comes next. Each group is its own spine, so the connector must NOT run
-  /// through a day header into the next group.
-  static bool isLastOfGroup(List<Object> rows, int index) {
-    for (var i = index + 1; i < rows.length; i++) {
-      final r = rows[i];
-      if (r is TimelineDayRow) return true;
-      if (r is Task) return false;
-    }
-    return true;
-  }
-
-  /// Horizontal budget of everything left of the card: time column + gaps +
-  /// rail groove. The day header is indented by this much so its chip lines
-  /// up with the cards it introduces.
-  static const double timeColumnWidth = 54;
-  static const double timeGap = 12;
+/// v1.12.41: the Timeline row geometry in one place — the date/time label
+/// column, the gaps and the rail groove, so the card always starts at
+/// [cardIndent] and the label always straddles the node. Public and pure so
+/// the alignment is testable without pumping the page.
+class TimelineLayout {
+  static const double labelColumnWidth = 88;
+  static const double labelGap = 12;
   static const double railWidth = 26;
   static const double railGap = 14;
-  static const double cardIndent =
-      timeColumnWidth + timeGap + railWidth + railGap;
+
+  /// Height of the label box whose vertical centre IS the node centre, so
+  /// the date (above) and the time (below) straddle it.
+  static double labelBoxHeight({bool emphasized = false}) =>
+      TimelineRail.nodeCenterY(emphasized: emphasized) * 2;
+
+  /// Every row prints the same two lines — absolute date over 24h time — so
+  /// the column reads as one aligned block instead of mixing "Today" with
+  /// dates of different widths.
+  static String dateLabel(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
+
+  static String timeLabel(DateTime d) => DateFormat('HH:mm').format(d);
 }
 
 /// v1.12.39: the Timeline spine is drawn by the shared [TimelineRail] (the
 /// same component the task Execution Log uses, so the two pages match).
-/// Range mode groups by day with a `📅 Mon, Sep 29 · 3 tasks` header.
+/// v1.12.41: no day headers — every row carries its own date + time on the
+/// left of its card, in one column that lines up with the spine.
 class _TimelineList extends StatelessWidget {
   final List<Task> tasks;
-  final bool showDayHeaders;
 
-  const _TimelineList({
-    required this.tasks,
-    this.showDayHeaders = false,
-  });
+  const _TimelineList({required this.tasks});
 
   @override
   Widget build(BuildContext context) {
-    final rows = TimelineRows.build(tasks, showDayHeaders: showDayHeaders);
-
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 100),
-      itemCount: rows.length,
-      itemBuilder: (context, index) {
-        final row = rows[index];
-        if (row is TimelineDayRow) {
-          return _TimelineDayHeader(date: row.date, count: row.count);
-        }
-        final task = row as Task;
-        return _TimelineItem(
-          task: task,
-          isLast: TimelineRows.isLastOfGroup(rows, index),
-        );
-      },
-    );
-  }
-}
-
-/// Day separator: an accent chip with the weekday/date and the number of
-/// events, closed off by a hairline that fades out to the right.
-class _TimelineDayHeader extends StatelessWidget {
-  final DateTime date;
-  final int count;
-
-  const _TimelineDayHeader({required this.date, required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final accent = theme.colorScheme.primary;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(TimelineRows.cardIndent, 14, 0, 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  accent.withOpacity(0.16),
-                  accent.withOpacity(0.05),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(9),
-              border: Border.all(color: accent.withOpacity(0.24)),
-              boxShadow: [
-                BoxShadow(
-                  color: accent.withOpacity(0.10),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                const Text('📅', style: TextStyle(fontSize: 12)),
-                const SizedBox(width: 6),
-                Text(
-                  DateFormat('EEE, MMM d').format(date),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                    color: accent,
-                  ),
-                ),
-                if (count > 0) ...[
-                  const SizedBox(width: 7),
-                  Text(
-                    '$count ${count == 1 ? 'task' : 'tasks'}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurface.withOpacity(0.60),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Container(
-              height: 1,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [
-                    accent.withOpacity(0.28),
-                    theme.colorScheme.outline.withOpacity(0.0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
+      itemCount: tasks.length,
+      itemBuilder: (context, index) => _TimelineItem(
+        task: tasks[index],
+        isLast: index == tasks.length - 1,
       ),
     );
   }
@@ -502,30 +366,48 @@ class _TimelineItem extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Time column: right-aligned so it hugs the spine, and boxed to
-          // exactly twice the node centre so the text sits level with the
-          // node. The date is NOT repeated here - range mode prints a day
-          // header per group, single-day mode says the date up top.
+          // Date + time of the event, on the LEFT of the card: absolute date
+          // above 24h time, right-aligned so the block hugs the spine, and
+          // arranged around the node centre line so the node sits BETWEEN the
+          // two lines (v1.12.41 — every row carries its own date, no day
+          // headers). A Stack rather than a Column: the pair is taller than the
+          // node-centred box, and overflowing a Column throws in debug.
           SizedBox(
-            width: TimelineRows.timeColumnWidth,
-            height: TimelineRail.nodeCenterY() * 2,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                DateFormat('HH:mm').format(task.createdAt),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurface.withOpacity(0.62),
-                    ),
-              ),
+            width: TimelineLayout.labelColumnWidth,
+            height: TimelineLayout.labelBoxHeight(),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  right: 0,
+                  bottom: TimelineRail.nodeCenterY() + 1,
+                  child: Text(
+                    TimelineLayout.dateLabel(task.createdAt),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface.withOpacity(0.72),
+                        ),
+                  ),
+                ),
+                Positioned(
+                  right: 0,
+                  top: TimelineRail.nodeCenterY() + 1,
+                  child: Text(
+                    TimelineLayout.timeLabel(task.createdAt),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.45),
+                        ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: TimelineRows.timeGap),
+          const SizedBox(width: TimelineLayout.labelGap),
 
           // Timeline spine: recessed groove + emoji status node + two-layer
           // (glow bed / crisp core) connector, ending in a fading tail.
           TimelineRail(
-            grooveWidth: TimelineRows.railWidth,
+            grooveWidth: TimelineLayout.railWidth,
             accentColor: statusColor,
             isLast: isLast,
             node: TimelineNode(
@@ -533,7 +415,7 @@ class _TimelineItem extends StatelessWidget {
               accentColor: statusColor,
             ),
           ),
-          const SizedBox(width: TimelineRows.railGap),
+          const SizedBox(width: TimelineLayout.railGap),
 
           // Task card — v1.12.13: hover lift + accent border highlight.
           Expanded(
