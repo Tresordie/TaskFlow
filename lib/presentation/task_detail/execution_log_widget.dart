@@ -13,9 +13,13 @@ import '../../data/models/task.dart';
 import '../../data/services/attachment_service.dart';
 import '../../providers/task_providers.dart';
 import '../../providers/typography_provider.dart';
-import '../shared/selectable_markdown_body.dart';
+import '../shared/emoji_glyphs.dart';
+import '../shared/hover_lift.dart';
 import '../shared/markdown_editor_field.dart';
 import '../shared/markdown_input.dart';
+import '../shared/selectable_markdown_body.dart';
+import '../shared/task_list_card.dart';
+import '../shared/timeline_rail.dart';
 
 class ExecutionLogWidget extends ConsumerStatefulWidget {
   final Task task;
@@ -81,9 +85,11 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
       children: [
         // Section header
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
           child: Row(
             children: [
+              const Text('🧾', style: TextStyle(fontSize: 17)),
+              const SizedBox(width: 7),
               Text(
                 'Execution Log',
                 style: Theme.of(context).textTheme.titleLarge,
@@ -92,18 +98,39 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.primary.withOpacity(0.18),
+                      AppColors.primary.withOpacity(0.07),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: AppColors.primary.withOpacity(0.28),
+                  ),
                 ),
                 child: Text(
                   '${entries.length}',
                   style: const TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.primary,
                   ),
                 ),
               ),
+              // Type tally — how the run went at a glance, no scrolling.
+              if (entries.isNotEmpty) ...[
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: _tally(entries),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -113,18 +140,56 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
         Expanded(
           child: entries.isEmpty
               ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.edit_note,
-                          size: 48, color: AppColors.lightBorder),
-                      const SizedBox(height: 12),
-                      Text(
-                        'No entries yet.\nRecord your execution process below.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(28, 22, 28, 22),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Theme.of(context).colorScheme.surface,
+                          Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest
+                              .withOpacity(0.5),
+                        ],
                       ),
-                    ],
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outline
+                            .withOpacity(0.28),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('🗒️', style: TextStyle(fontSize: 28)),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Nothing recorded yet',
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Log what you did, measured or hit below —\n'
+                          '📝 note · ✅ pass · ❌ fail · ⛔ blocked',
+                          textAlign: TextAlign.center,
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    height: 1.5,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.45),
+                                  ),
+                        ),
+                      ],
+                    ),
                   ),
                 )
               : ListView.builder(
@@ -306,8 +371,7 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
                               horizontal: 16, vertical: 12),
                           minimumSize: const Size(44, 40),
                           side: BorderSide(
-                            color:
-                                theme.colorScheme.outline.withOpacity(0.35),
+                            color: theme.colorScheme.outline.withOpacity(0.35),
                           ),
                           foregroundColor:
                               theme.colorScheme.onSurface.withOpacity(0.65),
@@ -558,6 +622,33 @@ class _ExecutionLogWidgetState extends ConsumerState<ExecutionLogWidget> {
         return AppColors.warning;
     }
   }
+
+  /// v1.12.39: per-type counts shown next to the section title, zero counts
+  /// omitted so the row stays short.
+  List<Widget> _tally(List<ExecutionEntry> entries) {
+    final out = <Widget>[];
+    for (final type in EntryType.values) {
+      final n = entries.where((e) => e.type == type).length;
+      if (n == 0) continue;
+      final color = _typeColor(type);
+      out.add(Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(entryGlyph(type), style: const TextStyle(fontSize: 11)),
+          const SizedBox(width: 3),
+          Text(
+            '$n',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ));
+    }
+    return out;
+  }
 }
 
 /// Small icon button used to attach an image or a file.
@@ -699,11 +790,11 @@ class _PendingAttachmentChip extends StatelessWidget {
 class _LogEntryItem extends StatelessWidget {
   final ExecutionEntry entry;
 
-  /// Newest entry (top of the reversed list) — rendered with the large
-  /// emphasized marker, like the highlighted event in a delivery timeline.
+  /// Newest entry (top of the reversed list) — rendered with the emphasized
+  /// marker, like the highlighted event in a delivery tracking timeline.
   final bool isLatest;
 
-  /// Oldest entry — no connector line below it.
+  /// Oldest entry — its rail ends in a fading tail instead of a connector.
   final bool isLast;
 
   /// v1.4.90: this record is currently loaded in the input area for
@@ -724,201 +815,82 @@ class _LogEntryItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _colorForType(entry.type);
-    final theme = Theme.of(context);
-    final lineColor = theme.colorScheme.outline.withOpacity(0.25);
+    // While editing, the record takes the app's primary accent so it is
+    // unmistakable which card the input area below belongs to.
+    final accent = isEditing ? AppColors.primary : color;
 
+    // v1.12.39: same spine + card skin as the Timeline page — the entry gets
+    // the shared recessed rail with an emoji type node, and the note body sits
+    // on the app's standard top-lit card with the left accent bar.
     return IntrinsicHeight(
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Timeline rail: marker + connector line down to the next event.
-          SizedBox(
-            width: 26,
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
-                _TimelineMarker(type: entry.type, emphasized: isLatest),
-                if (!isLast)
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      margin: const EdgeInsets.only(top: 3, bottom: -12),
-                      color: lineColor,
-                    ),
-                  ),
-              ],
+          TimelineRail(
+            accentColor: color,
+            isLast: isLast,
+            capTop: isLatest,
+            node: TimelineNode(
+              glyph: entryGlyph(entry.type),
+              accentColor: color,
+              emphasized: isLatest,
             ),
           ),
-          const SizedBox(width: 8),
-
-          // Content
+          const SizedBox(width: 10),
           Expanded(
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isEditing
-                    ? AppColors.primary.withOpacity(0.07)
-                    : color.withOpacity(isLatest ? 0.08 : 0.05),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: isEditing
-                      ? AppColors.primary
-                      : color.withOpacity(isLatest ? 0.45 : 0.2),
-                  width: isEditing ? 1.6 : (isLatest ? 1.2 : 1),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          entry.type.label,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: color,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      // v1.4.90: badge marking the record loaded into the
-                      // input area for re-editing.
-                      if (isEditing) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'Editing',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                      ],
-                      Text(
-                        DateFormat('MMM d, yyyy · HH:mm:ss').format(entry.timestamp),
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: AppColors.lightTextSecondary,
-                            ),
-                      ),
-                      const SizedBox(width: 2),
-                      // Copy the raw Markdown source of this entry. The
-                      // rendered Note shows formatted text, so drag-select
-                      // copies the formatted version; this button is the
-                      // one-tap way to get the original Markdown (same as
-                      // copying inside edit mode).
-                      Tooltip(
-                        message: 'Copy as Markdown',
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(6),
-                          onTap: () {
-                            Clipboard.setData(
-                                ClipboardData(text: entry.content));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content:
-                                    Text('Markdown copied to clipboard'),
-                                behavior: SnackBarBehavior.floating,
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: Icon(
-                              Icons.content_copy_outlined,
-                              size: 14,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.45),
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Edit this entry
-                      Tooltip(
-                        message: 'Edit entry',
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(6),
-                          onTap: onEdit,
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: Icon(
-                              Icons.edit_outlined,
-                              size: 14,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.45),
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Delete this entry
-                      Tooltip(
-                        message: 'Delete entry',
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(6),
-                          onTap: onDelete,
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: Icon(
-                              Icons.delete_outline,
-                              size: 14,
-                              color: AppColors.error.withOpacity(0.6),
-                            ),
-                          ),
-                        ),
+            child: HoverLift(
+              borderRadius: BorderRadius.circular(12),
+              accentColor: accent,
+              margin: const EdgeInsets.only(bottom: 14),
+              builder: (context, hovered) => TaskListCard(
+                accentColor: accent,
+                highlighted: hovered || isEditing,
+                borderRadius: BorderRadius.circular(12),
+                padding: const EdgeInsets.fromLTRB(2, 11, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _EntryMetaRow(
+                      entry: entry,
+                      color: color,
+                      isLatest: isLatest,
+                      isEditing: isEditing,
+                      revealed: hovered || isEditing,
+                      onEdit: onEdit,
+                      onDelete: onDelete,
+                    ),
+                    if (entry.content.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      // v1.4.75: whole-Note selectable renderer — the ENTIRE
+                      // note is ONE SelectableText.rich: drag-select across
+                      // lines/blocks, Select all, right-click Copy / Copy as
+                      // Markdown (stable I-beam cursor, no per-block limits).
+                      // HTML mixed into the note is sanitized first so nothing
+                      // renders as raw tags.
+                      SelectableMarkdownBody(
+                        data: sanitizeHtmlInMarkdown(entry.content),
+                        hardenLineBreaks: true,
+                        styleSheet: _markdownStyleSheet(context),
+                        onTapLink: (href) {
+                          final uri = Uri.tryParse(href);
+                          if (uri == null) return;
+                          if (uri.scheme == 'file') {
+                            // launchUrl on a file:// URI blocks the UI thread on
+                            // Windows (ShellExecuteW); open the path out-of-band.
+                            openPath(uri.toFilePath());
+                          } else {
+                            launchUrl(uri,
+                                mode: LaunchMode.externalApplication);
+                          }
+                        },
                       ),
                     ],
-                  ),
-                  if (entry.content.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    // v1.4.75: whole-Note selectable renderer — the ENTIRE
-                    // note is ONE SelectableText.rich: drag-select across
-                    // lines/blocks, Select all, right-click Copy / Copy as
-                    // Markdown (stable I-beam cursor, no per-block limits).
-                    // HTML mixed into the note is sanitized first so nothing
-                    // renders as raw tags.
-                    SelectableMarkdownBody(
-                      data: sanitizeHtmlInMarkdown(entry.content),
-                      hardenLineBreaks: true,
-                      styleSheet: _markdownStyleSheet(context),
-                      onTapLink: (href) {
-                        final uri = Uri.tryParse(href);
-                        if (uri == null) return;
-                        if (uri.scheme == 'file') {
-                          // launchUrl on a file:// URI blocks the UI thread on
-                          // Windows (ShellExecuteW); open the path out-of-band.
-                          openPath(uri.toFilePath());
-                        } else {
-                          launchUrl(uri, mode: LaunchMode.externalApplication);
-                        }
-                      },
-                    ),
+                    if (entry.attachments.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      _AttachmentGallery(attachments: entry.attachments),
+                    ],
                   ],
-                  if (entry.attachments.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    _AttachmentGallery(attachments: entry.attachments),
-                  ],
-                ],
+                ),
               ),
             ),
           ),
@@ -939,77 +911,220 @@ class _LogEntryItem extends StatelessWidget {
         return AppColors.warning;
     }
   }
-
 }
 
-/// Timeline event marker. The newest entry gets the large emphasized
-/// circle with a white type icon (delivery-tracking style); older entries
-/// use small solid dots with a soft halo.
-class _TimelineMarker extends StatelessWidget {
-  final EntryType type;
-  final bool emphasized;
+/// One row above the note body: type pill · LATEST / EDITING · timestamp +
+/// age · actions. The action group fades in when the card is hovered (or
+/// while it is being edited), so a long log stays quiet at rest.
+class _EntryMetaRow extends StatelessWidget {
+  final ExecutionEntry entry;
+  final Color color;
+  final bool isLatest;
+  final bool isEditing;
+  final bool revealed;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
-  const _TimelineMarker({required this.type, required this.emphasized});
-
-  IconData get _icon {
-    switch (type) {
-      case EntryType.note:
-        return Icons.edit_note;
-      case EntryType.pass:
-        return Icons.check;
-      case EntryType.fail:
-        return Icons.priority_high;
-      case EntryType.blocked:
-        return Icons.block;
-    }
-  }
-
-  Color _colorFor(EntryType t) {
-    switch (t) {
-      case EntryType.note:
-        return AppColors.info;
-      case EntryType.pass:
-        return AppColors.success;
-      case EntryType.fail:
-        return AppColors.error;
-      case EntryType.blocked:
-        return AppColors.warning;
-    }
-  }
+  const _EntryMetaRow({
+    required this.entry,
+    required this.color,
+    required this.isLatest,
+    required this.isEditing,
+    required this.revealed,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final color = _colorFor(type);
-    if (emphasized) {
-      // Large filled circle with white icon + outer halo ring.
-      return Container(
-        width: 26,
-        height: 26,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: color.withOpacity(0.3), width: 3),
-        ),
-        child: Container(
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        // Type pill: emoji + label, tinted fill with a hairline border.
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
           decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
+            color: color.withOpacity(0.14),
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(color: color.withOpacity(0.30)),
           ),
-          child: Icon(_icon, size: 14, color: Colors.white),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(entryGlyph(entry.type),
+                  style: const TextStyle(fontSize: 10)),
+              const SizedBox(width: 4),
+              Text(
+                entry.type.label,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
         ),
-      );
-    }
-    // Small solid dot with a faint halo.
-    return Container(
-      width: 26,
-      height: 26,
-      alignment: Alignment.center,
-      child: Container(
-        width: 10,
-        height: 10,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(color: color.withOpacity(0.25), width: 3),
+        // Newest record marker — "where the story is right now".
+        if (isLatest && !isEditing) ...[
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  theme.colorScheme.primary.withOpacity(0.20),
+                  theme.colorScheme.primary.withOpacity(0.07),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(
+                color: theme.colorScheme.primary.withOpacity(0.32),
+              ),
+            ),
+            child: Text(
+              'LATEST',
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.6,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ),
+        ],
+        // v1.4.90: badge marking the record loaded into the input area.
+        if (isEditing) ...[
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.16),
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(
+                color: AppColors.primary.withOpacity(0.55),
+              ),
+            ),
+            child: const Text(
+              '✏️ EDITING',
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.4,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+        const Spacer(),
+        Text(
+          _ageLabel(entry.timestamp),
+          style: theme.textTheme.labelSmall?.copyWith(
+            fontSize: 10.5,
+            fontWeight: isLatest ? FontWeight.w700 : FontWeight.w500,
+            color: isLatest
+                ? color
+                : theme.colorScheme.onSurface.withOpacity(0.42),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          DateFormat('MMM d · HH:mm:ss').format(entry.timestamp),
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurface.withOpacity(0.50),
+          ),
+        ),
+        const SizedBox(width: 4),
+        AnimatedOpacity(
+          duration: const Duration(milliseconds: 150),
+          opacity: revealed ? 1.0 : 0.42,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.onSurface.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: theme.colorScheme.outline.withOpacity(0.18),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _MetaAction(
+                  icon: Icons.content_copy_outlined,
+                  tooltip: 'Copy as Markdown',
+                  color: theme.colorScheme.onSurface.withOpacity(0.60),
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: entry.content));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Markdown copied to clipboard'),
+                        behavior: SnackBarBehavior.floating,
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+                _MetaAction(
+                  icon: Icons.edit_outlined,
+                  tooltip: 'Edit entry',
+                  color: theme.colorScheme.onSurface.withOpacity(0.60),
+                  onTap: onEdit,
+                ),
+                _MetaAction(
+                  icon: Icons.delete_outline,
+                  tooltip: 'Delete entry',
+                  color: AppColors.error.withOpacity(0.70),
+                  onTap: onDelete,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Coarse age, phrased the way a person would say it out loud.
+  static String _ageLabel(DateTime t) {
+    final d = DateTime.now().difference(t);
+    if (d.isNegative) return 'scheduled';
+    if (d.inMinutes < 1) return 'just now';
+    if (d.inHours < 1) return '${d.inMinutes}m ago';
+    if (d.inDays < 1) return '${d.inHours}h ago';
+    if (d.inDays < 30) return '${d.inDays}d ago';
+    if (d.inDays < 365) return '${(d.inDays / 30).floor()}mo ago';
+    return '${(d.inDays / 365).floor()}y ago';
+  }
+}
+
+/// Compact icon action inside the hover-revealed group.
+class _MetaAction extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _MetaAction({
+    required this.icon,
+    required this.tooltip,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(5),
+          child: Icon(icon, size: 14, color: color),
         ),
       ),
     );
