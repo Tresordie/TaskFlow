@@ -161,6 +161,26 @@ void main() {
     });
   });
 
+  test('v1.12.43: the spine is a recess, not a drawn capsule', () {
+    // The hairline outline around the groove read as an ugly stroked tube on
+    // both the Timeline and the task Event Log (user: 时间线加外框难看 /
+    // Notes 时间线外框难看). The recess now comes from the fill alone, and
+    // the 1px inset that keeps the node centred is padding, not a border.
+    const rail = TimelineRail(
+      node: SizedBox.shrink(),
+      accentColor: Color(0xFF3F6C99),
+    );
+    for (final brightness in Brightness.values) {
+      final decoration = rail.grooveDecoration(brightness);
+      expect(decoration.border, isNull,
+          reason: 'no outline on ${brightness.name}');
+      expect(decoration.gradient, isNotNull,
+          reason: 'the channel still needs its recessed fill');
+    }
+
+    expect(rail.grooveInset, TimelineRail.grooveBorderWidth);
+  });
+
   group('Timeline page — date + time on the left of every task', () {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);

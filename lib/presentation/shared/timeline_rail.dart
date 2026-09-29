@@ -57,42 +57,50 @@ class TimelineRail extends StatelessWidget {
   static double nodeCenterY({bool emphasized = false}) =>
       nodeInset + (emphasized ? nodeDiameterEmphasized : nodeDiameter) / 2;
 
+  /// The channel's 1px inset. It used to be a painted border; it is padding
+  /// now, so the spine reads as a recess instead of a stroked capsule
+  /// (v1.12.43) while [nodeCenterY] keeps the exact same value.
+  double get grooveInset => grooveBorderWidth;
+
+  /// The recessed channel itself: a gradient fill and nothing else — no
+  /// stroke, ever. Exposed so a test can fail if an outline comes back.
+  BoxDecoration grooveDecoration(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    return BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        // v1.12.42: the old light recipe ended in 50% WHITE, which rendered
+        // as a bright blob on a paper canvas. A recess on light is a touch of
+        // ink; the border that used to define it is gone (v1.12.43), so the
+        // fill steps down a little further to stay quiet.
+        colors: isDark
+            ? [
+                Colors.white.withOpacity(0.045),
+                Colors.black.withOpacity(0.10),
+              ]
+            : [
+                Colors.black.withOpacity(
+                    AppColors.grooveFillOpacity(Brightness.light) * 0.8),
+                Colors.black.withOpacity(
+                    AppColors.grooveFillOpacity(Brightness.light) * 0.4),
+              ],
+        stops: const [0.0, 0.75],
+      ),
+      borderRadius: BorderRadius.circular(grooveWidth / 2),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return SizedBox(
       width: grooveWidth,
       child: Container(
         width: grooveWidth,
-        decoration: BoxDecoration(
-          // Recessed channel: a touch darker at the top, a lit hairline
-          // toward the bottom — the carved look.
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            // v1.12.42: the old light recipe ended in 50% WHITE, which
-            // rendered as a bright blob on a paper canvas. A recessed
-            // channel on light is just a touch of ink.
-            colors: isDark
-                ? [
-                    Colors.white.withOpacity(0.045),
-                    Colors.black.withOpacity(0.10),
-                  ]
-                : [
-                    Colors.black.withOpacity(
-                        AppColors.grooveFillOpacity(Brightness.light)),
-                    Colors.black.withOpacity(
-                        AppColors.grooveFillOpacity(Brightness.light) * 0.55),
-                  ],
-            stops: const [0.0, 0.75],
-          ),
-          borderRadius: BorderRadius.circular(grooveWidth / 2),
-          border: Border.all(
-            color: theme.colorScheme.outline.withOpacity(isDark ? 0.14 : 0.55),
-          ),
-        ),
+        decoration: grooveDecoration(theme.brightness),
+        padding: EdgeInsets.all(grooveInset),
         child: Column(
           // A group-ending rail hugs its own content: without this the groove
           // stretches down the whole row and leaves an empty channel under the
@@ -100,7 +108,7 @@ class TimelineRail extends StatelessWidget {
           mainAxisSize: isLast ? MainAxisSize.min : MainAxisSize.max,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: 8), // + the 1px groove border = nodeInset
+            const SizedBox(height: 8), // + the 1px groove inset = nodeInset
             node,
             if (isLast)
               // Terminating tail: short, fading out downward.
