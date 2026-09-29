@@ -1,7 +1,7 @@
 # PROJECT_HANDOFF.md — TaskFlow
 
 > 本文档是 AI 模型接力开发的交接文档（活文档）。**接班模型必须先读本文档再动手改代码。**
-> 最后更新：2026-09-29 · 当前版本 **v1.12.45**（① 时间线脊柱第三次重做：凹槽彻底删掉，改成「一条连续细线 + 节点压线」，首行节点上方不再有线；② 浅色玻璃默认填充 0.92→0.97，列底色再也染不到卡片上；③ `legibleInk` 小字号预算 4.5→6.0；④ `planned` 身份色由灰改靛蓝；⑤ Event Log 操作图标 0.42→0.72、列表底部留 16；368 测试；已发版双推）
+> 最后更新：2026-09-29 · 当前版本 **v1.12.45**（① 时间线脊柱第三次重做：凹槽彻底删掉，改成「一条连续细线 + 节点压线」，首行节点上方不再有线；② 浅色玻璃默认填充 0.92→0.97，列底色再也染不到卡片上；③ `legibleInk` 小字号预算 4.5→6.0；④ `planned` 身份色由灰改靛蓝；⑤ Event Log 操作图标 0.42→0.72、列表底部留 16；369 测试；已发版双推）
 
 ---
 
@@ -10,7 +10,7 @@
 - **项目**：TaskFlow —— Flutter Windows 桌面任务管理应用，面向硬件测试工程师（NPI 电动自行车项目）的个人任务/日志/周报工具。
 - **位置**：`F:/gitee/taskflow/TaskFlow`（远端：GitHub `Tresordie/TaskFlow` + Gitee `simonyuan2019/TaskFlow`，发版时两处都要显式单 URL 推 `HEAD`）。
 - **跑起来**：`cd outputs/taskflow && flutter run -d windows`（或 `flutter build windows --release` 后运行 `build\windows\x64\runner\Release\taskflow.exe`）。
-- **发版闭环（每次变更必做）**：升版本（`pubspec.yaml` + `lib/core/version.dart` 的 `kAppVersion` **必须同步**）→ `flutter test`（368 个）→ 构建 → `git commit` → **显式单 URL 双推** GitHub + Gitee → `Compress-Archive` 打包 zip 到 `outputs/` → 启动 exe 验证。
+- **发版闭环（每次变更必做）**：升版本（`pubspec.yaml` + `lib/core/version.dart` 的 `kAppVersion` **必须同步**，v1.12.45 起由 `test/app_version_test.dart` 硬性拦截）→ `flutter test`（369 个）→ 构建 → `git commit` → **显式单 URL 双推** GitHub + Gitee → `Compress-Archive` 打包 zip 到仓库同级目录（`F:/gitee/taskflow/TaskFlow-vX.Y.Z-windows-x64.zip`，zip 根 = `build\windows\x64\runner\Release\*`，先确认 4 个 VC 运行库 DLL + `使用说明.txt` 已拷进 Release）→ 启动 exe 验证。
 - **最高危五条**：① Isar 嵌入对象字段冻结（见禁忌 9.1）；② 禁用全局 SelectionArea（9.2）；③ 杀进程后立即构建会“拒绝访问”，等 15–25 秒重试（8.1）；④ 可能出现中文的 TextStyle 禁只设 `fontFamily`，必须带 `FontStack` 回退链（9.11）；⑤ 两渲染链共用的 `GfmExtensions.prepare` 管线（多行公式展平 → 表格行归一 → 硬换行硬化）顺序不可乱改，表格行/alert 起始行/`$$` 行豁免硬化（8.19-8.20）。
 
 ---
@@ -67,7 +67,7 @@ outputs/taskflow/
 │       ├── task_detail/          # task_detail_screen、execution_log_widget（内联编辑）
 │       ├── reports/              # reports_screen（分栏编辑器 + AI 生成）
 │       ├── work_log/ calendar/ heatmap/ ai_parse/ settings/
-├── test/                         # 32 个测试文件，368 个测试（含 extended_markdown/selectable_spacing/font_upgrade/gfm_extensions/theme_palette/kanban_board/board_card_style/calendar_day_cell/light_theme_contrast/timeline_visual 契约）
+├── test/                         # 33 个测试文件，369 个测试（含 app_version（pubspec ↔ kAppVersion）/extended_markdown/selectable_spacing/font_upgrade/gfm_extensions/theme_palette/kanban_board/board_card_style/calendar_day_cell/light_theme_contrast/timeline_visual 契约）
 └── pubspec.yaml                  # version 字段与 kAppVersion 必须同步；fonts + FONT_LICENSES.md 声明
 ```
 
@@ -283,7 +283,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 
 **已完成（近期）**：
 
-- ✅ v1.12.45（已发版）：浅色残留 + 时间线脊柱第三次重做。① `TimelineRail` 的凹槽（channel）彻底移除——不再有装饰 Container，脊柱变成一条连续细线，节点自带不透明白底压在线上；新增 `isFirst`（首行节点上方无线）；连线去掉 4px/2px 内边距 ⇒ 行与行之间不再断线；私有 `_Connector` 提升为公开 `TimelineSpine`，「线是否连续」第一次成为可测契约；② 浅色玻璃默认填充 `iosGlassDefaultOpacityLight` 0.92→0.97（列底色 accent@10% 透过 8% 把 Done 卡染成灰绿、To Do 卡染成灰，同一张卡在不同列颜色不同）；③ `AppColors.legibleInk` 默认目标 4.5→6.0（10–11px 芯片在 4.5:1 下白底上仍像水印）；④ `TaskStatus.planned` 身份色由 `lightTextSecondary`（灰）改为 indigo `#6366F1`；⑤ Event Log 操作图标淡出 0.42→0.72、列表底部 padding 16（最后一条原先被输入面板压住）；⑥ 空列 "Drag tasks here" 改用 `AppColors.muted(faint)`；⑦ 删掉随凹槽一起失效的死代码 `AppColors.grooveFillOpacity` / `TimelineRail.grooveDecoration` → 368 测试
+- ✅ v1.12.45（已发版）：浅色残留 + 时间线脊柱第三次重做。① `TimelineRail` 的凹槽（channel）彻底移除——不再有装饰 Container，脊柱变成一条连续细线，节点自带不透明白底压在线上；新增 `isFirst`（首行节点上方无线）；连线去掉 4px/2px 内边距 ⇒ 行与行之间不再断线；私有 `_Connector` 提升为公开 `TimelineSpine`，「线是否连续」第一次成为可测契约；② 浅色玻璃默认填充 `iosGlassDefaultOpacityLight` 0.92→0.97（列底色 accent@10% 透过 8% 把 Done 卡染成灰绿、To Do 卡染成灰，同一张卡在不同列颜色不同）；③ `AppColors.legibleInk` 默认目标 4.5→6.0（10–11px 芯片在 4.5:1 下白底上仍像水印）；④ `TaskStatus.planned` 身份色由 `lightTextSecondary`（灰）改为 indigo `#6366F1`；⑤ Event Log 操作图标淡出 0.42→0.72、列表底部 padding 16（最后一条原先被输入面板压住）；⑥ 空列 "Drag tasks here" 改用 `AppColors.muted(faint)`；⑦ 删掉随凹槽一起失效的死代码 `AppColors.grooveFillOpacity` / `TimelineRail.grooveDecoration`；⑧ 补 `test/app_version_test.dart`（pubspec.yaml ↔ kAppVersion 一致性，v1.12.45 就踩过：清理时 pubspec 被回退而 version.dart 没退）→ 369 测试
 - ✅ v1.12.44（已发版）：① `TaskCard` 整卡淡出改为随亮度分支（浅色 0.94 / 深色 0.78），修掉「已完成、归档任务在 Today dashboard 太淡」——三重淡化（整卡 0.78 × 删除线 0.72 × 玻璃填充）叠加是根因；② 侧栏 `_NavItem` 选中态浅色重做：`primaryGhost` 扁平填充、1px primary@0.18 细边、去掉 accent glow 与竖条渐变/光晕、接触阴影降到 0.05；`_NavItem` 升为 `ConsumerStatefulWidget` 以取 palette.primaryGhost；新增 3 项 done-card 淡出契约（light≥0.90 / dark=0.78 / 未关闭=1.0，用标题的祖先 AnimatedOpacity 精确取卡片级淡出）→ 366 测试
 - ✅ v1.12.43（已发版）：时间线去掉外框——`TimelineRail` 凹槽的描边（浅色 0.55 / 深色 0.14 的 outline 边框）删除，改为等值 1px padding，`nodeCenterY()` 与两行日期标签对齐完全不变；凹槽只靠填充表达凹陷，浅色填充再降一档；Timeline 与任务详情 Execution Log 一次修好（共用组件）；新增「脊柱不得再出现描边」双向（light+dark）契约 → 363 测试
 - ✅ v1.12.42（已发版）：浅色主题（暖沙 / 黛蓝）对比度大修——亮度感知的玻璃填充与高光、`secondary`/`outline` 在浅色下换成深色、卡片细边框与删除线标题按 WCAG 实测达标、时间轴凹槽去白块、日历范围格改不透明白底淡色、淡色项目/标签文字推到 AA；新增 18 项对比度契约，共 362 测试
@@ -416,4 +416,4 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 | 2026-09-29 | 本会话（v1.12.41→v1.12.42 浅色主题对比度大修轮） | 待定 | 用户：“浅色主题下各个页面 GUI 预览效果很差……特别是暖沙和黛蓝……深色主题看起来没问题”。先用真窗口截图逐页定位（Today / Timeline / Calendar / Settings），再只改共享出口：`AppColors` 新增 6 条随亮度变化的角色规则（dimmedTitle / mutedText / faintText / cardBorder / accentBorder / grooveFill）+ `muted()` / `legibleInk()` / `contrast()`；`BoardGlassSpec.resolve` 收 `brightness`（浅色默认填充 0.92、面板地板 0.88）；`GlassSheen.topAlphaFor/bottomAlphaFor` 浅色把白色高光降到 0.05/0.015；`app_theme` 浅色 `secondary = primaryDark`、`outline = lerp(border, textPrimary, .42)`；`timeline_rail` 凹槽浅色不再以 50% 白收尾；日历范围格合成到不透明白底 + 「N tasks」并进计数芯片；项目/标签淡色经 `legibleInk` 推到 AA；新增 `test/light_theme_contrast_test.dart`（逐主题实测 WCAG）→ 362 测试、analyze 0 error、暖沙与黛蓝双主题实机截图确认、双推。顺带修开发脚本：`cap_window.ps1` / `click_window.ps1` 原先在别的程序占前台时会把截图与点击打到那个窗口（真打到过一次游戏），现在改为 Alt + `AttachThreadInput` 抢前台并校验 `GetForegroundWindow`，截图不满足退回 `PrintWindow`，点击不满足直接 ABORT | 深色正常、浅色全糊 ⇒ 毛病不在调色板而在“按深色调出来的渲染参数”，逐页调色必然漂移，所以只动共享出口；阈值不靠肉眼而用 WCAG 反解——实测纸面上 4.5:1 需要 ≥0.69 墨度，故删除线标题取 0.72（深色仍 0.40）、弱化文字 0.58 对应 3:1；`outline` 在源头加深比改 40 个 `outline.withOpacity()` 调用点更稳，因为以后新代码还会继续这么写 |
 | 2026-09-29 | 本会话（v1.12.42→v1.12.43 时间线去外框轮） | 待定 | 用户连着指出两处“外框难看”：Timeline 页脊柱、任务 Event Log 的 Notes 时间线。两处是同一个 `TimelineRail`，所以只改组件：凹槽 `Border.all` 删除、那 1px 改为等值 padding（`nodeInset` / `nodeCenterY()` / 标签盒高全部不变），浅色填充降到 0.8/0.4 倍；新增契约断言 light+dark 都 `border == null` → 363 测试全过、analyze 0 error、暖沙与黛蓝两主题实机截图确认外框已消失。中途 app 被用户自己关掉并切了主题，自动点击会打到用户正在用的界面，遂停止点击、以已捕获截图为准（Event Log 与 Timeline 共用组件，改动由构造保证生效） | 用户说的是“外框”，不是“不要凹槽”——保留填充、只去描边，并用等值 padding 保住对齐；“不许再有描边”写成可执行契约；用户在前台操作时不再驱动窗口，视觉验证改用已捕获截图 + 共用组件的构造保证 |
 | 2026-09-29 | 本会话（v1.12.43→v1.12.44 dashboard 淡出与侧栏选中框轮） | 待定 | 用户两条反馈：① Today 浅色下已完成/归档卡片太淡 ② 左侧页面选中框不美观。定位到 `TaskCard` 整卡 `AnimatedOpacity 0.78` 与删除线 0.72、玻璃 92% 三重叠加 ⇒ 改成浅色 0.94 / 深色 0.78；侧栏 `_NavItem` 选中胶囊原先是 primary 淡渐变 + 12px accent glow + 竖条渐变与光晕，白底上糊成一团 ⇒ 浅色改扁平 primaryGhost 实色 + 1px 细边 + 实心竖条、零光晕（深色不动），`_NavItem` 升级为 ConsumerStatefulWidget 以读 palette；新增 3 项淡出契约（find.ancestor 精确取卡片级 AnimatedOpacity）→ 366 测试全过、analyze 0 error、暖沙实机截图确认两处都到位、双推 | 「太淡」和「不美观」都是结果描述，根因分别是叠加淡出与靠光晕撑存在感；两处都按亮度分支处理而不是取全局折中值——深色那套是被确认过好过的，动它就是把用户已经满意的东西改坏 |
-| 2026-09-29 | 本会话（v1.12.44→v1.12.45 脊柱换设计 + 浅色残留清扫轮） | 待定 | 用户第三次说时间线外框难看，并点头做 v1.12.45。脊柱不再调参而是删掉凹槽：`TimelineRail` 只剩 上段线 + 节点 + `Expanded` 下段线，连线内边距清零 ⇒ 行间不再断线；新增 `isFirst`；`_Connector` 提升为公开 `TimelineSpine` 好让「线是否连续」可测；顺手删掉随凹槽失效的 `grooveDecoration` / `AppColors.grooveFillOpacity`。浅色四件：玻璃 0.92→0.97（列底色染卡）、`legibleInk` 4.5→6.0（小字号）、`planned` 灰→靛蓝（身份色位置灰等于隐形）、Event Log 操作图标 0.42→0.72 + 列表底部 padding 16、空列提示改 `muted(faint)` → 368 测试、analyze 0 error、暖沙实机确认脊柱与 Today 染色都解决、双推 |
+| 2026-09-29 | 本会话（v1.12.44→v1.12.45 脊柱换设计 + 浅色残留清扫轮） | 待定 | 用户第三次说时间线外框难看，并点头做 v1.12.45。脊柱不再调参而是删掉凹槽：`TimelineRail` 只剩 上段线 + 节点 + `Expanded` 下段线，连线内边距清零 ⇒ 行间不再断线；新增 `isFirst`；`_Connector` 提升为公开 `TimelineSpine` 好让「线是否连续」可测；顺手删掉随凹槽失效的 `grooveDecoration` / `AppColors.grooveFillOpacity`。浅色四件：玻璃 0.92→0.97（列底色染卡）、`legibleInk` 4.5→6.0（小字号）、`planned` 灰→靛蓝（身份色位置灰等于隐形）、Event Log 操作图标 0.42→0.72 + 列表底部 padding 16、空列提示改 `muted(faint)` → 369 测试、analyze 0 error、暖沙实机确认脊柱与 Today 染色都解决、双推；发版后发现 `pubspec.yaml` 被清理步骤回退成 1.12.44（`version.dart` 未退）⇒ 补 `test/app_version_test.dart` 拦截同类漂移，重新构建打包 |
