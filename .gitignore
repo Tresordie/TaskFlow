@@ -50,3 +50,7 @@ markdown-alerts-latex.json
 
 # ZCode session workspace data
 .zcode/
+
+# v1.12.42: dev window captures (tools/cap_window.ps1) land in the repo root
+# — they are verification artifacts, never source.
+/*.png
