@@ -122,7 +122,7 @@ test/
 - Robust Markdown rendering for pasted content: normalizes CRLF line endings and invisible Unicode spaces (non-breaking / full-width) so lists copied from browsers or other apps render correctly
 - Desktop-only chrome guarded for iOS/Android (custom title bar & window_manager skipped on mobile)
 - Custom date-range picker (Timeline / Calendar / Reports): ONE dialog with the same calendar grid as the Daily/Weekly popup — tap the start day, tap the end day, confirm
-- Unit + widget test suite (`flutter test`, 369 tests as of v1.12.45): report period math, AI config, LaTeX rendering, title bar
+- Unit + widget test suite (`flutter test`, 378 tests as of v1.12.46): report period math, AI config, LaTeX rendering, title bar
 
 ### Phase 7 — Unified rich-text input & record display
 - **Every input area** (Work Log, execution log + edit dialog, task description create/edit dialogs, AI Parse notes, Report editor) supports Markdown + rich text with instant **Write/Preview toggle** — the preview uses the SAME style sheet as the saved content (true WYSIWYG "input-as-preview")
@@ -134,6 +134,7 @@ test/
 ### Phase 8 — Kanban Today dashboard
 - Today page redesigned as a translate_tool-inspired kanban: four KPI stat cards (Today's Progress with animated bar / To Do + overdue / In Progress + high priority / Done + completion rate) over a fixed four-column board
 - Board dimensions: **Status** (To Do / In Progress / Done / Blocked), **Project** (one column per project in use) and **Priority** (P0–P3) — drag a card onto a column to apply that attribute; the per-column “+” creates a task that inherits it
+- **Full-field New Task composer**: the inline quick-add (top bar and per-column) keeps its fast type-+-Enter path, and its “more options” button opens the complete form — title, project, due date, Markdown description, priority, tags and sub-tasks — pre-filled with what you typed and the column's own attribute
 - Quick-filter pills (All / Due Today / High Priority); drag a card onto another card to convert it into a sub-step; archived tasks render in the Done column
 - Rich task cards: 3-line description preview, latest execution-log note preview (type-colored icon: note / pass / fail / blocked), meta chips (priority / due date / project / tags), stats row (attachments / log entries / sub-task progress ring)
 - Ambient backdrop with drifting accent orbs; light themes use the “paper” recipe (tinted canvas + pure-white cards + glassy columns), dark themes keep the palette ladder

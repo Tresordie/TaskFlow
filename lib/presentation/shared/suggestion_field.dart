@@ -160,123 +160,139 @@ class _SuggestionFieldState extends State<SuggestionField> {
           link: _layerLink,
           showWhenUnlinked: false,
           offset: Offset(0, height + 4),
-          child: SizedBox(
-            width: width,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 1),
-              duration: const Duration(milliseconds: 140),
-              curve: Curves.easeOutCubic,
-              builder: (context, t, child) => Opacity(
-                opacity: t,
-                child: Transform.translate(
-                  offset: Offset(0, -4 * (1 - t)),
-                  child: child,
-                ),
-              ),
-              child: Material(
-                elevation: 12,
-                shadowColor: primary.withOpacity(0.18),
-                borderRadius: BorderRadius.circular(10),
-                color: theme.colorScheme.surface,
-                surfaceTintColor: theme.colorScheme.surfaceTint,
-                clipBehavior: Clip.antiAlias,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                        color: theme.colorScheme.outline.withOpacity(0.18)),
+          // The Overlay's theater lays out non-positioned entries with TIGHT
+          // full-screen constraints, and a child can never shrink below the
+          // incoming minimum — a bare SizedBox(width:) gets clamped right
+          // back to the screen size, so the (translucent) dropdown Material
+          // painted a giant wash over the whole page and the rows stretched
+          // edge to edge. Align loosens the constraints it passes down, so
+          // the SizedBox width actually takes effect; the Align itself is
+          // full-size but paints nothing and only hit-tests its child.
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: width,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 140),
+                curve: Curves.easeOutCubic,
+                builder: (context, t, child) => Opacity(
+                  opacity: t,
+                  child: Transform.translate(
+                    offset: Offset(0, -4 * (1 - t)),
+                    child: child,
                   ),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 264),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (widget.headerText != null)
-                          Container(
-                            padding: const EdgeInsets.fromLTRB(12, 7, 12, 6),
-                            color: primary.withOpacity(0.05),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  widget.optionIcon ?? Icons.history,
-                                  size: 12,
-                                  color: primary,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  widget.headerText!.toUpperCase(),
-                                  style: theme.textTheme.labelSmall?.copyWith(
+                ),
+                child: Material(
+                  elevation: 12,
+                  shadowColor: primary.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(10),
+                  // Opaque regardless of Interface Glass: this is a floating
+                  // menu, and the theme's surface goes translucent when glass
+                  // is on — the dialog/page text underneath used to bleed
+                  // straight through the suggestion rows.
+                  color: theme.colorScheme.surface.withValues(alpha: 1),
+                  surfaceTintColor: theme.colorScheme.surfaceTint,
+                  clipBehavior: Clip.antiAlias,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: theme.colorScheme.outline.withOpacity(0.18)),
+                    ),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 264),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (widget.headerText != null)
+                            Container(
+                              padding: const EdgeInsets.fromLTRB(12, 7, 12, 6),
+                              color: primary.withOpacity(0.05),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    widget.optionIcon ?? Icons.history,
+                                    size: 12,
                                     color: primary,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.6,
-                                    fontSize: 10,
                                   ),
-                                ),
-                                const Spacer(),
-                                Text(
-                                  '${_matches.length}',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: theme.colorScheme.onSurface
-                                        .withOpacity(0.4),
-                                    fontSize: 10,
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    widget.headerText!.toUpperCase(),
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: primary,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.6,
+                                      fontSize: 10,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  const Spacer(),
+                                  Text(
+                                    '${_matches.length}',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.onSurface
+                                          .withOpacity(0.4),
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        Flexible(
-                          child: ListView(
-                            padding: const EdgeInsets.all(5),
-                            shrinkWrap: true,
-                            children: [
-                              for (final option in _matches)
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 1),
-                                  child: InkWell(
-                                    onTap: () => _select(option),
-                                    borderRadius: BorderRadius.circular(7),
-                                    hoverColor: primary.withOpacity(0.08),
-                                    splashColor: primary.withOpacity(0.12),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 7, vertical: 6),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 22,
-                                            height: 22,
-                                            decoration: BoxDecoration(
-                                              color: primary.withOpacity(0.10),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
+                          Flexible(
+                            child: ListView(
+                              padding: const EdgeInsets.all(5),
+                              shrinkWrap: true,
+                              children: [
+                                for (final option in _matches)
+                                  Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 1),
+                                    child: InkWell(
+                                      onTap: () => _select(option),
+                                      borderRadius: BorderRadius.circular(7),
+                                      hoverColor: primary.withOpacity(0.08),
+                                      splashColor: primary.withOpacity(0.12),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 7, vertical: 6),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 22,
+                                              height: 22,
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    primary.withOpacity(0.10),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
+                                              child: Icon(
+                                                widget.optionIcon ??
+                                                    Icons.history_rounded,
+                                                size: 13,
+                                                color: primary,
+                                              ),
                                             ),
-                                            child: Icon(
-                                              widget.optionIcon ??
-                                                  Icons.history_rounded,
-                                              size: 13,
-                                              color: primary,
+                                            const SizedBox(width: 9),
+                                            Expanded(
+                                              child: Text.rich(
+                                                _highlight(option, theme),
+                                                style: const TextStyle(
+                                                    fontSize: 12.5),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 9),
-                                          Expanded(
-                                            child: Text.rich(
-                                              _highlight(option, theme),
-                                              style: const TextStyle(
-                                                  fontSize: 12.5),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

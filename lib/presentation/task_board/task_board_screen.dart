@@ -14,6 +14,7 @@ import '../../providers/theme_provider.dart';
 import '../shared/glass_panel.dart';
 import '../shared/glass_sheen.dart';
 import '../shared/suggestion_field.dart';
+import 'create_task_dialog.dart';
 import 'kanban_column.dart';
 
 /// v1.10.0 / v1.11.0: Today page redesigned as a translate_tool-inspired
@@ -712,6 +713,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
       onCancelAdd: () => setState(() => _addingColumnKey = null),
       onDropTask: (task) => _handleColumnDrop(col, task, dimension),
       onSubmitAdd: (title) => _handleColumnSubmitAdd(col, title, dimension),
+      onOpenComposer: (title) => _openComposer(col, title, dimension),
     );
   }
 
@@ -791,6 +793,37 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
             title: title, priority: Priority.values[int.parse(col.key)]);
       case BoardDimension.project:
         notifier.createTask(title: title, project: col.key);
+    }
+  }
+
+  /// v1.12.46: the inline add's "more options" — opens the full New Task
+  /// form pre-filled with the typed title and the column's own attribute
+  /// (status / priority / project, whichever the current dimension drives).
+  /// A successful create also folds the inline field away.
+  Future<void> _openComposer(
+      KanbanColumnData col, String title, BoardDimension dimension) async {
+    TaskStatus initialStatus = TaskStatus.planned;
+    Priority initialPriority = Priority.p2Medium;
+    var initialProject = '';
+    switch (dimension) {
+      case BoardDimension.status:
+        initialStatus = TaskStatus.values.byName(col.key);
+      case BoardDimension.priority:
+        initialPriority = Priority.values[int.parse(col.key)];
+      case BoardDimension.project:
+        initialProject = col.key;
+    }
+    final created = await showDialog<String>(
+      context: context,
+      builder: (_) => CreateTaskDialog(
+        initialTitle: title,
+        initialStatus: initialStatus,
+        initialPriority: initialPriority,
+        initialProject: initialProject,
+      ),
+    );
+    if (created != null && mounted) {
+      setState(() => _addingColumnKey = null);
     }
   }
 }
@@ -1155,6 +1188,15 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
                   color: theme.colorScheme.onSurface.withOpacity(0.5),
                   onPressed: () => setState(() => _expanded = !_expanded),
                 ),
+                // v1.12.46: "more options" — the full New Task composer
+                // (adds Description on top of the inline options row),
+                // pre-filled with everything typed here so far.
+                IconButton(
+                  icon: const Icon(Icons.edit_note, size: 20),
+                  tooltip: 'More options',
+                  color: theme.colorScheme.onSurface.withOpacity(0.5),
+                  onPressed: _openComposer,
+                ),
                 // Submit button
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
@@ -1474,6 +1516,31 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
     if (text.isEmpty) return;
     setState(() => _subSteps.add(text));
     _subStepController.clear();
+  }
+
+  /// v1.12.46: opens the full New Task composer carrying everything typed
+  /// into the bar so far. On a successful create the bar resets exactly as
+  /// after a plain quick-add; cancelling the dialog leaves the bar alone.
+  Future<void> _openComposer() async {
+    final created = await showDialog<String>(
+      context: context,
+      builder: (_) => CreateTaskDialog(
+        initialTitle: _controller.text.trim(),
+        initialPriority: _priority,
+        initialDueDate: _dueDate,
+        initialProject: _projectController.text.trim(),
+      ),
+    );
+    if (created != null && mounted) {
+      _controller.clear();
+      _tagController.clear();
+      setState(() {
+        _subSteps.clear();
+        _priority = Priority.p2Medium;
+        _dueDate = null;
+        _expanded = false;
+      });
+    }
   }
 }
 

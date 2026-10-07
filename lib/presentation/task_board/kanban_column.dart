@@ -37,6 +37,10 @@ class KanbanColumn extends ConsumerStatefulWidget {
   final ValueChanged<Task> onDropTask;
   final ValueChanged<String> onSubmitAdd;
 
+  /// v1.12.46: opens the full New Task composer dialog, carrying whatever
+  /// has been typed into the inline field so far (empty string is fine).
+  final ValueChanged<String>? onOpenComposer;
+
   const KanbanColumn({
     super.key,
     required this.data,
@@ -50,6 +54,7 @@ class KanbanColumn extends ConsumerStatefulWidget {
     required this.onCancelAdd,
     required this.onDropTask,
     required this.onSubmitAdd,
+    this.onOpenComposer,
   });
 
   @override
@@ -258,8 +263,15 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
     return Row(
       children: [
         Expanded(
+          // The outer Focus must NOT share _addFocusNode with the TextField:
+          // one FocusNode may be attached to exactly one widget. Attaching it
+          // twice makes the node its own ancestor — a focus-tree cycle the
+          // debug assert flags, but in a release build it deadlocks the UI
+          // isolate the moment autofocus/requestFocus walks the chain (the
+          // board froze whenever "+" opened this field). Key events still
+          // reach this handler: they bubble up from the focused TextField to
+          // its ancestors, and this Focus's own node is an ancestor.
           child: Focus(
-            focusNode: _addFocusNode,
             onKeyEvent: (node, event) {
               if (event is KeyDownEvent &&
                   event.logicalKey == LogicalKeyboardKey.escape) {
@@ -309,6 +321,19 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
         ),
+        // v1.12.46: "more options" — opens the full New Task composer with
+        // the typed text pre-filled (the column's own attribute is applied
+        // by the screen per dimension).
+        if (widget.onOpenComposer != null)
+          IconButton(
+            onPressed: () => widget.onOpenComposer!(_addController.text.trim()),
+            tooltip: 'More options',
+            icon: Icon(Icons.edit_note,
+                size: 18, color: palette.primary.withOpacity(0.75)),
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+          ),
       ],
     );
   }
