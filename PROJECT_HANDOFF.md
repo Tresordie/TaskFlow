@@ -365,22 +365,19 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 - ✅ v1.5.8：AI Prompts 打磨（可调大小/Settings 字体/质感）；✅ v1.5.7：AI Prompts 页面
 - ✅ v1.5.6：报告打磨（Headline 列表/去 sub-steps/10 天聚焦）
 - ✅ v1.5.5-3：alerts GitHub 风格/LaTeX TextScaler/表格 WidgetSpan/GFM 四能力
-- 双远程同步至 `5001225`（v1.9.3）
+- 双远程同步至 v1.12.51（`013a7b8`，本轮收尾文档提交后再刷新）
 
-**进行中**：
-- 用户实机复核 v1.12.46：① Today 看板各列点 "+" 添加任务是否不再卡死（本轮已用 release exe 自动点击 + 截图验证「打开内联框」一步，建议手动走一遍完整链路：打开 → 输入 → Enter/点 ⊕ 提交 → 连续添加 → ESC 关闭）；② Edit Task / 任务详情 / Today 快速添加条里聚焦 Project/Tags，建议下拉是否不再糊住页面（下拉会正常浮在字段下方并遮住其下内容——这是浮动菜单的固有行为，不再是全屏纱幕即为修复）；③ 新建全字段对话框：列内联框与顶部快加条的「更多选项」（⎘ 表单图标）是否按维度预填（Status 维=状态 / Priority 维=优先级 / Project 维=项目）、创建后内联框自动收起、取消不建任务。
-- 用户实机复核 v1.12.45：Timeline / Event Log 的脊柱是否终于是「线 + 珠子」（凹槽已彻底没有）；Today 的 Done 卡片是否不再被列底色染色；TO DO 的靛蓝身份条是否合适（嫌它抢戏可以退回更深的灰，但灰在身份位上等于无色）。
-- 浅色残留还剩两件低优先级：详情页 markdown 嵌套缩进的行宽、滚动条 thumb 偏重。另有一件需要点头才动的布局改动——「空列自动收窄让出 1/3 屏」。
-- v1.12.34→v1.12.42 各轮的实机复核项（玻璃弯曲、KPI 图标位置、分段控件立体感、字体三款试用、主题列表 9 款、Timeline 左侧日期时间、浅色五页观感）都已在后续截图轮里确认或被 v1.12.42–45 的改动覆盖，不再逐条挂账；如仍有具体页面不满意，按页面单独提，改动一律走共用出口（`AppColors` / `BoardGlassSpec` / `GlassSheen` / `TimelineRail`）而不是页面内补丁。
-- 本仓库由旧工作区迁至 `F:\gitee\taskflow\TaskFlow`：`build/` 内旧 CMake 缓存指向旧路径会导致 "does not match the source"，删 `build/` 重来即愈；`windows/flutter/ephemeral/.plugin_symlinks` 陈旧符号链接致 errno 183，同删即愈。
-- 环境备注：本机 `flutter` 不在 PATH（用 `C:\flutter\bin`）；用户设置不在注册表而在 `%APPDATA%\com.taskflow\taskflow\shared_preferences.json`（带 `flutter.` 前缀的键），读当前主题/玻璃取值看这里。
+**进行中（v1.12.51 收尾复核）**：
+- 用户实机复核本轮浅色/玻璃五连（改动一律走共用出口 `AppColors` / `BoardGlassSpec` / `GlassSheen` / `TimelineRail`，不页面内打补丁）：① 玻璃「开面弯曲」是否已平（v1.12.47 降火后卡面应是平放的透光石板，非凸透镜）；② 深色 Done 卡是否不再发暗（v1.12.48 整卡淡出深浅统一 0.94）；③ 浅色卡片是否不再被列底色染色、是否带 3px 左侧优先级条、是否浮起（v1.12.49 卡片下限 0.75 + 优先级条 + 阴影）；④ 浅色看板背景是否成半透明玻璃、环境光晕是否从中透出（v1.12.50 列托盘霜化）；⑤ 新主题「碧落 / Teal Sky」观感（v1.12.51，在 设置 → 主题 选「碧落」；用户当前停黛蓝，未驱动前台窗口代切，避免误点 Settings 滑块）。
+- 低优先级浅色残留两件（未动）：详情页 markdown 嵌套缩进的行宽、滚动条 thumb 偏重；一件需点头才动的布局改动——「空列自动收窄让出 1/3 屏」。
+- 环境备注：本机 `flutter` 不在 PATH（用 `C:\flutter\bin`）；用户设置不在注册表而在 `%APPDATA%\com.taskflow\taskflow\shared_preferences.json`（带 `flutter.` 前缀的键），读当前主题/玻璃取值看这里。工作区已迁至 `F:\gitee\taskflow\TaskFlow`：`build/` 旧 CMake 缓存 / `windows/flutter/ephemeral/.plugin_symlinks` 陈旧符号链接会报错，删 `build/` 重来即愈。
 
 **待办/已知局限**：
 - **疑似 UI 缺陷（待排查）**：快速添加任务后列表偶发不刷新，重启后自愈（v1.5.2 验证时由 ComputerUse 发现，未复现定位）。
 - 可选链中**表格与公式均为 WidgetSpan**：不参与文字选区、Ctrl+C 复制时丢失（已接受；右键 Copy as Markdown 始终复制完整原始源码，测试用 toPlainText 断言时需预期占位符 `\uFFFC`）。
 - alerts 在可选链为降级形态（▎标签+槽线文本），与 AppMarkdownBody 的卡片容器存在形态差异——若用户报“预览与保存后不一致”，alerts/脚注/Reports 块边距是三个排查入口。
 - LaTeX 不解析 `\( \)`/`\[ \]`；货币边界规则下 `$x and $y` 这类文本仍会被当公式（规范所定，不可避）。
-- ComputerUse 验证遗留临时文件：`f:\gitee\voice_record_summary_ai` 下 `tf_shot.ps1`、`tf_editor1~3.png`（可删）。
+- （v1.12.51 清理）`f:\gitee\voice_record_summary_ai` 的 ComputerUse 遗留临时文件已确认不存在；本会话所有 scratch golden 测试与截图均已删除，工作树干净。
 - `app_colors.dart` 底部遗留硬编码别名（lightBg/darkBorder 等）被部分代码以 `isDark ? darkX : lightX` 直接引用，不跟随当前主题色相——改浅色主题时需同步这些别名。
 - GitHub 推送偶发超时（环境问题，重试即可）。
 - Google Drive 同步无文件冲突合并策略（附件为不可变 uuid 文件天然无冲突；快照为 merge-by-uid）。
@@ -392,7 +389,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 1. **先读后动**：顺序 = 本文档 → `lib/core/theme/` → `lib/presentation/shared/`（渲染三件套）→ `lib/data/services/`。
 2. **每轮交付完整闭环**：改码 → analyze → test → 双处升版 → 构建（记得杀进程后等 20 秒）→ 提交 → 双推 → 打包 → 启动。用户期待一轮完成。
 3. **用户对视觉细节敏感**：按钮排布、亮度、清晰度、留白都可能被点名；改动前先想"桌面端惯例"（主操作居右、等高对称、显式入口）。
-4. **测试是安全网**：190 个测试覆盖渲染契约、报告格式与字体迁移，改前先跑，改后必过。
+4. **测试是安全网**：389 个测试覆盖渲染契约、报告格式与字体迁移，改前先跑，改后必过。
 5. **长期记忆系统里有大量项目约定**（主题、报告规范、推送纪律等），接手时先查。
 6. **不要主动创建文档文件**（包括本文件的更新除外）——用户未要求时不写 README。
 
