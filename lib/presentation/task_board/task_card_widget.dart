@@ -408,7 +408,10 @@ class _TaskCardState extends ConsumerState<TaskCard> {
       borderRadius: 14,
       blur: blur,
       color: fillColor,
-      rimAlpha: isDark ? 0.12 : 0.30,
+      // v1.12.47: 0.12/0.30 -> 0.07/0.18. The inner rim sits 1px inside the
+      // card's own outer border — two bright edges hugging the rounded
+      // corners is the bevel that read as a bent face (user: 开面弯曲).
+      rimAlpha: isDark ? 0.07 : 0.18,
       content: content,
     );
   }

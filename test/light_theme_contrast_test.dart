@@ -111,7 +111,11 @@ void main() {
     });
 
     test('fillOver follows the brightness it is handed', () {
-      final base = Colors.white.withOpacity(0.92);
+      // v1.12.47 probe base 0.92 -> 0.72: with the washes flattened to
+      // 0.03/0.07, a 0.92 base quantizes both blends to the same 8-bit alpha
+      // byte, so the comparison below could no longer see the brightness
+      // parameter. 0.72 (the iOS glass default) keeps the probe sensitive.
+      final base = Colors.white.withOpacity(0.72);
       final light = GlassSheen.fillOver(base, brightness: Brightness.light);
       final dark = GlassSheen.fillOver(base, brightness: Brightness.dark);
       expect(light.colors.first.opacity, lessThan(dark.colors.first.opacity));

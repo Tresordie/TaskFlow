@@ -1041,7 +1041,8 @@ class _KpiCardState extends State<_KpiCard> {
       borderRadius: 16,
       blur: widget.blur,
       gradient: _kpiFillGradient,
-      rimAlpha: widget.isDark ? 0.12 : 0.30,
+      // v1.12.47: softened with the task cards (same bevel-as-curvature fix).
+      rimAlpha: widget.isDark ? 0.07 : 0.18,
       content: content,
     );
   }

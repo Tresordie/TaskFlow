@@ -149,7 +149,14 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
                       borderRadius: 17,
                       topAlpha: GlassSheen.topAlphaFor(theme.brightness),
                       bottomAlpha: GlassSheen.bottomAlphaFor(theme.brightness),
-                      rimAlpha: isDark ? 0.30 : 0.55,
+                      // v1.12.47: the tray is the dashboard's big open face
+                      // (user: 开面弯曲太厉害). Its default 0.45 fade painted
+                      // the gradient across hundreds of pixels — a curved
+                      // slab of light — and the bright inner rim was the
+                      // lens edge. Keep the wash a thin strip at the top and
+                      // the rim a whisper.
+                      topFade: 0.10,
+                      rimAlpha: isDark ? 0.14 : 0.30,
                       asPositioned: false,
                     ),
                   ),

@@ -20,6 +20,9 @@ class GlassSheen extends StatelessWidget {
   /// v1.12.34: dialed back from 0.32 — a strong wash plus a bright bottom rim
   /// read as a curved lens bulging out of the card (user: 弯曲立体感太强).
   /// Glass should be a flat lit slab: a whisper of top light, no bottom glow.
+  /// v1.12.47: 0.14 -> 0.07. The user still read the glass faces as bent
+  /// (开面弯曲太厉害) — a 14% white wash is a dome highlight no matter how
+  /// short it fades; flat glass only needs the faintest top-edge light.
   final double topAlpha;
 
   /// Alpha of the bottom refraction rim (0 = off).
@@ -28,6 +31,8 @@ class GlassSheen extends StatelessWidget {
   /// Where the top wash fades out (fraction of the surface height).
   /// v1.12.34: fades sooner (0.45) so the light stays a thin edge glow rather
   /// than a gradient across the whole face.
+  /// v1.12.47: 0.45 -> 0.28 — on a 60-100px card the old fade painted nearly
+  /// half the face with a gradient, which is the curvature cue itself.
   final double topFade;
 
   /// Alpha of the 1px inner rim light (0 = off). A bright inner edge is the
@@ -43,9 +48,9 @@ class GlassSheen extends StatelessWidget {
   const GlassSheen({
     super.key,
     this.borderRadius = 14,
-    this.topAlpha = 0.14,
-    this.bottomAlpha = 0.03,
-    this.topFade = 0.45,
+    this.topAlpha = 0.07,
+    this.bottomAlpha = 0.02,
+    this.topFade = 0.28,
     this.rimAlpha = 0.0,
     this.asPositioned = true,
   });
@@ -98,16 +103,16 @@ class GlassSheen extends StatelessWidget {
   /// already-white fill, which is why the light themes looked fogged and
   /// edge-less (user: 暖沙 / 黛蓝 各页面预览效果很差). One rule for both.
   static double topAlphaFor(Brightness b) =>
-      b == Brightness.light ? 0.05 : 0.14;
+      b == Brightness.light ? 0.03 : 0.07;
 
   static double bottomAlphaFor(Brightness b) =>
-      b == Brightness.light ? 0.015 : 0.03;
+      b == Brightness.light ? 0.01 : 0.02;
 
   static LinearGradient fillOver(Color base,
       {Brightness brightness = Brightness.dark,
       double? topAlpha,
       double? bottomAlpha,
-      double topFade = 0.45}) {
+      double topFade = 0.28}) {
     final top = topAlpha ?? topAlphaFor(brightness);
     final bottom = bottomAlpha ?? bottomAlphaFor(brightness);
     return LinearGradient(

@@ -460,7 +460,7 @@ void main() {
       expect(gradient.colors.first.alpha, greaterThan(255 * 0.72 - 1));
       expect(gradient.colors.last.a, lessThan(1.0));
       expect(gradient.colors[1].a, moreOrLessEquals(0.72, epsilon: 0.01));
-      expect(gradient.stops, [0.0, 0.45, 1.0]);
+      expect(gradient.stops, [0.0, 0.28, 1.0]);
     });
 
     // v1.12.34 contract: the user rejected the v1.12.33 look as "弯曲立体感太强"
@@ -468,12 +468,14 @@ void main() {
     // a lens bulging out of the card). Glass must stay a FLAT lit slab, so the
     // specular values are capped — raising them again is a deliberate change,
     // not a silent regression.
+    // v1.12.47: the caps were tightened after the user still read the faces as
+    // bent (开面弯曲太厉害) — the old caps allowed the 0.14/0.45 dome back in.
     test('stays flat: no lens bulge', () {
       const sheen = GlassSheen();
-      expect(sheen.topAlpha, lessThanOrEqualTo(0.16));
-      expect(sheen.bottomAlpha, lessThanOrEqualTo(0.05));
+      expect(sheen.topAlpha, lessThanOrEqualTo(0.08));
+      expect(sheen.bottomAlpha, lessThanOrEqualTo(0.03));
       expect(sheen.rimAlpha, 0.0);
-      expect(sheen.topFade, lessThanOrEqualTo(0.5));
+      expect(sheen.topFade, lessThanOrEqualTo(0.30));
     });
 
     test('fillOver mirrors the same flat profile', () {
@@ -481,7 +483,7 @@ void main() {
       final gradient = GlassSheen.fillOver(Colors.white.withOpacity(0.72));
       expect(gradient.stops!.first, 0.0);
       expect(gradient.stops![1], sheen.topFade);
-      // Top wash adds at most ~14% white; the bottom stays near the base.
+      // Top wash adds at most ~7% white; the bottom stays near the base.
       final base = Colors.white.withOpacity(0.72);
       final topGain = gradient.colors.first.a - base.a;
       final bottomGain = gradient.colors.last.a - base.a;
