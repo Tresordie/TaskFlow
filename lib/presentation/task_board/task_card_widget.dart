@@ -199,7 +199,11 @@ class _TaskCardState extends ConsumerState<TaskCard> {
           // task在dashboard显示太淡). The strikethrough and the green
           // status bar already carry "done" — a light card stays solid
           // and only loses a whisper of presence.
-          opacity: isDone ? (isDark ? 0.78 : 0.94) : 1.0,
+          // v1.12.48: the dark board is no exception — with glass on, the
+          // 0.55 fill × the 0.78 fade leaves an effective 0.43 and the card
+          // sinks into the column tint (user: 已完成任务太暗淡了, dark
+          // screenshot). One whisper of fade for both brightnesses.
+          opacity: isDone ? 0.94 : 1.0,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeOutCubic,

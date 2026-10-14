@@ -253,10 +253,17 @@ void main() {
       expect(doneFade(tester), greaterThanOrEqualTo(0.90));
     });
 
-    testWidgets('v1.12.44: the dark board keeps its dimmed done card',
+    // v1.12.48: dark joined light at the solid end. The old 0.78 was fine for
+    // an opaque card, but under glass the fill (0.55) × the fade (0.78) left
+    // ~0.43 effective alpha and the done card sank into the column tint
+    // (user: 已完成任务太暗淡了). "Done" is carried by the strikethrough and
+    // the green status bar, not by the whole card going dim.
+    testWidgets('a done card stays solid on the dark board too',
         (tester) async {
       await pumpCardWith(tester, AppThemeMode.dark, TaskStatus.completed);
-      expect(doneFade(tester), closeTo(0.78, 0.01));
+      expect(doneFade(tester), greaterThanOrEqualTo(0.90));
+      await pumpCardWith(tester, AppThemeMode.dark, TaskStatus.archived);
+      expect(doneFade(tester), greaterThanOrEqualTo(0.90));
     });
 
     testWidgets('an open card is never faded', (tester) async {
