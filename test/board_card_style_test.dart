@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:taskflow/core/theme/app_colors.dart';
 import 'package:taskflow/data/models/task.dart';
 import 'package:taskflow/presentation/task_board/task_card_widget.dart';
 import 'package:taskflow/presentation/shared/glass_sheen.dart';
@@ -427,6 +428,23 @@ void main() {
       expect(spec.glass, isTrue);
       expect(spec.opacity, 0.6);
       expect(spec.blur, 22);
+    });
+
+    // v1.12.50: the light board-glass column tray must be a translucent frost
+    // (user: 暖沙/黛蓝背景色完全不透明). The old opaque surface blend is what
+    // the orbs had nothing to show through; this pins the recipe's key
+    // property so it can never silently go solid again.
+    test('v1.12.50: the light tray frost is translucent and white-based', () {
+      final frost = BoardGlassSpec.lightTrayFrost(AppColors.info);
+      expect(frost.opacity, lessThan(1.0),
+          reason: 'an opaque tray is the exact bug the user reported');
+      expect(frost.opacity, greaterThan(0.3),
+          reason: 'too sheer and the column loses its own surface');
+      // White-based: the frost is lighter than the raw accent it tints.
+      expect(
+        frost.computeLuminance(),
+        greaterThan(AppColors.info.computeLuminance()),
+      );
     });
 
     test('v1.12.33: panels follow Interface Glass, not the card slider', () {

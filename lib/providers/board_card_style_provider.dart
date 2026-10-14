@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' show Brightness;
+import 'package:flutter/material.dart' show Brightness, Color, Colors;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_glass_provider.dart';
@@ -118,6 +118,18 @@ class BoardGlassSpec {
   /// keeps meaning — but the card stays a white surface. Dark is untouched:
   /// low-alpha glass is the confirmed-good look there.
   static const cardOpacityFloorLight = 0.75;
+
+  /// v1.12.50: the light board-glass column tray — a translucent accent-tinted
+  /// frost the ambient orbs blur through. The old tray was an OPAQUE surface
+  /// blend (and with Interface Glass low it collapsed to a flat slab), so the
+  /// dashboard background read as solid paint with nothing to frost (user:
+  /// 暖沙/黛蓝背景色完全不透明，也不好看). White-based so the orbs show as soft
+  /// colour, accent kept at 0.10 so each column still carries its identity.
+  /// Only the LIGHT board-glass themes use this; dark board themes and the
+  /// non-glass paper recipe keep their own opaque tint.
+  static Color lightTrayFrost(Color accent) =>
+      Color.alphaBlend(accent.withOpacity(0.10), Colors.white)
+          .withOpacity(0.55);
 
   const BoardGlassSpec({
     required this.glass,

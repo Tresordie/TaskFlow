@@ -696,10 +696,22 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     // strength (glass off = the full reference tint).
     final appGlass = ref.watch(appGlassStyleProvider);
     final tintScale = appGlass.glass ? appGlass.opacity : 1.0;
-    final bg = notionTint
-        ? Color.alphaBlend(
-            accent.withOpacity(0.10 * tintScale), theme.colorScheme.surface)
-        : columnColor;
+    final isLight = theme.brightness == Brightness.light;
+    final bg = notionTint && isLight && glassTray
+        // v1.12.50: the light glass tray becomes a translucent accent-tinted
+        // frost so the ambient orbs blur through it (user: 暖沙/黛蓝背景色完全
+        // 不透明，也不好看). The old recipe was an OPAQUE surface blend, and
+        // with Interface Glass low it collapsed to a flat slab — nothing to
+        // frost, so the whole board read as solid paint. A white-based frost
+        // keeps the column's accent identity while the orbs behind give the
+        // blur something to work with; the cards stay near-solid on top for
+        // readability. Dark board themes (notionBoard / midnightBoard) are
+        // excluded — white frost over a dark column is the wrong material.
+        ? BoardGlassSpec.lightTrayFrost(accent)
+        : notionTint
+            ? Color.alphaBlend(accent.withOpacity(0.10 * tintScale),
+                theme.colorScheme.surface)
+            : columnColor;
     return KanbanColumn(
       key: ValueKey('kanban-col-${dimension.name}-${col.key}'),
       data: col,
