@@ -365,7 +365,7 @@ Start-Process -FilePath "taskflow\build\windows\x64\runner\Release\taskflow.exe"
 - ✅ v1.5.8：AI Prompts 打磨（可调大小/Settings 字体/质感）；✅ v1.5.7：AI Prompts 页面
 - ✅ v1.5.6：报告打磨（Headline 列表/去 sub-steps/10 天聚焦）
 - ✅ v1.5.5-3：alerts GitHub 风格/LaTeX TextScaler/表格 WidgetSpan/GFM 四能力
-- 双远程同步至 v1.12.51（`013a7b8`，本轮收尾文档提交后再刷新）
+- 双远程同步至 v1.12.51（release 提交 `fee0af0`）
 
 **进行中（v1.12.51 收尾复核）**：
 - 用户实机复核本轮浅色/玻璃五连（改动一律走共用出口 `AppColors` / `BoardGlassSpec` / `GlassSheen` / `TimelineRail`，不页面内打补丁）：① 玻璃「开面弯曲」是否已平（v1.12.47 降火后卡面应是平放的透光石板，非凸透镜）；② 深色 Done 卡是否不再发暗（v1.12.48 整卡淡出深浅统一 0.94）；③ 浅色卡片是否不再被列底色染色、是否带 3px 左侧优先级条、是否浮起（v1.12.49 卡片下限 0.75 + 优先级条 + 阴影）；④ 浅色看板背景是否成半透明玻璃、环境光晕是否从中透出（v1.12.50 列托盘霜化）；⑤ 新主题「碧落 / Teal Sky」观感（v1.12.51，在 设置 → 主题 选「碧落」；用户当前停黛蓝，未驱动前台窗口代切，避免误点 Settings 滑块）。
