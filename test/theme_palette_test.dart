@@ -18,10 +18,10 @@ import 'package:taskflow/core/theme/app_theme.dart';
 void main() {
   group('AppThemeMode catalog (v1.7.0, trimmed v1.8.0 / v1.12.17 / v1.12.36 / v1.12.37)',
       () {
-    test('9 themes with unique names and non-empty bilingual labels', () {
-      expect(AppThemeMode.values.length, 9);
+    test('10 themes with unique names and non-empty bilingual labels', () {
+      expect(AppThemeMode.values.length, 10);
       final names = AppThemeMode.values.map((m) => m.name).toSet();
-      expect(names.length, 9);
+      expect(names.length, 10);
       for (final mode in AppThemeMode.values) {
         expect(mode.label.isNotEmpty, isTrue, reason: '${mode.name}.label');
         expect(mode.labelZh.isNotEmpty, isTrue, reason: '${mode.name}.labelZh');
@@ -85,6 +85,7 @@ void main() {
       const light = [
         AppThemeMode.warmSand,
         AppThemeMode.inkBlue,
+        AppThemeMode.tealSky,
       ];
       const dark = [
         AppThemeMode.dark,
@@ -141,6 +142,20 @@ void main() {
       final p = AppThemeMode.inkBlue.palette;
       expect(p.primary, const Color(0xFF3F6C99));
       expect(AppThemeMode.inkBlue.labelZh, '黛蓝');
+    });
+
+    // v1.12.51: the third light hue. Locked so a refactor can't flatten it
+    // into warmSand (umber) or inkBlue (navy), and so its teal identity —
+    // the whole reason it exists — survives.
+    test('tealSky keeps the serene teal accent + porcelain canvas', () {
+      final p = AppThemeMode.tealSky.palette;
+      expect(p.primary, const Color(0xFF2E7D6B));
+      expect(p.bg, const Color(0xFFF2F6F6));
+      expect(AppThemeMode.tealSky.labelZh, '碧落');
+      expect(AppThemeMode.tealSky.brightness, Brightness.light);
+      // Joins the polished light glass dashboard (frost trays + glass cards).
+      expect(AppThemeMode.tealSky.boardGlass, isTrue);
+      expect(AppThemeMode.tealSky.boardTinted, isTrue);
     });
 
     test('notionBoard keeps the near-black kanban palette', () {

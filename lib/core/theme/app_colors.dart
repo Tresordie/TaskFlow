@@ -165,6 +165,27 @@ class AppColors {
     primaryGhost: Color(0xFFE4ECF4),
   );
 
+  // ─── Teal Sky (碧落, v1.12.51) ───
+  // A serene light theme after clear sky over still water: a cool porcelain
+  // canvas with the faintest teal cast, crisp white cards, and a deep muted
+  // teal accent. The third point of the light triangle — warmSand runs warm
+  // (umber/caramel), inkBlue runs cool-navy, tealSky runs blue-green — so the
+  // family gains range without a fourth candy pastel (the user pruned those).
+  // The accent is deliberately dark enough to carry white button text
+  // (≥4.5:1) and the ink clears AAA on both canvas and card.
+  static const ThemePalette tealSky = ThemePalette(
+    bg: Color(0xFFF2F6F6),
+    surface: Color(0xFFFBFDFD),
+    card: Color(0xFFFFFFFF),
+    border: Color(0xFFDBE5E4),
+    textPrimary: Color(0xFF1E3A34),
+    textSecondary: Color(0xFF5E736D),
+    primary: Color(0xFF2E7D6B),
+    primaryLight: Color(0xFF79AE9F),
+    primaryDark: Color(0xFF1F5C4E),
+    primaryGhost: Color(0xFFE6F0ED),
+  );
+
   // ═════════════ Board-tinted family (v1.12.19) ═════════════
   // Notion-template-style palettes (user reference screenshots): every
   // kanban column is tinted by its own semantic accent (see the

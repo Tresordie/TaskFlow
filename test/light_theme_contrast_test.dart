@@ -18,7 +18,11 @@ import 'package:taskflow/providers/board_card_style_provider.dart';
 /// unreadable text on paper. Every rule below pins one of those regressions
 /// with a measured WCAG ratio, so the light themes cannot drift back to haze.
 void main() {
-  const lightThemes = [AppThemeMode.warmSand, AppThemeMode.inkBlue];
+  const lightThemes = [
+    AppThemeMode.warmSand,
+    AppThemeMode.inkBlue,
+    AppThemeMode.tealSky,
+  ];
 
   /// WCAG 2.1 contrast ratio between two opaque colors.
   double contrast(Color a, Color b) {

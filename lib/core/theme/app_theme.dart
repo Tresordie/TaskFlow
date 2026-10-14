@@ -6,6 +6,8 @@ enum AppThemeMode {
   warmSand,
   // v1.7.0: muted-quality light theme.
   inkBlue,
+  // v1.12.51: serene teal light theme — the third hue of the light family.
+  tealSky,
   dark,
   nordNight,
   // v1.12.18: Notion-template near-black kanban (accent-tinted columns).
@@ -32,6 +34,7 @@ enum AppThemeMode {
   bool get boardTinted => switch (this) {
         AppThemeMode.warmSand ||
         AppThemeMode.inkBlue ||
+        AppThemeMode.tealSky ||
         AppThemeMode.notionBoard ||
         AppThemeMode.midnightBoard =>
           true,
@@ -44,7 +47,10 @@ enum AppThemeMode {
   /// tune opacity/blur, and the global glass toggle can override — but these
   /// two themes lead with the liquid-glass look out of the box.
   bool get boardGlass => switch (this) {
-        AppThemeMode.warmSand || AppThemeMode.inkBlue => true,
+        AppThemeMode.warmSand ||
+        AppThemeMode.inkBlue ||
+        AppThemeMode.tealSky =>
+          true,
         _ => false,
       };
 
@@ -54,6 +60,8 @@ enum AppThemeMode {
         return 'Warm Sand';
       case AppThemeMode.inkBlue:
         return 'Ink Blue';
+      case AppThemeMode.tealSky:
+        return 'Teal Sky';
       case AppThemeMode.dark:
         return 'Dark';
       case AppThemeMode.nordNight:
@@ -77,6 +85,8 @@ enum AppThemeMode {
         return '暖沙';
       case AppThemeMode.inkBlue:
         return '黛蓝';
+      case AppThemeMode.tealSky:
+        return '碧落';
       case AppThemeMode.dark:
         return '暗夜模式';
       case AppThemeMode.nordNight:
@@ -100,6 +110,8 @@ enum AppThemeMode {
         return AppColors.warmSand;
       case AppThemeMode.inkBlue:
         return AppColors.inkBlue;
+      case AppThemeMode.tealSky:
+        return AppColors.tealSky;
       case AppThemeMode.dark:
         return AppColors.dark;
       case AppThemeMode.nordNight:
@@ -121,6 +133,7 @@ enum AppThemeMode {
     switch (this) {
       case AppThemeMode.warmSand:
       case AppThemeMode.inkBlue:
+      case AppThemeMode.tealSky:
         return Brightness.light;
       case AppThemeMode.dark:
       case AppThemeMode.nordNight:
