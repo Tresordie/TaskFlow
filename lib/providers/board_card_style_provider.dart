@@ -36,8 +36,13 @@ class BoardCardStyle {
   /// v1.12.16: theme-aware — dark glass columns make 55% look great, but
   /// on LIGHT themes 55% white over the pale surfaces reads as dim mud, so
   /// enabling glass there drops to 85% instead (see [glassDefaultOpacityLight]).
+  /// v1.12.49: 85% was still too sheer — every column is tinted by its own
+  /// accent, so the 15% bleed dyed the Done cards green-grey and the To Do
+  /// cards grey (same card, different colour per column — user: 暖沙/黛蓝
+  /// dashboard 不够美观). The Settings-toggle path now matches the v1.12.45
+  /// conclusion for the theme-glass path: light glass stays nearly solid.
   static const glassDefaultOpacity = 0.55;
-  static const glassDefaultOpacityLight = 0.85;
+  static const glassDefaultOpacityLight = 0.97;
 
   /// Blur floor keeps the effect meaningful — 0 would just duplicate
   /// "glass off" (plain translucency, no frosting).
@@ -105,6 +110,15 @@ class BoardGlassSpec {
   /// 50% fill lets the ambient gradient bleed through as haze.
   static const panelOpacityFloorLight = 0.88;
 
+  /// v1.12.49: the cards get a paper floor too. The panel floor existed but
+  /// the card fill did not, so a slider dragged low (or carried over from a
+  /// dark session — the user's persisted value was 0.20) let 80% of the
+  /// column accent dye the card and the board sank into mud (user: 暖沙/黛蓝
+  /// dashboard 不够美观). 0.75 still leaves a visible tint bleed — the slider
+  /// keeps meaning — but the card stays a white surface. Dark is untouched:
+  /// low-alpha glass is the confirmed-good look there.
+  static const cardOpacityFloorLight = 0.75;
+
   const BoardGlassSpec({
     required this.glass,
     required this.opacity,
@@ -124,11 +138,15 @@ class BoardGlassSpec {
     // Theme-led glass on an untouched slider falls back to the iOS default so
     // the surface is actually translucent out of the box; a tuned slider is
     // honored as-is (1.0 → solid).
-    final opacity = (themeGlass && !style.glass && style.opacity >= 1.0)
+    var opacity = (themeGlass && !style.glass && style.opacity >= 1.0)
         ? (isLight
             ? BoardCardStyle.iosGlassDefaultOpacityLight
             : BoardCardStyle.iosGlassDefaultOpacity)
         : style.opacity;
+    // v1.12.49: paper never drops below the card readability floor.
+    if (isLight && opacity < cardOpacityFloorLight) {
+      opacity = cardOpacityFloorLight;
+    }
     // Panels: the Interface Glass domain owns the surfaces around the cards
     // (v1.12.10), so when it is on they take its opacity/blur; otherwise they
     // follow the card recipe, floored for readability.
@@ -188,11 +206,19 @@ class BoardCardStyleNotifier extends StateNotifier<BoardCardStyle> {
       final glass = prefs.getBool(_glassKey);
       final blur = prefs.getDouble(_blurKey);
       if (opacity == null && glass == null && blur == null) return;
+      var op = opacity == null
+          ? 1.0
+          : opacity.clamp(
+              BoardCardStyle.minOpacity, BoardCardStyle.maxOpacity);
+      // v1.12.49 migration: 0.85 was the pre-fix light-glass auto-drop —
+      // nobody chose it, the toggle wrote it, and it let the column accent
+      // dye the cards. Anyone sitting on exactly that value gets lifted to
+      // the new near-solid default; a tuned slider is left alone.
+      if ((glass ?? false) && (op - 0.85).abs() < 0.001) {
+        op = BoardCardStyle.glassDefaultOpacityLight;
+      }
       state = BoardCardStyle(
-        opacity: opacity == null
-            ? 1.0
-            : opacity.clamp(
-                BoardCardStyle.minOpacity, BoardCardStyle.maxOpacity),
+        opacity: op,
         glass: glass ?? false,
         blur: blur == null
             ? BoardCardStyle.defaultBlur

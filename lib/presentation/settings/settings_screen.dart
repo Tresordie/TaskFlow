@@ -1172,11 +1172,17 @@ class _PreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = theme.colorScheme;
+    // v1.12.49: mirror the paper card floor the real board applies, so the
+    // preview never shows a fill the actual cards would refuse to render.
+    final previewOpacity = !isDark &&
+            style.opacity < BoardGlassSpec.cardOpacityFloorLight
+        ? BoardGlassSpec.cardOpacityFloorLight
+        : style.opacity;
     final card = Container(
       width: 240,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: baseCard.withOpacity(style.opacity),
+        color: baseCard.withOpacity(previewOpacity),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           // v1.12.11: theme-aware glass rim, same recipe as TaskCard —

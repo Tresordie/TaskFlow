@@ -70,15 +70,19 @@ void main() {
       expect(n.state.opacity, BoardCardStyle.glassDefaultOpacity);
     });
 
-    test('setGlass(true, lightTheme) drops to the light default (0.85)',
+    test('setGlass(true, lightTheme) drops to the light default (0.97)',
         () async {
       SharedPreferences.setMockInitialValues({});
       final n = BoardCardStyleNotifier();
       // v1.12.16: 55% white over light surfaces reads as dim mud — the
-      // light-theme auto-drop lands much higher.
+      // light-theme auto-drop lands much higher. v1.12.49: higher still —
+      // at 85% the column accent bled through and dyed the cards
+      // (Done green-grey, To Do grey), so light glass is now near-solid.
       await n.setGlass(true, lightTheme: true);
       expect(n.state.glass, isTrue);
       expect(n.state.opacity, BoardCardStyle.glassDefaultOpacityLight);
+      expect(BoardCardStyle.glassDefaultOpacityLight,
+          greaterThanOrEqualTo(0.95));
     });
 
     test('setGlass(true) keeps a custom (already translucent) opacity',
@@ -158,6 +162,30 @@ void main() {
       final n = BoardCardStyleNotifier();
       await Future<void>.delayed(Duration.zero);
       expect(n.state.isDefault, isTrue);
+    });
+
+    // v1.12.49: 0.85 was the pre-fix light-glass auto-drop — the toggle
+    // wrote it, nobody tuned to it, and it let the column accent dye the
+    // cards. A persisted 0.85 with glass on is lifted to the new near-solid
+    // default on restore; a hand-tuned value is left alone.
+    test('restore migrates the old 0.85 light-glass auto-drop', () async {
+      SharedPreferences.setMockInitialValues({
+        'settings.boardCardOpacity': 0.85,
+        'settings.boardCardGlass': true,
+      });
+      final n = BoardCardStyleNotifier();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(n.state.opacity, BoardCardStyle.glassDefaultOpacityLight);
+    });
+
+    test('restore keeps a hand-tuned opacity near the old default', () async {
+      SharedPreferences.setMockInitialValues({
+        'settings.boardCardOpacity': 0.80,
+        'settings.boardCardGlass': true,
+      });
+      final n = BoardCardStyleNotifier();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(n.state.opacity, 0.80);
     });
   });
 
@@ -271,6 +299,20 @@ void main() {
       expect(doneFade(tester), 1.0);
     });
 
+    // v1.12.49: the 3px left priority bar the TaskCard doc has advertised
+    // since v1.10.0 — painted for the first time, and only on paper. The
+    // dark board's colour identity (glass + orbs) is confirmed good; the
+    // light board's white slabs needed per-card colour anchoring.
+    testWidgets('paper cards carry the left priority bar', (tester) async {
+      await pumpCardWith(tester, AppThemeMode.inkBlue, TaskStatus.inProgress);
+      expect(find.byKey(const Key('priority-bar')), findsOneWidget);
+    });
+
+    testWidgets('the dark board keeps its bar-free card', (tester) async {
+      await pumpCardWith(tester, AppThemeMode.dark, TaskStatus.inProgress);
+      expect(find.byKey(const Key('priority-bar')), findsNothing);
+    });
+
     testWidgets('board-glass theme (inkBlue) renders glass by default',
         (tester) async {
       SharedPreferences.setMockInitialValues({});
@@ -326,7 +368,7 @@ void main() {
     testWidgets('a tuned opacity slider still drives the glass fill',
         (tester) async {
       SharedPreferences.setMockInitialValues({});
-      final notifier = BoardCardStyleNotifier()..setOpacity(0.40);
+      final notifier = BoardCardStyleNotifier()..setOpacity(0.80);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -337,7 +379,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       // Contract from v1.12.21: the slider is never bypassed by the theme
-      // default — the fill must land at 40% even on a board-glass theme.
+      // default — the fill must land at 80% even on a board-glass theme.
+      // (v1.12.49: the old 40% probe now sits below the paper card floor,
+      // so the slider value used here is above it.)
       final fills = tester
           .widgetList<DecoratedBox>(find.descendant(
               of: find.byType(TaskCard), matching: find.byType(DecoratedBox)))
@@ -346,9 +390,9 @@ void main() {
               : null)
           .whereType<Color>();
       expect(
-        fills.any((c) => (c.opacity - 0.40).abs() < 0.02),
+        fills.any((c) => (c.opacity - 0.80).abs() < 0.02),
         isTrue,
-        reason: 'expected a 40%-alpha glass fill, got $fills',
+        reason: 'expected an 80%-alpha glass fill, got $fills',
       );
     });
   });
@@ -410,12 +454,29 @@ void main() {
                   themeGlass: true, brightness: Brightness.dark)
               .opacity,
           BoardCardStyle.iosGlassDefaultOpacity);
-      // A slider the user actually tuned is honoured on either canvas.
+      // A slider the user actually tuned is honoured on either canvas…
+      expect(
+          BoardGlassSpec.resolve(
+                  const BoardCardStyle(opacity: 0.8, glass: true),
+                  themeGlass: true,
+                  brightness: Brightness.light)
+              .opacity,
+          0.8);
+      // …but v1.12.49: on paper the card fill stops at the readability floor
+      // (a dark-session 0.4 carried over to warm sand dyes the cards into
+      // mud); dark keeps honouring the low value — that is its look.
       expect(
           BoardGlassSpec.resolve(
                   const BoardCardStyle(opacity: 0.4, glass: true),
                   themeGlass: true,
                   brightness: Brightness.light)
+              .opacity,
+          BoardGlassSpec.cardOpacityFloorLight);
+      expect(
+          BoardGlassSpec.resolve(
+                  const BoardCardStyle(opacity: 0.4, glass: true),
+                  themeGlass: true,
+                  brightness: Brightness.dark)
               .opacity,
           0.4);
     });

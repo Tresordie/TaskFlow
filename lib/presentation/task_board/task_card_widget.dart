@@ -240,10 +240,12 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                       ),
                     ]
                   : [
+                      // v1.12.49: the light board's lift was too weak for
+                      // paper (0.07/9/2) — cards sat flat on the column.
                       BoxShadow(
-                        color: Colors.black.withOpacity(isDark ? 0.05 : 0.07),
-                        blurRadius: isDark ? 7 : 9,
-                        offset: const Offset(0, 2),
+                        color: Colors.black.withOpacity(isDark ? 0.05 : 0.09),
+                        blurRadius: isDark ? 7 : 12,
+                        offset: Offset(0, isDark ? 2 : 3),
                       ),
                     ],
             ),
@@ -254,6 +256,27 @@ class _TaskCardState extends ConsumerState<TaskCard> {
               isDark: isDark,
               content: Stack(
                 children: [
+                  // v1.12.49: the 3px priority bar the class doc has always
+                  // advertised — never actually painted. On the dark board
+                  // the glass + orbs already carry the colour identity and
+                  // the look is confirmed good (v1.12.44 lesson: don't touch
+                  // it), so the bar is a LIGHT-theme addition: paper cards
+                  // were identical white slabs and the column pastels gave
+                  // every card the same faint tint.
+                  if (!isDark)
+                    Positioned(
+                      key: const Key('priority-bar'),
+                      left: 0,
+                      top: 8,
+                      bottom: 8,
+                      child: Container(
+                        width: 3,
+                        decoration: BoxDecoration(
+                          color: barColor,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
                   // Content (bottom of the stack).
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 11, 12, 11),
