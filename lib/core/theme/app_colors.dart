@@ -186,6 +186,28 @@ class AppColors {
     primaryGhost: Color(0xFFE6F0ED),
   );
 
+  // ─── Violet Dusk (暮紫, v1.12.52) ───
+  // The web task-dashboard reference the user pinned: a cool grey-mauve
+  // canvas, crisp white cards, and a confident violet running through the
+  // priority bars, chips and focus rings. The fourth hue of the light family
+  // — warmSand runs warm (umber), inkBlue cool-navy, tealSky blue-green,
+  // violetDusk violet. Deliberately a deep muted amethyst rather than the
+  // candy lavender pruned in v1.12.17: the accent carries white button text
+  // (5.6:1), the lilac-tinted ink clears AAA on canvas and card, and the
+  // ghost is the reference's lavender chip ground.
+  static const ThemePalette violetDusk = ThemePalette(
+    bg: Color(0xFFF3F2F7),
+    surface: Color(0xFFFAFAFD),
+    card: Color(0xFFFFFFFF),
+    border: Color(0xFFE2DFEC),
+    textPrimary: Color(0xFF2B2440),
+    textSecondary: Color(0xFF6B6480),
+    primary: Color(0xFF6755C9),
+    primaryLight: Color(0xFFA99BE0),
+    primaryDark: Color(0xFF4F3FA6),
+    primaryGhost: Color(0xFFEDEAF7),
+  );
+
   // ═════════════ Board-tinted family (v1.12.19) ═════════════
   // Notion-template-style palettes (user reference screenshots): every
   // kanban column is tinted by its own semantic accent (see the

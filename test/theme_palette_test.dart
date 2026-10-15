@@ -13,15 +13,15 @@ import 'package:taskflow/core/theme/app_theme.dart';
 ///    always lift off the canvas (the v1.4.98 Latte lesson, generalized);
 ///  - brightness grouping is correct (the GFM alert color table and the
 ///    buildTheme light/dark branches both depend on it);
-///  - the three kept light palettes carry their designed signature colors
+///  - the four kept light palettes carry their designed signature colors
 ///    so a refactor can't silently flatten them into each other.
 void main() {
   group('AppThemeMode catalog (v1.7.0, trimmed v1.8.0 / v1.12.17 / v1.12.36 / v1.12.37)',
       () {
-    test('10 themes with unique names and non-empty bilingual labels', () {
-      expect(AppThemeMode.values.length, 10);
+    test('11 themes with unique names and non-empty bilingual labels', () {
+      expect(AppThemeMode.values.length, 11);
       final names = AppThemeMode.values.map((m) => m.name).toSet();
-      expect(names.length, 10);
+      expect(names.length, 11);
       for (final mode in AppThemeMode.values) {
         expect(mode.label.isNotEmpty, isTrue, reason: '${mode.name}.label');
         expect(mode.labelZh.isNotEmpty, isTrue, reason: '${mode.name}.labelZh');
@@ -86,6 +86,7 @@ void main() {
         AppThemeMode.warmSand,
         AppThemeMode.inkBlue,
         AppThemeMode.tealSky,
+        AppThemeMode.violetDusk,
       ];
       const dark = [
         AppThemeMode.dark,
@@ -156,6 +157,21 @@ void main() {
       // Joins the polished light glass dashboard (frost trays + glass cards).
       expect(AppThemeMode.tealSky.boardGlass, isTrue);
       expect(AppThemeMode.tealSky.boardTinted, isTrue);
+    });
+
+    // v1.12.52: the fourth light hue, from the user's web-dashboard
+    // reference. Locked so a refactor can't flatten it into the other three
+    // lights — and so it stays the deep amethyst, never drifting back toward
+    // the candy lavender pruned in v1.12.17.
+    test('violetDusk keeps the deep amethyst accent + mauve canvas', () {
+      final p = AppThemeMode.violetDusk.palette;
+      expect(p.primary, const Color(0xFF6755C9));
+      expect(p.bg, const Color(0xFFF3F2F7));
+      expect(AppThemeMode.violetDusk.labelZh, '暮紫');
+      expect(AppThemeMode.violetDusk.brightness, Brightness.light);
+      // Joins the polished light glass dashboard (frost trays + glass cards).
+      expect(AppThemeMode.violetDusk.boardGlass, isTrue);
+      expect(AppThemeMode.violetDusk.boardTinted, isTrue);
     });
 
     test('notionBoard keeps the near-black kanban palette', () {

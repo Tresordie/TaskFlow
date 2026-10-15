@@ -8,6 +8,9 @@ enum AppThemeMode {
   inkBlue,
   // v1.12.51: serene teal light theme — the third hue of the light family.
   tealSky,
+  // v1.12.52: deep-violet light theme from the user's dashboard reference —
+  // the fourth hue of the light family.
+  violetDusk,
   dark,
   nordNight,
   // v1.12.18: Notion-template near-black kanban (accent-tinted columns).
@@ -35,6 +38,7 @@ enum AppThemeMode {
         AppThemeMode.warmSand ||
         AppThemeMode.inkBlue ||
         AppThemeMode.tealSky ||
+        AppThemeMode.violetDusk ||
         AppThemeMode.notionBoard ||
         AppThemeMode.midnightBoard =>
           true,
@@ -49,7 +53,8 @@ enum AppThemeMode {
   bool get boardGlass => switch (this) {
         AppThemeMode.warmSand ||
         AppThemeMode.inkBlue ||
-        AppThemeMode.tealSky =>
+        AppThemeMode.tealSky ||
+        AppThemeMode.violetDusk =>
           true,
         _ => false,
       };
@@ -62,6 +67,8 @@ enum AppThemeMode {
         return 'Ink Blue';
       case AppThemeMode.tealSky:
         return 'Teal Sky';
+      case AppThemeMode.violetDusk:
+        return 'Violet Dusk';
       case AppThemeMode.dark:
         return 'Dark';
       case AppThemeMode.nordNight:
@@ -87,6 +94,8 @@ enum AppThemeMode {
         return '黛蓝';
       case AppThemeMode.tealSky:
         return '碧落';
+      case AppThemeMode.violetDusk:
+        return '暮紫';
       case AppThemeMode.dark:
         return '暗夜模式';
       case AppThemeMode.nordNight:
@@ -112,6 +121,8 @@ enum AppThemeMode {
         return AppColors.inkBlue;
       case AppThemeMode.tealSky:
         return AppColors.tealSky;
+      case AppThemeMode.violetDusk:
+        return AppColors.violetDusk;
       case AppThemeMode.dark:
         return AppColors.dark;
       case AppThemeMode.nordNight:
@@ -134,6 +145,7 @@ enum AppThemeMode {
       case AppThemeMode.warmSand:
       case AppThemeMode.inkBlue:
       case AppThemeMode.tealSky:
+      case AppThemeMode.violetDusk:
         return Brightness.light;
       case AppThemeMode.dark:
       case AppThemeMode.nordNight:

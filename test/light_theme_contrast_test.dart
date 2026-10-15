@@ -22,6 +22,7 @@ void main() {
     AppThemeMode.warmSand,
     AppThemeMode.inkBlue,
     AppThemeMode.tealSky,
+    AppThemeMode.violetDusk,
   ];
 
   /// WCAG 2.1 contrast ratio between two opaque colors.
