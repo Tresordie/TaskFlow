@@ -5,12 +5,53 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:taskflow/core/theme/app_colors.dart';
 import 'package:taskflow/data/models/task.dart';
+import 'package:taskflow/data/repositories/task_repository.dart';
 import 'package:taskflow/presentation/task_board/task_card_widget.dart';
+import 'package:taskflow/presentation/task_board/kanban_column.dart';
+import 'package:taskflow/presentation/task_board/task_board_screen.dart';
 import 'package:taskflow/presentation/shared/glass_sheen.dart';
 import 'package:taskflow/providers/board_card_style_provider.dart';
 import 'package:taskflow/providers/app_glass_provider.dart';
+import 'package:taskflow/providers/task_providers.dart';
 import 'package:taskflow/providers/theme_provider.dart';
 import 'package:taskflow/core/theme/app_theme.dart';
+
+/// In-memory repo so the tray-fill probe drives the REAL screen stack
+/// without Isar (same shape as repro_board_add_freeze_test's fake).
+class _TrayProbeRepo extends TaskRepository {
+  final _tasks = <Task>[];
+  int _nextId = 1;
+
+  @override
+  Future<List<Task>> getAllTasks() async => List.of(_tasks);
+
+  @override
+  Future<int> createTask({
+    required String title,
+    String? description,
+    Priority priority = Priority.p2Medium,
+    List<String> tags = const [],
+    List<String> subSteps = const [],
+    DateTime? dueDate,
+    String project = '',
+    TaskStatus status = TaskStatus.planned,
+  }) async {
+    final id = _nextId++;
+    _tasks.add(Task()
+      ..id = id
+      ..uid = 'uid-$id'
+      ..title = title
+      ..priority = priority
+      ..status = status
+      ..tags = List.of(tags)
+      ..project = project
+      ..dueDate = dueDate
+      ..createdAt = DateTime.now()
+      ..updatedAt = DateTime.now().millisecondsSinceEpoch
+      ..sortOrder = id);
+    return id;
+  }
+}
 
 /// v1.12.3 tests for the Today-board card style settings: opacity bounds,
 /// glass mode, the auto-translucency applied when glass is first enabled,
@@ -430,22 +471,91 @@ void main() {
       expect(spec.blur, 22);
     });
 
-    // v1.12.50: the light board-glass column tray must be a translucent frost
-    // (user: 暖沙/黛蓝背景色完全不透明). The old opaque surface blend is what
-    // the orbs had nothing to show through; this pins the recipe's key
-    // property so it can never silently go solid again.
-    test('v1.12.50: the light tray frost is translucent and white-based', () {
-      final frost = BoardGlassSpec.lightTrayFrost(AppColors.info);
-      expect(frost.opacity, lessThan(1.0),
-          reason: 'an opaque tray is the exact bug the user reported');
-      expect(frost.opacity, greaterThan(0.3),
-          reason: 'too sheer and the column loses its own surface');
-      // White-based: the frost is lighter than the raw accent it tints.
-      expect(
-        frost.computeLuminance(),
-        greaterThan(AppColors.info.computeLuminance()),
-      );
+    // v1.12.54 (supersedes the v1.12.50 frost contract): the light tray is
+    // PURE accent-tinted transparency — no white frost (user: 浅色主题的任务
+    // dashboard的容器可以不用磨砂效果，而是可以调节透明度的效果). The frost
+    // was a fixed milky pane whose alpha barely changed the look over a
+    // near-white canvas, so the slider had nothing to tune; these pins keep
+    // the tray sheer, accent-hued and slider-scaled forever.
+    test('v1.12.54: the light tray is pure adjustable tint, no frost', () {
+      // Full strength = the same accent@10% the non-glass tray uses.
+      final full = BoardGlassSpec.lightTrayTint(AppColors.info);
+      expect(full, AppColors.info.withOpacity(0.10));
+      // The Interface Glass slider scales it down toward full transparency…
+      final sheer =
+          BoardGlassSpec.lightTrayTint(AppColors.info, tintScale: 0.2);
+      expect(sheer.opacity, closeTo(0.02, 0.001));
+      // …and the milky frost can never come back: at full strength the tint
+      // must stay DARKER than the old white-based frost would have been.
+      final oldFrost =
+          Color.alphaBlend(AppColors.info.withOpacity(0.10), Colors.white)
+              .withOpacity(0.55);
+      expect(full.computeLuminance(), lessThan(oldFrost.computeLuminance()),
+          reason: 'a white-based frost returned');
     });
+
+    /// Pumps the real TaskBoardScreen under [interfaceOpacity] (null =
+    /// Interface Glass off) and returns the tray fill color of the first
+    /// kanban column — the page-level exit that pins the slider wiring.
+    /// Each call runs in its OWN testWidgets: a shared tester would reuse the
+    /// kanban AnimatedContainer elements across pumps and smear one state
+    /// into the next.
+    Future<Color> pumpAndReadTrayFill(WidgetTester tester,
+        {double? interfaceOpacity}) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final repo = _TrayProbeRepo();
+      await repo.createTask(title: 'Seed task');
+      final theme = ThemeModeNotifier()..setTheme(AppThemeMode.violetDusk);
+      final appGlass = AppGlassStyleNotifier();
+      if (interfaceOpacity != null) {
+        await appGlass.setGlass(true);
+        await appGlass.setOpacity(interfaceOpacity);
+      }
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          taskRepositoryProvider.overrideWith((ref) => repo),
+          themeModeProvider.overrideWith((ref) => theme),
+          appGlassStyleProvider.overrideWith((ref) => appGlass),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.buildTheme(AppThemeMode.violetDusk),
+          home: const Scaffold(body: TaskBoardScreen()),
+        ),
+      ));
+      // Fixed long frames: the ambient orbs animate forever (so pumpAndSettle
+      // never settles), and the tray's AnimatedContainer must finish its
+      // 160ms transition before the fill is read.
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      final container = tester.widget<AnimatedContainer>(find
+          .descendant(
+              of: find.byType(KanbanColumn),
+              matching: find.byType(AnimatedContainer))
+          .first);
+      return (container.decoration as BoxDecoration).color!;
+    }
+
+    testWidgets('v1.12.54: the board tray fill follows Interface Glass',
+        (tester) async {
+      // The user's state — Interface Glass at 0.2 — must leave the tray
+      // sheer (accent@2%), not the old fixed 0.55 frost.
+      final sheer = await pumpAndReadTrayFill(tester, interfaceOpacity: 0.2);
+      expect(sheer.opacity, lessThan(0.05),
+          reason: 'the tray ignored the Interface Glass slider');
+      expect(sheer, AppColors.statusColor(TaskStatus.planned).withOpacity(0.02));
+    }, timeout: const Timeout(Duration(seconds: 120)));
+
+    testWidgets('v1.12.54: Interface Glass off keeps the full reference tint',
+        (tester) async {
+      // Interface Glass off → full accent@10% tint (never the old frost).
+      final full = await pumpAndReadTrayFill(tester);
+      expect(full, AppColors.statusColor(TaskStatus.planned).withOpacity(0.10));
+    }, timeout: const Timeout(Duration(seconds: 120)));
 
     test('v1.12.33: panels follow Interface Glass, not the card slider', () {
       final spec = BoardGlassSpec.resolve(

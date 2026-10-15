@@ -119,17 +119,19 @@ class BoardGlassSpec {
   /// low-alpha glass is the confirmed-good look there.
   static const cardOpacityFloorLight = 0.75;
 
-  /// v1.12.50: the light board-glass column tray — a translucent accent-tinted
-  /// frost the ambient orbs blur through. The old tray was an OPAQUE surface
-  /// blend (and with Interface Glass low it collapsed to a flat slab), so the
-  /// dashboard background read as solid paint with nothing to frost (user:
-  /// 暖沙/黛蓝背景色完全不透明，也不好看). White-based so the orbs show as soft
-  /// colour, accent kept at 0.10 so each column still carries its identity.
-  /// Only the LIGHT board-glass themes use this; dark board themes and the
-  /// non-glass paper recipe keep their own opaque tint.
-  static Color lightTrayFrost(Color accent) =>
-      Color.alphaBlend(accent.withOpacity(0.10), Colors.white)
-          .withOpacity(0.55);
+  /// v1.12.54: the light board-glass column tray — PURE accent-tinted
+  /// transparency, no white frost (user: 浅色主题的任务dashboard的容器可以不用
+  /// 磨砂效果，而是可以调节透明度的效果). The v1.12.50 white frost read as a
+  /// fixed milky pane, and because the frost sits on a near-white canvas its
+  /// alpha barely changed the look (0.55 → 0.2 moved each channel by ~3) —
+  /// the slider had nothing to tune. The tray is now the same accent@10% the
+  /// non-glass tray uses (v1.12.21), scaled by [tintScale] — the Interface
+  /// Glass opacity slider — from the reference tint down to fully
+  /// transparent. The orbs show through directly; the near-solid white cards
+  /// on top carry the readability, and the dark board themes keep their own
+  /// card@40% recipe.
+  static Color lightTrayTint(Color accent, {double tintScale = 1.0}) =>
+      accent.withOpacity(0.10 * tintScale);
 
   const BoardGlassSpec({
     required this.glass,
