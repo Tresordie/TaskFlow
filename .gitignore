@@ -54,3 +54,4 @@ markdown-alerts-latex.json
 # v1.12.42: dev window captures (tools/cap_window.ps1) land in the repo root
 # — they are verification artifacts, never source.
 /*.png
+test/failures/
