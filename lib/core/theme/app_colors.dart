@@ -126,17 +126,19 @@ class AppColors {
   );
 
   // ─── Warm Sand (暖沙, v1.6.0) ───
-  // A warm paper-like light theme: soft sand canvas, deep umber text and a
-  // caramel accent. Reads like a well-lit notebook — gentler than the cool
-  // indigo default for users who prefer warm neutrals.
+  // A warm paper-like light theme: deep umber text and a caramel accent.
+  // v1.12.20: Notion-template retune — pure-white cards, hairline border.
+  // v1.12.55: the base joins the light family's shared NEUTRAL canvas
+  // (user: 所有的浅色主题…不用整体一色 — the cream-tinted canvas, panel and
+  // hairline made the whole page one warm wash and drowned the columns' own
+  // semantic colours; same treatment as violetDusk in v1.12.53). The warmth
+  // now lives only in the theme's identity pieces: the caramel accent, the
+  // warm ghost and the umber ink.
   static const ThemePalette warmSand = ThemePalette(
-    // v1.12.20: Notion-template retune — warm paper canvas, pure-white
-    // cards, hairline border, ink+warm-gray text, and Notion's muted brown
-    // accent (the tan primary read as muddy against the quieter base).
-    bg: Color(0xFFF8F6F1),
-    surface: Color(0xFFFEFDFB),
+    bg: Color(0xFFF4F5F7),
+    surface: Color(0xFFFDFDFE),
     card: Color(0xFFFFFFFF),
-    border: Color(0xFFE7E3D8),
+    border: Color(0xFFE4E6EB),
     textPrimary: Color(0xFF37352F),
     textSecondary: Color(0xFF7D786E),
     primary: Color(0xFF9F6B53),
@@ -147,16 +149,17 @@ class AppColors {
 
   // ─── Ink Blue (黛蓝, v1.7.0) ───
   // Rice-paper canvas with a deep ink-blue accent, like blue-and-white
-  // porcelain. Cooler and calmer than the indigo default — a scholarly,
-  // understated take on blue.
+  // porcelain — a scholarly, understated take on blue.
+  // v1.12.20: Notion-template retune — pure white cards, hairline border.
+  // v1.12.55: the base joins the light family's shared NEUTRAL canvas
+  // (user: 所有的浅色主题…不用整体一色). The porcelain identity stays in
+  // the ink-blue accent, ghost and cool ink; the page no longer carries a
+  // blue cast. This is the theme the legacy light* aliases below track.
   static const ThemePalette inkBlue = ThemePalette(
-    // v1.12.20: Notion-template retune — quieter porcelain canvas, pure
-    // white cards, hairline border; the muted ink-blue accent is kept
-    // (already Notion-muted).
-    bg: Color(0xFFF5F7F9),
+    bg: Color(0xFFF4F5F7),
     surface: Color(0xFFFDFDFE),
     card: Color(0xFFFFFFFF),
-    border: Color(0xFFE4E8EC),
+    border: Color(0xFFE4E6EB),
     textPrimary: Color(0xFF2C3A4D),
     textSecondary: Color(0xFF6E7A87),
     primary: Color(0xFF3F6C99),
@@ -166,18 +169,18 @@ class AppColors {
   );
 
   // ─── Teal Sky (碧落, v1.12.51) ───
-  // A serene light theme after clear sky over still water: a cool porcelain
-  // canvas with the faintest teal cast, crisp white cards, and a deep muted
-  // teal accent. The third point of the light triangle — warmSand runs warm
-  // (umber/caramel), inkBlue runs cool-navy, tealSky runs blue-green — so the
-  // family gains range without a fourth candy pastel (the user pruned those).
-  // The accent is deliberately dark enough to carry white button text
-  // (≥4.5:1) and the ink clears AAA on both canvas and card.
+  // A serene light theme after clear sky over still water — the third hue of
+  // the light family. The accent is deliberately dark enough to carry white
+  // button text and the ink clears AAA on canvas and card.
+  // v1.12.55: the base joins the shared NEUTRAL canvas (user: 所有的浅色
+  // 主题…不用整体一色 — the teal-cast canvas read as one wash). The teal
+  // identity stays in the deep teal accent, the seafoam ghost and the
+  // teal-cast ink; the family now differs by accent, not by page tint.
   static const ThemePalette tealSky = ThemePalette(
-    bg: Color(0xFFF2F6F6),
-    surface: Color(0xFFFBFDFD),
+    bg: Color(0xFFF4F5F7),
+    surface: Color(0xFFFDFDFE),
     card: Color(0xFFFFFFFF),
-    border: Color(0xFFDBE5E4),
+    border: Color(0xFFE4E6EB),
     textPrimary: Color(0xFF1E3A34),
     textSecondary: Color(0xFF5E736D),
     primary: Color(0xFF2E7D6B),
@@ -333,10 +336,12 @@ class AppColors {
   // brighten together with the rest of the theme instead of staying dim.
   // v1.12.17: the light anchor moved from the deleted indigoLight to the
   // kept inkBlue palette.
-  static const Color lightBg = Color(0xFFF5F7F9);
+  // v1.12.55: the light base is the family's shared neutral canvas — these
+  // mirror inkBlue, which now carries it too.
+  static const Color lightBg = Color(0xFFF4F5F7);
   static const Color lightSurface = Color(0xFFFDFDFE);
   static const Color lightCard = Color(0xFFFFFFFF);
-  static const Color lightBorder = Color(0xFFE4E8EC);
+  static const Color lightBorder = Color(0xFFE4E6EB);
   static const Color lightTextPrimary = Color(0xFF2C3A4D);
   static const Color lightTextSecondary = Color(0xFF6E7A87);
   static const Color darkBg = Color(0xFF142036);
