@@ -162,11 +162,13 @@ void main() {
     // v1.12.52: the fourth light hue, from the user's web-dashboard
     // reference. Locked so a refactor can't flatten it into the other three
     // lights — and so it stays the deep amethyst, never drifting back toward
-    // the candy lavender pruned in v1.12.17.
-    test('violetDusk keeps the deep amethyst accent + mauve canvas', () {
+    // the candy lavender pruned in v1.12.17. v1.12.53: the canvas lock moved
+    // to the neutral base (F4F5F7) — the theme's identity is its accent, not
+    // a violet wash.
+    test('violetDusk keeps the deep amethyst accent + neutral canvas', () {
       final p = AppThemeMode.violetDusk.palette;
       expect(p.primary, const Color(0xFF6755C9));
-      expect(p.bg, const Color(0xFFF3F2F7));
+      expect(p.bg, const Color(0xFFF4F5F7));
       expect(AppThemeMode.violetDusk.labelZh, '暮紫');
       expect(AppThemeMode.violetDusk.brightness, Brightness.light);
       // Joins the polished light glass dashboard (frost trays + glass cards).

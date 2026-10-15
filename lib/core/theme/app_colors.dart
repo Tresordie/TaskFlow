@@ -186,20 +186,20 @@ class AppColors {
     primaryGhost: Color(0xFFE6F0ED),
   );
 
-  // ─── Violet Dusk (暮紫, v1.12.52) ───
-  // The web task-dashboard reference the user pinned: a cool grey-mauve
-  // canvas, crisp white cards, and a confident violet running through the
-  // priority bars, chips and focus rings. The fourth hue of the light family
-  // — warmSand runs warm (umber), inkBlue cool-navy, tealSky blue-green,
-  // violetDusk violet. Deliberately a deep muted amethyst rather than the
-  // candy lavender pruned in v1.12.17: the accent carries white button text
-  // (5.6:1), the lilac-tinted ink clears AAA on canvas and card, and the
-  // ghost is the reference's lavender chip ground.
+  // ─── Violet Dusk (暮紫, v1.12.52 · neutral-base retune v1.12.53) ───
+  // The web task-dashboard reference the user pinned. v1.12.53 moved the
+  // base to the reference's NEUTRAL grey (user: 浅色主题的各模块可以不用整
+  // 体一色 — the first pass tinted canvas, panel and hairline all violet,
+  // so the whole page read as one wash and the columns' own semantic colors
+  // drowned in it). Now the base is neutral and violet lives only where the
+  // reference wears it: the accent (buttons, selection, focus), the
+  // lavender chip ghost and the violet-cast ink. The fourth hue of the
+  // light family stands on its accent, not on its background.
   static const ThemePalette violetDusk = ThemePalette(
-    bg: Color(0xFFF3F2F7),
-    surface: Color(0xFFFAFAFD),
+    bg: Color(0xFFF4F5F7),
+    surface: Color(0xFFFDFDFE),
     card: Color(0xFFFFFFFF),
-    border: Color(0xFFE2DFEC),
+    border: Color(0xFFE4E6EB),
     textPrimary: Color(0xFF2B2440),
     textSecondary: Color(0xFF6B6480),
     primary: Color(0xFF6755C9),
