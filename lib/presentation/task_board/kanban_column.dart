@@ -102,17 +102,24 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
           curve: Curves.easeOut,
           decoration: BoxDecoration(
             color: widget.backgroundColor,
-            // Faint accent identity confined to the top of the column — a
-            // full-height wash reads muddy on light themes.
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              stops: [0, isDark ? 0.3 : 0.35],
-              colors: [
-                accent.withOpacity(isDark ? 0.04 : 0.06),
-                accent.withOpacity(0.0),
-              ],
-            ),
+            // v1.12.60: a BoxDecoration gradient REPLACES `color` in
+            // Flutter, so the old top-glow gradient silently discarded the
+            // tray tint — raising the light tint from 10% to 14% painted
+            // nothing (verified by pixel probes). Light columns now paint
+            // the flat pastel base (Notion board) and let the 2px accent
+            // hairline carry the edge glow; the dark board keeps the
+            // top-glow recipe it was tuned on.
+            gradient: isDark
+                ? LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0, 0.3],
+                    colors: [
+                      accent.withOpacity(0.04),
+                      accent.withOpacity(0.0),
+                    ],
+                  )
+                : null,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: isOver ? accent : palette.outline.withOpacity(0.55),

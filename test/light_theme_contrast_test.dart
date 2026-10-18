@@ -101,9 +101,16 @@ void main() {
   });
 
   group('glass that works on paper', () {
-    test('a paper card keeps a firmer fill than a dark one', () {
+    test('light glass is visibly translucent, never below the floor', () {
+      // v1.12.60: the user asked for adjustable glass on the light cards, so
+      // paper no longer leads with a near-solid fill (0.97). It now opens at
+      // a visible frost and the slider can go down to the readability floor.
+      expect(BoardCardStyle.iosGlassDefaultOpacityLight, lessThan(0.72));
       expect(BoardCardStyle.iosGlassDefaultOpacityLight,
-          greaterThan(BoardCardStyle.iosGlassDefaultOpacity));
+          greaterThan(BoardGlassSpec.cardOpacityFloorLight));
+      expect(BoardGlassSpec.cardOpacityFloorLight, lessThan(0.5));
+      // Panels still carry text directly on the canvas — their floor stays
+      // firmer than the dark board's.
       expect(BoardGlassSpec.panelOpacityFloorLight,
           greaterThan(BoardGlassSpec.panelOpacityFloor));
     });

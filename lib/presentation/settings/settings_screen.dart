@@ -137,8 +137,10 @@ class SettingsScreen extends ConsumerWidget {
         const SizedBox(height: 6),
         Text(
           'Adjust the task-card appearance on the Today dashboard — opacity '
-          '0–100% (0% = fully see-through) and a glass effect with its own '
-          'blur strength. Independent of the Interface Glass section below',
+          'and a glass effect with its own blur strength. Light themes open '
+          'at 62% frosted glass and stay adjustable down to 35% for '
+          'readability; dark themes keep the full 0–100% range. Independent '
+          'of the Interface Glass section below',
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: 16),
@@ -939,10 +941,24 @@ class _BoardCardStyleCard extends ConsumerWidget {
     final style = ref.watch(boardCardStyleProvider);
     final notifier = ref.read(boardCardStyleProvider.notifier);
     final isDark = theme.brightness == Brightness.dark;
+    final themeMode = ref.watch(themeModeProvider);
+    // v1.12.60: the preview must resolve through the SAME spec the board uses
+    // (theme-glass default, Interface Glass panels, paper floor). Before this
+    // the mini card showed the raw stored style, so on a light theme — where
+    // the theme itself turns glass on — the preview looked solid while the
+    // real board was frosted.
+    final spec = BoardGlassSpec.resolve(style,
+        themeGlass: themeMode.boardGlass,
+        appGlass: ref.watch(appGlassStyleProvider),
+        brightness: theme.brightness);
+    // On paper the slider's meaningful range starts at the readability floor;
+    // dark keeps the full 0–100% range.
+    final minOpacity =
+        isDark ? BoardCardStyle.minOpacity : BoardGlassSpec.cardOpacityFloorLight;
     // Same card base color the board cards use (white on light themes).
     final baseCard =
         isDark ? ref.watch(themeModeProvider).palette.card : Colors.white;
-    final percent = (style.opacity * 100).round();
+    final percent = (spec.opacity * 100).round();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -983,7 +999,9 @@ class _BoardCardStyleCard extends ConsumerWidget {
           ),
           const SizedBox(height: 14),
 
-          // Opacity slider — 0% = fully see-through, 100% = opaque.
+          // Opacity slider — v1.12.60: light themes start at the paper floor
+          // (35%) so the shown percentage always matches the rendered card;
+          // dark keeps 0% (fully see-through).
           Row(
             children: [
               Icon(Icons.opacity,
@@ -994,13 +1012,12 @@ class _BoardCardStyleCard extends ConsumerWidget {
                       ?.copyWith(fontSize: 12.5)),
               Expanded(
                 child: Slider(
-                  value: style.opacity.clamp(
-                      BoardCardStyle.minOpacity, BoardCardStyle.maxOpacity),
-                  min: BoardCardStyle.minOpacity,
+                  value: spec.opacity.clamp(
+                      minOpacity, BoardCardStyle.maxOpacity),
+                  min: minOpacity,
                   max: BoardCardStyle.maxOpacity,
                   divisions:
-                      ((BoardCardStyle.maxOpacity - BoardCardStyle.minOpacity) /
-                              0.05)
+                      ((BoardCardStyle.maxOpacity - minOpacity) / 0.05)
                           .round(),
                   label: '$percent%',
                   onChanged: (v) => notifier.setOpacity(v),
@@ -1040,10 +1057,13 @@ class _BoardCardStyleCard extends ConsumerWidget {
                 ),
               ),
               Switch(
-                value: style.glass,
-                // v1.12.16: theme-aware auto-drop — light themes land on
-                // 85% (55% white reads as dim mud on light surfaces).
-                onChanged: (v) => notifier.setGlass(v, lightTheme: !isDark),
+                // v1.12.60: theme-glass palettes (all five lights) always
+                // render glass, so the switch reports the RESOLVED state and
+                // is disabled there instead of lying "off" while cards frost.
+                value: spec.glass,
+                onChanged: themeMode.boardGlass
+                    ? null
+                    : (v) => notifier.setGlass(v, lightTheme: !isDark),
               ),
             ],
           ),
@@ -1067,9 +1087,9 @@ class _BoardCardStyleCard extends ConsumerWidget {
                   divisions:
                       (BoardCardStyle.maxBlur - BoardCardStyle.minBlur)
                           .round(),
-                  label: '${style.blur.round()}',
+                  label: '${spec.blur.round()}',
                   onChanged:
-                      style.glass ? (v) => notifier.setBlur(v) : null,
+                      spec.glass ? (v) => notifier.setBlur(v) : null,
                 ),
               ),
               Container(
@@ -1125,7 +1145,9 @@ class _BoardCardStyleCard extends ConsumerWidget {
                   ),
                   Center(
                     child: _PreviewCard(
-                      style: style,
+                      opacity: spec.opacity,
+                      glass: spec.glass,
+                      blur: spec.blur,
                       baseCard: baseCard,
                       isDark: isDark,
                       theme: theme,
@@ -1157,13 +1179,17 @@ class _BoardCardStyleCard extends ConsumerWidget {
 /// same fill-opacity and glass (backdrop blur + bright rim) recipe as the
 /// real board cards.
 class _PreviewCard extends StatelessWidget {
-  final BoardCardStyle style;
+  final double opacity;
+  final bool glass;
+  final double blur;
   final Color baseCard;
   final bool isDark;
   final ThemeData theme;
 
   const _PreviewCard({
-    required this.style,
+    required this.opacity,
+    required this.glass,
+    required this.blur,
     required this.baseCard,
     required this.isDark,
     required this.theme,
@@ -1172,22 +1198,16 @@ class _PreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = theme.colorScheme;
-    // v1.12.49: mirror the paper card floor the real board applies, so the
-    // preview never shows a fill the actual cards would refuse to render.
-    final previewOpacity = !isDark &&
-            style.opacity < BoardGlassSpec.cardOpacityFloorLight
-        ? BoardGlassSpec.cardOpacityFloorLight
-        : style.opacity;
     final card = Container(
       width: 240,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: baseCard.withOpacity(previewOpacity),
+        color: baseCard.withOpacity(opacity),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           // v1.12.11: theme-aware glass rim, same recipe as TaskCard —
           // white pops on dark glass, border color reads on light glass.
-          color: style.glass
+          color: glass
               ? (isDark
                   ? Colors.white.withOpacity(0.22)
                   : palette.outline.withOpacity(0.65))
@@ -1225,12 +1245,11 @@ class _PreviewCard extends StatelessWidget {
       ),
     );
 
-    if (!style.glass) return card;
+    if (!glass) return card;
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: BackdropFilter(
-        filter: ImageFilter.blur(
-            sigmaX: style.blur, sigmaY: style.blur),
+        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
         child: card,
       ),
     );

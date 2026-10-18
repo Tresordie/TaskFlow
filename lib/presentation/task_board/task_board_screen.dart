@@ -700,16 +700,17 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     final bg = notionTint && isLight && glassTray
         // v1.12.54: the light glass tray is PURE accent-tinted transparency —
         // no white frost (user: 浅色主题的任务dashboard的容器可以不用磨砂效果，
-        // 而是可以调节透明度的效果). The v1.12.50 white frost was a fixed
-        // milky pane whose alpha barely changed the look over a near-white
-        // canvas; now the tray shares the non-glass accent@10% recipe and the
-        // Interface Glass opacity slider scales it from the reference tint
-        // down to fully transparent. The orbs show through directly; the
-        // near-solid cards stay readable on top. Dark board themes
-        // (notionBoard / midnightBoard) keep their own card@40% recipe.
+        // 而是可以调节透明度的效果). v1.12.60 raises the tint to 14% so the
+        // now-translucent glass cards have real colour to frost; the
+        // Interface Glass opacity slider still scales it down to transparent.
+        // Dark board themes (notionBoard / midnightBoard) keep their own
+        // card@40% recipe.
         ? BoardGlassSpec.lightTrayTint(accent, tintScale: tintScale)
         : notionTint
-            ? Color.alphaBlend(accent.withOpacity(0.10 * tintScale),
+            // v1.12.60: light trays carry more accent for the glass; dark
+            // board themes keep their confirmed 10% tint.
+            ? Color.alphaBlend(
+                accent.withOpacity((isLight ? 0.14 : 0.10) * tintScale),
                 theme.colorScheme.surface)
             : columnColor;
     return KanbanColumn(
@@ -1599,3 +1600,6 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
+
+
+

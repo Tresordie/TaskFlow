@@ -41,8 +41,13 @@ class BoardCardStyle {
   /// cards grey (same card, different colour per column — user: 暖沙/黛蓝
   /// dashboard 不够美观). The Settings-toggle path now matches the v1.12.45
   /// conclusion for the theme-glass path: light glass stays nearly solid.
+  /// v1.12.60: the user explicitly asked for adjustable transparent glass on
+  /// the light task cards (暖沙/黛蓝/碧落/暮紫). The near-solid defaults are
+  /// gone: light glass opens at 62% (frost visible, text still >= AA on the
+  /// tinted column) and the floor drops to 35% so the slider has a real
+  /// range instead of the 75–100% sliver it had after v1.12.49.
   static const glassDefaultOpacity = 0.55;
-  static const glassDefaultOpacityLight = 0.97;
+  static const glassDefaultOpacityLight = 0.62;
 
   /// Blur floor keeps the effect meaningful — 0 would just duplicate
   /// "glass off" (plain translucency, no frosting).
@@ -64,7 +69,10 @@ class BoardCardStyle {
   /// green-grey and the To Do cards grey - the same card read differently in
   /// different columns, which is what still looked too faint (user).
   /// Frosting stays (blur + sheen + edge); the fill stops dyeing.
-  static const iosGlassDefaultOpacityLight = 0.97;
+  /// v1.12.60: 0.97 -> 0.62 — the user asked for visible, adjustable glass on
+  /// the four light themes' Today cards. 62% keeps the paper readable while
+  /// the tinted column and ambient orbs actually frost through.
+  static const iosGlassDefaultOpacityLight = 0.62;
 
   bool get isDefault => opacity == 1.0 && !glass && blur == defaultBlur;
 
@@ -117,7 +125,11 @@ class BoardGlassSpec {
   /// dashboard 不够美观). 0.75 still leaves a visible tint bleed — the slider
   /// keeps meaning — but the card stays a white surface. Dark is untouched:
   /// low-alpha glass is the confirmed-good look there.
-  static const cardOpacityFloorLight = 0.75;
+  /// v1.12.60: 0.75 -> 0.35 because the user asked for ADJUSTABLE glass.
+  /// 0.75 made the 0–100% slider effectively 75–100%; 0.35 is the new
+  /// readability floor and leaves a full 35–100% range (the tinted column
+  /// and the ambient orbs are light enough that dark ink still clears AA).
+  static const cardOpacityFloorLight = 0.35;
 
   /// v1.12.54: the light board-glass column tray — PURE accent-tinted
   /// transparency, no white frost (user: 浅色主题的任务dashboard的容器可以不用
@@ -130,8 +142,14 @@ class BoardGlassSpec {
   /// transparent. The orbs show through directly; the near-solid white cards
   /// on top carry the readability, and the dark board themes keep their own
   /// card@40% recipe.
+  /// v1.12.60: 10% -> 14%. A translucent card can only frost what is behind
+  /// it; at 10% the light tray was so close to the neutral canvas that a
+  /// 62% glass card still read as a solid white slab (checked in a real-page
+  /// golden). 14% keeps the pastel / Notion board look while giving the
+  /// glass something to tint. Only the light trays change; the dark board
+  /// themes keep their confirmed 10%.
   static Color lightTrayTint(Color accent, {double tintScale = 1.0}) =>
-      accent.withOpacity(0.10 * tintScale);
+      accent.withOpacity(0.14 * tintScale);
 
   const BoardGlassSpec({
     required this.glass,
@@ -228,7 +246,11 @@ class BoardCardStyleNotifier extends StateNotifier<BoardCardStyle> {
       // nobody chose it, the toggle wrote it, and it let the column accent
       // dye the cards. Anyone sitting on exactly that value gets lifted to
       // the new near-solid default; a tuned slider is left alone.
-      if ((glass ?? false) && (op - 0.85).abs() < 0.001) {
+      // v1.12.60: 0.97 was the next auto value (v1.12.45/49). Both are
+      // pipeline-written, so they migrate to the new visible-glass default;
+      // 0.62 is never a hand-picked number.
+      if ((glass ?? false) &&
+          ((op - 0.85).abs() < 0.001 || (op - 0.97).abs() < 0.001)) {
         op = BoardCardStyle.glassDefaultOpacityLight;
       }
       state = BoardCardStyle(
@@ -292,3 +314,6 @@ class BoardCardStyleNotifier extends StateNotifier<BoardCardStyle> {
     return run;
   }
 }
+
+
+

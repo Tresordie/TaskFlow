@@ -112,19 +112,18 @@ void main() {
       expect(n.state.opacity, BoardCardStyle.glassDefaultOpacity);
     });
 
-    test('setGlass(true, lightTheme) drops to the light default (0.97)',
+    test('setGlass(true, lightTheme) drops to the visible light default (0.62)',
         () async {
       SharedPreferences.setMockInitialValues({});
       final n = BoardCardStyleNotifier();
-      // v1.12.16: 55% white over light surfaces reads as dim mud — the
-      // light-theme auto-drop lands much higher. v1.12.49: higher still —
-      // at 85% the column accent bled through and dyed the cards
-      // (Done green-grey, To Do grey), so light glass is now near-solid.
+      // v1.12.60: the light auto-drop is no longer near-solid — the user
+      // asked for visible, adjustable glass on the light Today boards.
       await n.setGlass(true, lightTheme: true);
       expect(n.state.glass, isTrue);
       expect(n.state.opacity, BoardCardStyle.glassDefaultOpacityLight);
+      expect(BoardCardStyle.glassDefaultOpacityLight, lessThanOrEqualTo(0.7));
       expect(BoardCardStyle.glassDefaultOpacityLight,
-          greaterThanOrEqualTo(0.95));
+          greaterThan(BoardGlassSpec.cardOpacityFloorLight));
     });
 
     test('setGlass(true) keeps a custom (already translucent) opacity',
@@ -206,18 +205,20 @@ void main() {
       expect(n.state.isDefault, isTrue);
     });
 
-    // v1.12.49: 0.85 was the pre-fix light-glass auto-drop — the toggle
-    // wrote it, nobody tuned to it, and it let the column accent dye the
-    // cards. A persisted 0.85 with glass on is lifted to the new near-solid
-    // default on restore; a hand-tuned value is left alone.
-    test('restore migrates the old 0.85 light-glass auto-drop', () async {
-      SharedPreferences.setMockInitialValues({
-        'settings.boardCardOpacity': 0.85,
-        'settings.boardCardGlass': true,
-      });
-      final n = BoardCardStyleNotifier();
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(n.state.opacity, BoardCardStyle.glassDefaultOpacityLight);
+    // v1.12.49/60: 0.85 and 0.97 were pipeline-written light-glass auto
+    // values — the toggle wrote them, nobody tuned to them. Both migrate to
+    // the current visible-glass default; a hand-tuned value is left alone.
+    test('restore migrates both old light-glass auto values', () async {
+      for (final legacy in [0.85, 0.97]) {
+        SharedPreferences.setMockInitialValues({
+          'settings.boardCardOpacity': legacy,
+          'settings.boardCardGlass': true,
+        });
+        final n = BoardCardStyleNotifier();
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(n.state.opacity, BoardCardStyle.glassDefaultOpacityLight,
+            reason: 'legacy $legacy');
+      }
     });
 
     test('restore keeps a hand-tuned opacity near the old default', () async {
@@ -500,15 +501,15 @@ void main() {
     test('v1.12.54: the light tray is pure adjustable tint, no frost', () {
       // Full strength = the same accent@10% the non-glass tray uses.
       final full = BoardGlassSpec.lightTrayTint(AppColors.info);
-      expect(full, AppColors.info.withOpacity(0.10));
+      expect(full, AppColors.info.withOpacity(0.14));
       // The Interface Glass slider scales it down toward full transparency…
       final sheer =
           BoardGlassSpec.lightTrayTint(AppColors.info, tintScale: 0.2);
-      expect(sheer.opacity, closeTo(0.02, 0.001));
+      expect(sheer.opacity, closeTo(0.028, 0.001));
       // …and the milky frost can never come back: at full strength the tint
       // must stay DARKER than the old white-based frost would have been.
       final oldFrost =
-          Color.alphaBlend(AppColors.info.withOpacity(0.10), Colors.white)
+          Color.alphaBlend(AppColors.info.withOpacity(0.14), Colors.white)
               .withOpacity(0.55);
       expect(full.computeLuminance(), lessThan(oldFrost.computeLuminance()),
           reason: 'a white-based frost returned');
@@ -563,18 +564,19 @@ void main() {
     testWidgets('v1.12.54: the board tray fill follows Interface Glass',
         (tester) async {
       // The user's state — Interface Glass at 0.2 — must leave the tray
-      // sheer (accent@2%), not the old fixed 0.55 frost.
+      // sheer (14% × 0.2 = 2.8%), not the old fixed 0.55 frost.
       final sheer = await pumpAndReadTrayFill(tester, interfaceOpacity: 0.2);
       expect(sheer.opacity, lessThan(0.05),
           reason: 'the tray ignored the Interface Glass slider');
-      expect(sheer, AppColors.statusColor(TaskStatus.planned).withOpacity(0.02));
+      expect(sheer,
+          AppColors.statusColor(TaskStatus.planned).withOpacity(0.028));
     }, timeout: const Timeout(Duration(seconds: 120)));
 
     testWidgets('v1.12.54: Interface Glass off keeps the full reference tint',
         (tester) async {
-      // Interface Glass off → full accent@10% tint (never the old frost).
+      // Interface Glass off → full accent@14% tint (never the old frost).
       final full = await pumpAndReadTrayFill(tester);
-      expect(full, AppColors.statusColor(TaskStatus.planned).withOpacity(0.10));
+      expect(full, AppColors.statusColor(TaskStatus.planned).withOpacity(0.14));
     }, timeout: const Timeout(Duration(seconds: 120)));
 
     test('v1.12.33: panels follow Interface Glass, not the card slider', () {
@@ -610,23 +612,45 @@ void main() {
                   brightness: Brightness.light)
               .opacity,
           0.8);
-      // …but v1.12.49: on paper the card fill stops at the readability floor
-      // (a dark-session 0.4 carried over to warm sand dyes the cards into
-      // mud); dark keeps honouring the low value — that is its look.
+      // …but v1.12.60: on paper the card fill stops at the readable floor
+      // (0.35). 0.2 clamps, and the slider still covers a real 35–100% range
+      // instead of the old 75–100% sliver. Dark keeps honouring the low
+      // value — that is its look.
       expect(
           BoardGlassSpec.resolve(
-                  const BoardCardStyle(opacity: 0.4, glass: true),
+                  const BoardCardStyle(opacity: 0.2, glass: true),
                   themeGlass: true,
                   brightness: Brightness.light)
               .opacity,
           BoardGlassSpec.cardOpacityFloorLight);
       expect(
           BoardGlassSpec.resolve(
-                  const BoardCardStyle(opacity: 0.4, glass: true),
+                  const BoardCardStyle(opacity: 0.2, glass: true),
                   themeGlass: true,
                   brightness: Brightness.dark)
               .opacity,
-          0.4);
+          0.2);
+    });
+
+    test('v1.12.60: light card glass is visible and genuinely adjustable', () {
+      // The requested state: the light boards open with frost you can SEE,
+      // and the opacity control covers a meaningful range.
+      expect(BoardCardStyle.iosGlassDefaultOpacityLight, lessThanOrEqualTo(0.7));
+      expect(BoardGlassSpec.cardOpacityFloorLight, lessThanOrEqualTo(0.4));
+      expect(BoardCardStyle.iosGlassDefaultOpacityLight,
+          greaterThan(BoardGlassSpec.cardOpacityFloorLight));
+      // A mid-slider value reaches the rendered fill unchanged.
+      final mid = BoardGlassSpec.resolve(
+          const BoardCardStyle(opacity: 0.5, glass: true),
+          themeGlass: true,
+          brightness: Brightness.light);
+      expect(mid.opacity, 0.5);
+      expect(mid.glass, isTrue);
+      // Untuned light themes open at the visible default, not at 1.0.
+      final untuned = BoardGlassSpec.resolve(const BoardCardStyle(),
+          themeGlass: true, brightness: Brightness.light);
+      expect(untuned.opacity, BoardCardStyle.iosGlassDefaultOpacityLight);
+      expect(untuned.opacity, lessThan(0.75));
     });
 
     test('v1.12.33: panel fill never drops below the readability floor', () {
