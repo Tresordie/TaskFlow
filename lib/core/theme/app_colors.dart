@@ -415,27 +415,6 @@ class AppColors {
   /// Every surface / text role that needs more ink on light resolves through
   /// these, so the rule lives in one place instead of 40 call sites.
 
-  /// ─── Light-family ambient paper (v1.12.57) ───
-  ///
-  /// All five lights share one neutral canvas (v1.12.55) so every semantic
-  /// column colour keeps its own voice — but a purely neutral page also made
-  /// the four original lights read as the same grey theme (user: 优化暖沙/
-  /// 黛蓝/碧落/暮紫，让其更美观). The backdrop therefore carries a whisper of
-  /// the theme's own accent: 3.5% at the top, 7% at the bottom (a touch
-  /// stronger under Interface Glass). Only the BACKDROP is washed — panels,
-  /// cards and hairlines stay neutral — which is what keeps this from
-  /// becoming the "整体一色" removed in v1.12.55.
-  static const double lightCanvasWashTop = 0.035;
-  static const double lightCanvasWashBottom = 0.07;
-  static const double lightCanvasWashTopGlass = 0.05;
-  static const double lightCanvasWashBottomGlass = 0.085;
-
-  /// Composite [accent] over a neutral [canvas] at a whisper strength. One
-  /// rule for the app shell and the Today board so every light page shares
-  /// the same temperature.
-  static Color ambientWash(Color canvas, Color accent, double strength) =>
-      Color.alphaBlend(accent.withOpacity(strength), canvas);
-
   /// Struck-through (completed / archived) titles. Paper needs 72% ink
   /// for the strikethrough itself to carry the âdoneâ signal â below that the
   /// title drops under 4.5:1 and simply disappears (measured in

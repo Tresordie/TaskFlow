@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' show Brightness, Color;
+import 'package:flutter/material.dart' show Brightness, Color, Colors;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_glass_provider.dart';
@@ -130,13 +130,8 @@ class BoardGlassSpec {
   /// transparent. The orbs show through directly; the near-solid white cards
   /// on top carry the readability, and the dark board themes keep their own
   /// card@40% recipe.
-  /// v1.12.57: 10% -> 14%. With the neutral canvas the 10% tray was almost
-  /// grey in the empty half of every column (user: 优化暖沙/黛蓝/碧落/暮紫，
-  /// 让其更美观); 14% keeps the paper lightness but lets each semantic column
-  /// colour actually read. Still pure tint (no frost), still scaled by
-  /// [tintScale] down to fully transparent.
   static Color lightTrayTint(Color accent, {double tintScale = 1.0}) =>
-      accent.withOpacity(0.14 * tintScale);
+      accent.withOpacity(0.10 * tintScale);
 
   const BoardGlassSpec({
     required this.glass,
