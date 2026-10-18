@@ -708,9 +708,10 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
         ? BoardGlassSpec.lightTrayTint(accent, tintScale: tintScale)
         : notionTint
             // v1.12.60: light trays carry more accent for the glass; dark
-            // board themes keep their confirmed 10% tint.
+            // board themes keep their confirmed 10% tint. v1.12.61: 14% -> 5%
+            // (user: 粉彩太显眼) — presence without shouting.
             ? Color.alphaBlend(
-                accent.withOpacity((isLight ? 0.14 : 0.10) * tintScale),
+                accent.withOpacity((isLight ? 0.05 : 0.10) * tintScale),
                 theme.colorScheme.surface)
             : columnColor;
     return KanbanColumn(
@@ -1600,6 +1601,7 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
+
 
 
 

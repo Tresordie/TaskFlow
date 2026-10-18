@@ -499,17 +499,17 @@ void main() {
     // near-white canvas, so the slider had nothing to tune; these pins keep
     // the tray sheer, accent-hued and slider-scaled forever.
     test('v1.12.54: the light tray is pure adjustable tint, no frost', () {
-      // Full strength = the same accent@10% the non-glass tray uses.
+      // Full strength = the same accent@5% the non-glass tray uses.
       final full = BoardGlassSpec.lightTrayTint(AppColors.info);
-      expect(full, AppColors.info.withOpacity(0.14));
+      expect(full, AppColors.info.withOpacity(0.05));
       // The Interface Glass slider scales it down toward full transparency…
       final sheer =
           BoardGlassSpec.lightTrayTint(AppColors.info, tintScale: 0.2);
-      expect(sheer.opacity, closeTo(0.028, 0.001));
+      expect(sheer.opacity, closeTo(0.0118, 0.001));
       // …and the milky frost can never come back: at full strength the tint
       // must stay DARKER than the old white-based frost would have been.
       final oldFrost =
-          Color.alphaBlend(AppColors.info.withOpacity(0.14), Colors.white)
+          Color.alphaBlend(AppColors.info.withOpacity(0.05), Colors.white)
               .withOpacity(0.55);
       expect(full.computeLuminance(), lessThan(oldFrost.computeLuminance()),
           reason: 'a white-based frost returned');
@@ -564,19 +564,19 @@ void main() {
     testWidgets('v1.12.54: the board tray fill follows Interface Glass',
         (tester) async {
       // The user's state — Interface Glass at 0.2 — must leave the tray
-      // sheer (14% × 0.2 = 2.8%), not the old fixed 0.55 frost.
+      // sheer (5% × 0.2 = 1.0%), not the old fixed 0.55 frost.
       final sheer = await pumpAndReadTrayFill(tester, interfaceOpacity: 0.2);
       expect(sheer.opacity, lessThan(0.05),
           reason: 'the tray ignored the Interface Glass slider');
       expect(sheer,
-          AppColors.statusColor(TaskStatus.planned).withOpacity(0.028));
+          AppColors.statusColor(TaskStatus.planned).withOpacity(0.010));
     }, timeout: const Timeout(Duration(seconds: 120)));
 
     testWidgets('v1.12.54: Interface Glass off keeps the full reference tint',
         (tester) async {
-      // Interface Glass off → full accent@14% tint (never the old frost).
+      // Interface Glass off → full accent@5% tint (never the old frost).
       final full = await pumpAndReadTrayFill(tester);
-      expect(full, AppColors.statusColor(TaskStatus.planned).withOpacity(0.14));
+      expect(full, AppColors.statusColor(TaskStatus.planned).withOpacity(0.05));
     }, timeout: const Timeout(Duration(seconds: 120)));
 
     test('v1.12.33: panels follow Interface Glass, not the card slider', () {
@@ -807,3 +807,4 @@ void main() {
     }
   });
 }
+

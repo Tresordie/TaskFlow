@@ -148,8 +148,13 @@ class BoardGlassSpec {
   /// golden). 14% keeps the pastel / Notion board look while giving the
   /// glass something to tint. Only the light trays change; the dark board
   /// themes keep their confirmed 10%.
+  /// v1.12.61: 14% -> 5% — once the colour was actually painted (the gradient
+  /// bug above), the user found the pastel too prominent (用户：粉彩太显眼).
+  /// 5% is a whisper: the 2px accent hairline and the header icon still carry
+  /// each column's identity, while the board reads calm. The glass slider
+  /// remains the way to make the cards themselves more see-through.
   static Color lightTrayTint(Color accent, {double tintScale = 1.0}) =>
-      accent.withOpacity(0.14 * tintScale);
+      accent.withOpacity(0.05 * tintScale);
 
   const BoardGlassSpec({
     required this.glass,
@@ -314,6 +319,7 @@ class BoardCardStyleNotifier extends StateNotifier<BoardCardStyle> {
     return run;
   }
 }
+
 
 
 

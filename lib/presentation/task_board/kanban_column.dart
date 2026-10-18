@@ -104,7 +104,7 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
             color: widget.backgroundColor,
             // v1.12.60: a BoxDecoration gradient REPLACES `color` in
             // Flutter, so the old top-glow gradient silently discarded the
-            // tray tint — raising the light tint from 10% to 14% painted
+            // tray tint — raising the light tint from 10% to 5% painted
             // nothing (verified by pixel probes). Light columns now paint
             // the flat pastel base (Notion board) and let the 2px accent
             // hairline carry the edge glow; the dark board keeps the
