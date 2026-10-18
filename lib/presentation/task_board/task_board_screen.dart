@@ -81,14 +81,24 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     final glassActive = appGlass.glass || boardGlass.glass;
     final canvasColor = isDark
         ? appPalette.bg
-        : Color.alphaBlend(
-            appPalette.border.withOpacity(glassActive ? 0.50 : 0.38),
-            appPalette.bg);
+        : AppColors.ambientWash(
+            Color.alphaBlend(
+                appPalette.border.withOpacity(glassActive ? 0.50 : 0.38),
+                appPalette.bg),
+            appPalette.primary,
+            glassActive
+                ? AppColors.lightCanvasWashTopGlass
+                : AppColors.lightCanvasWashTop);
     final canvasDeepColor = isDark
         ? appPalette.bg
-        : Color.alphaBlend(
-            appPalette.border.withOpacity(glassActive ? 0.64 : 0.52),
-            appPalette.bg);
+        : AppColors.ambientWash(
+            Color.alphaBlend(
+                appPalette.border.withOpacity(glassActive ? 0.64 : 0.52),
+                appPalette.bg),
+            appPalette.primary,
+            glassActive
+                ? AppColors.lightCanvasWashBottomGlass
+                : AppColors.lightCanvasWashBottom);
     // v1.12.12: the canvas stays OPAQUE — a translucent canvas let the
     // blurred shell ambient fog through the whole dashboard, which read as
     // an unclear milky wash (user feedback: 底色是毛玻璃，不够清晰). Glass on
@@ -228,24 +238,31 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
         Positioned(
             top: -160,
             right: -120,
-            child: orb(palette.primary, 460 * orbScale, 0.07)),
+            child: orb(palette.primary, 460 * orbScale,
+                isDark ? 0.07 : 0.085)),
         Positioned(
             top: 300,
             left: -170,
-            child: orb(palette.secondary, 420 * orbScale, 0.05)),
+            child: orb(palette.secondary, 420 * orbScale,
+                isDark ? 0.05 : 0.062)),
         Positioned(
             bottom: -170,
             right: 160,
-            child: orb(AppColors.success, 380 * orbScale, 0.04)),
+            child: orb(AppColors.success, 380 * orbScale,
+                isDark ? 0.04 : 0.045)),
         // v1.12.33: a fourth pool behind the board itself — frost is only
         // perceivable when there is colour directly BEHIND the glass, and the
         // three corner orbs sit outside the columns' footprint.
         if (glassActive)
           Positioned(
-              top: 260, left: 240, child: orb(AppColors.info, 560, 0.055)),
+              top: 260,
+              left: 240,
+              child: orb(AppColors.info, 560, isDark ? 0.055 : 0.065)),
         if (glassActive)
           Positioned(
-              bottom: 120, right: 320, child: orb(palette.primary, 520, 0.05)),
+              bottom: 120,
+              right: 320,
+              child: orb(palette.primary, 520, isDark ? 0.05 : 0.06)),
       ],
     );
   }
@@ -702,14 +719,19 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
         // no white frost (user: 浅色主题的任务dashboard的容器可以不用磨砂效果，
         // 而是可以调节透明度的效果). The v1.12.50 white frost was a fixed
         // milky pane whose alpha barely changed the look over a near-white
-        // canvas; now the tray shares the non-glass accent@10% recipe and the
-        // Interface Glass opacity slider scales it from the reference tint
-        // down to fully transparent. The orbs show through directly; the
-        // near-solid cards stay readable on top. Dark board themes
-        // (notionBoard / midnightBoard) keep their own card@40% recipe.
+        // canvas; now the tray shares the non-glass accent-tint recipe
+        // (v1.12.57: 14%) and the Interface Glass opacity slider scales it
+        // from the reference tint down to fully transparent. The orbs show
+        // through directly; the near-solid cards stay readable on top. Dark
+        // board themes (notionBoard / midnightBoard) keep their own
+        // card@40% recipe.
         ? BoardGlassSpec.lightTrayTint(accent, tintScale: tintScale)
         : notionTint
-            ? Color.alphaBlend(accent.withOpacity(0.10 * tintScale),
+            // v1.12.57: light trays get 14% so the neutral paper no longer
+            // washes the column identity away; the dark board themes keep the
+            // confirmed-good 10% tint (v1.12.18/19 look).
+            ? Color.alphaBlend(
+                accent.withOpacity((isLight ? 0.14 : 0.10) * tintScale),
                 theme.colorScheme.surface)
             : columnColor;
     return KanbanColumn(

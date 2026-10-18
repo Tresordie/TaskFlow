@@ -160,15 +160,32 @@ class AppShell extends ConsumerWidget {
     final palette = theme.colorScheme;
     final p = ref.watch(themeModeProvider).palette;
     final isDark = theme.brightness == Brightness.dark;
+    // v1.12.57: light themes carry a whisper of their OWN accent in the
+    // ambient paper (3.5% top -> 7% bottom, a touch stronger under glass).
+    // The v1.12.55 neutral base fixed "整体一色", but it also made all four
+    // lights read as the same grey page (user: 优化暖沙/黛蓝/碧落/暮紫，让其更
+    // 美观). This is a GRADIENT wash, not a flat page tint: only the backdrop
+    // is tinted, the panels / cards / hairlines stay neutral, so the semantic
+    // column colours keep their own voice.
     final base = isDark
         ? p.bg
-        : Color.alphaBlend(
-            p.border.withOpacity(glass ? 0.55 : 0.20), p.surface);
+        : AppColors.ambientWash(
+            Color.alphaBlend(
+                p.border.withOpacity(glass ? 0.55 : 0.20), p.surface),
+            p.primary,
+            glass
+                ? AppColors.lightCanvasWashTopGlass
+                : AppColors.lightCanvasWashTop);
     final deep = isDark
         ? p.bg
-        : Color.alphaBlend(
-            p.border.withOpacity(glass ? 0.72 : 0.32), p.surface);
-    final orbAlpha = glass ? 1.0 : 0.32;
+        : AppColors.ambientWash(
+            Color.alphaBlend(
+                p.border.withOpacity(glass ? 0.72 : 0.32), p.surface),
+            p.primary,
+            glass
+                ? AppColors.lightCanvasWashBottomGlass
+                : AppColors.lightCanvasWashBottom);
+    final orbAlpha = glass ? 1.0 : (isDark ? 0.32 : 0.42);
 
     Widget orb(Color color, double size, double opacity) {
       final container = Container(

@@ -129,6 +129,56 @@ void main() {
     });
   });
 
+  group('light family atmosphere (v1.12.57)', () {
+    // v1.12.55 made the five lights share one neutral canvas so the semantic
+    // column colours keep their voice — but a pure grey page also made the
+    // four original lights read as the same theme (user: 优化暖沙/黛蓝/碧落/
+    // 暮紫，让其更美观). The backdrop now carries a whisper of the theme
+    // accent; only the backdrop, never the panels, which is the line between
+    // this and the flat "整体一色" that was removed.
+    const neutral = Color(0xFFE9EBEF); // a typical pre-wash paper canvas
+
+    test('every light theme gets its own temperature, gently', () {
+      final canvases = <Color>{};
+      for (final mode in lightThemes) {
+        final p = mode.palette;
+        final top = AppColors.ambientWash(
+            neutral, p.primary, AppColors.lightCanvasWashTop);
+        final bottom = AppColors.ambientWash(
+            neutral, p.primary, AppColors.lightCanvasWashBottom);
+        expect(top, isNot(neutral),
+            reason: '${mode.name}: no accent in the paper');
+        expect(bottom, isNot(top), reason: '${mode.name}: the wash must fade');
+        // Paper stays paper: the deepest wash may not darken the canvas into
+        // a colour block.
+        expect(bottom.computeLuminance(), greaterThan(0.70),
+            reason: '${mode.name}: the page turned into a colour block');
+        // A whisper, not a tint: under 1.12:1 against the neutral paper.
+        expect(AppColors.contrast(bottom, neutral), lessThan(1.12),
+            reason: '${mode.name}: the wash is no longer subtle');
+        canvases.add(bottom);
+      }
+      expect(canvases.length, lightThemes.length,
+          reason: 'two light themes collapsed into the same canvas');
+    });
+
+    test('the wash follows Interface Glass but never becomes a page tint',
+        () {
+      final p = AppThemeMode.violetDusk.palette;
+      final plain = AppColors.ambientWash(
+          neutral, p.primary, AppColors.lightCanvasWashTop);
+      final glass = AppColors.ambientWash(
+          neutral, p.primary, AppColors.lightCanvasWashTopGlass);
+      expect(AppColors.contrast(glass, neutral),
+          greaterThan(AppColors.contrast(plain, neutral)),
+          reason: 'the glass paper should read a touch warmer than plain');
+      expect(AppColors.lightCanvasWashBottomGlass,
+          greaterThan(AppColors.lightCanvasWashBottom));
+      expect(AppColors.lightCanvasWashBottom, lessThanOrEqualTo(0.10),
+          reason: 'the light page must stay a near-neutral paper');
+    });
+  });
+
   group('timeline spine on paper', () {
     testWidgets('the spine renders no channel at all', (tester) async {
       // v1.12.42 killed the near-white blob, v1.12.43 the stroke, v1.12.45 the
