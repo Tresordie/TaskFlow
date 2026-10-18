@@ -138,6 +138,12 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     // v1.11.1: pure white in light themes so cards pop off the bg canvas;
     // dark themes keep the palette card color.
     final isDark = theme.brightness == Brightness.dark;
+    // v1.12.59: the four light themes' Today cards take a Notion-style skin —
+    // a flat white page with a hairline border, a 10px radius and property
+    // pills instead of an app-style lifted slab. The dark board is confirmed
+    // good and keeps its glass card untouched.
+    final notion = !isDark;
+    final cardRadius = notion ? 10.0 : 14.0;
     // v1.12.42: user-picked project / tag pastels read fine on a dark
     // board and vanish on a white card — walk them to AA.
     final chipSurface = isDark ? palette.surface : Colors.white;
@@ -205,47 +211,60 @@ class _TaskCardState extends ConsumerState<TaskCard> {
           // screenshot). One whisper of fade for both brightnesses.
           opacity: isDone ? 0.94 : 1.0,
           child: AnimatedContainer(
+            key: const Key('task-card-shell'),
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeOutCubic,
             transform: _isPressed
                 ? (Matrix4.identity()..scale(0.985))
                 : _isHovered
-                    ? (Matrix4.identity()..translate(0.0, -2.0))
+                    ? (Matrix4.identity()
+                      ..translate(0.0, notion ? -1.0 : -2.0))
                     : Matrix4.identity(),
             decoration: BoxDecoration(
               // Glass mode paints its translucent fill INSIDE the backdrop
               // blur below, so the blur shows through the fill.
               color: useGlass ? null : fillColor,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(cardRadius),
               border: Border.all(
+                width: 1,
                 color: isDone
-                    ? AppColors.success.withOpacity(0.3)
-                    : useGlass
-                        ? glassRim
-                        : _isHovered
-                            ? barColor.withOpacity(0.45)
-                            : palette.outline.withOpacity(0.7),
+                    ? AppColors.success.withOpacity(notion ? 0.45 : 0.30)
+                    : notion
+                        // Notion: a hairline at rest, the theme accent on
+                        // hover — the card's only piece of theme identity.
+                        ? (_isHovered
+                            ? palette.primary.withValues(alpha: 0.45)
+                            : palette.outline.withValues(alpha: 0.55))
+                        : useGlass
+                            ? glassRim
+                            : _isHovered
+                                ? barColor.withOpacity(0.45)
+                                : palette.outline.withOpacity(0.7),
               ),
               boxShadow: _isHovered
                   ? [
                       BoxShadow(
-                        color: barColor.withOpacity(0.10),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
+                        color: barColor.withOpacity(notion ? 0.08 : 0.10),
+                        blurRadius: notion ? 12 : 16,
+                        offset: Offset(0, notion ? 4 : 6),
                       ),
                       BoxShadow(
                         color: Colors.black.withOpacity(0.06),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
+                        blurRadius: notion ? 8 : 10,
+                        offset: Offset(0, notion ? 2 : 3),
                       ),
                     ]
                   : [
-                      // v1.12.49: the light board's lift was too weak for
-                      // paper (0.07/9/2) — cards sat flat on the column.
+                      // v1.12.59: Notion cards are FLAT — the hairline border
+                      // does the separation and only a whisper of contact
+                      // shadow keeps them from reading as painted rectangles.
+                      // The paper lift (0.09/12/3) stays for the non-Notion
+                      // path and the dark board is untouched.
                       BoxShadow(
-                        color: Colors.black.withOpacity(isDark ? 0.05 : 0.09),
-                        blurRadius: isDark ? 7 : 12,
-                        offset: Offset(0, isDark ? 2 : 3),
+                        color: Colors.black.withOpacity(
+                            isDark ? 0.05 : (notion ? 0.03 : 0.09)),
+                        blurRadius: isDark ? 7 : (notion ? 2 : 12),
+                        offset: Offset(0, isDark ? 2 : (notion ? 1 : 3)),
                       ),
                     ],
             ),
@@ -254,32 +273,19 @@ class _TaskCardState extends ConsumerState<TaskCard> {
               blur: spec.blur,
               fillColor: fillColor,
               isDark: isDark,
+              radius: cardRadius,
+              // A flat page does not need the bevel: lower the inner rim so
+              // the card reads as paper, not as a tiny glass slab.
+              rimAlpha: notion ? 0.10 : (isDark ? 0.07 : 0.18),
               content: Stack(
                 children: [
-                  // v1.12.49: the 3px priority bar the class doc has always
-                  // advertised — never actually painted. On the dark board
-                  // the glass + orbs already carry the colour identity and
-                  // the look is confirmed good (v1.12.44 lesson: don't touch
-                  // it), so the bar is a LIGHT-theme addition: paper cards
-                  // were identical white slabs and the column pastels gave
-                  // every card the same faint tint.
-                  if (!isDark)
-                    Positioned(
-                      key: const Key('priority-bar'),
-                      left: 0,
-                      top: 8,
-                      bottom: 8,
-                      child: Container(
-                        width: 3,
-                        decoration: BoxDecoration(
-                          color: barColor,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
+                  // v1.12.59: the left priority rail is gone on paper — the
+                  // Notion card carries its colour in the priority property
+                  // pill instead. The dark board never had the rail.
                   // Content (bottom of the stack).
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 11, 12, 11),
+                    padding: EdgeInsets.fromLTRB(
+                        notion ? 14 : 16, notion ? 10 : 11, 12, notion ? 10 : 11),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
@@ -288,6 +294,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                           task.title,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontSize: 13.5,
+                            fontWeight: notion ? FontWeight.w600 : null,
                             decoration:
                                 isDone ? TextDecoration.lineThrough : null,
                             color: isDone
@@ -307,7 +314,11 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                           Text(
                             task.description!,
                             style: TextStyle(
-                                fontSize: 12, height: 1.45, color: muted),
+                                fontSize: 12,
+                                height: 1.45,
+                                color: notion
+                                    ? palette.onSurface.withValues(alpha: 0.60)
+                                    : muted),
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -315,34 +326,57 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                         // v1.12.1: latest execution-log note preview.
                         if (_latestEntry(task) != null) ...[
                           const SizedBox(height: 6),
-                          _notePreview(palette, _latestEntry(task)!),
+                          _notePreview(palette, _latestEntry(task)!,
+                              notion: notion),
                         ],
                         const SizedBox(height: 7),
                         Wrap(
-                          spacing: 5,
+                          spacing: notion ? 4 : 5,
                           runSpacing: 4,
                           children: [
                             _chip(
-                              icon: null,
-                              label: task.priority.shortLabel,
-                              color:
+                              dotColor:
                                   AppColors.priorityColor(task.priority.index),
-                              background:
-                                  AppColors.priorityColor(task.priority.index)
+                              label: task.priority.shortLabel,
+                              color: notion
+                                  ? AppColors.legibleInk(
+                                      AppColors.priorityColor(
+                                          task.priority.index),
+                                      Colors.white)
+                                  : AppColors.priorityColor(
+                                      task.priority.index),
+                              background: notion
+                                  ? palette.onSurface.withValues(alpha: 0.05)
+                                  : AppColors.priorityColor(
+                                          task.priority.index)
                                       .withOpacity(0.10),
+                              notion: notion,
                             ),
                             if (task.dueDate != null)
-                              _dueChip(theme, palette, task, muted),
+                              _dueChip(theme, palette, task, muted,
+                                  notion: notion),
                             if (task.project.trim().isNotEmpty)
                               _chip(
-                                icon: Icons.folder_outlined,
+                                icon: notion ? null : Icons.folder_outlined,
+                                dotColor: notion
+                                    ? AppColors.legibleInk(
+                                        colorSettings.projectColor(
+                                                task.project.trim()) ??
+                                            muted,
+                                        chipSurface)
+                                    : null,
                                 label: task.project.trim(),
-                                color: AppColors.legibleInk(
-                                    colorSettings.projectColor(
-                                            task.project.trim()) ??
-                                        muted,
-                                    chipSurface),
-                                background: palette.outline.withOpacity(0.10),
+                                color: notion
+                                    ? palette.onSurface.withValues(alpha: 0.65)
+                                    : AppColors.legibleInk(
+                                        colorSettings.projectColor(
+                                                task.project.trim()) ??
+                                            muted,
+                                        chipSurface),
+                                background: notion
+                                    ? palette.onSurface.withValues(alpha: 0.05)
+                                    : palette.outline.withOpacity(0.10),
+                                notion: notion,
                               ),
                             for (final tag in task.tags)
                               _chip(
@@ -351,8 +385,13 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                                     colorSettings.tagColor(tag) ?? muted,
                                     chipSurface),
                                 label: tag,
-                                color: muted,
-                                background: palette.outline.withOpacity(0.10),
+                                color: notion
+                                    ? palette.onSurface.withValues(alpha: 0.65)
+                                    : muted,
+                                background: notion
+                                    ? palette.onSurface.withValues(alpha: 0.05)
+                                    : palette.outline.withOpacity(0.10),
+                                notion: notion,
                               ),
                           ],
                         ),
@@ -428,17 +467,18 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     required double blur,
     required Color fillColor,
     required bool isDark,
+    required double radius,
+    required double rimAlpha,
     required Widget content,
   }) {
     if (!glass) return content;
     return GlassSurface(
-      borderRadius: 14,
+      borderRadius: radius,
       blur: blur,
       color: fillColor,
-      // v1.12.47: 0.12/0.30 -> 0.07/0.18. The inner rim sits 1px inside the
-      // card's own outer border — two bright edges hugging the rounded
-      // corners is the bevel that read as a bent face (user: 开面弯曲).
-      rimAlpha: isDark ? 0.07 : 0.18,
+      // v1.12.59: the rim alpha is handed in — paper Notion cards keep only a
+      // whisper (0.10) so the flat page does not grow a glass bevel.
+      rimAlpha: rimAlpha,
       content: content,
     );
   }
@@ -453,13 +493,48 @@ class _TaskCardState extends ConsumerState<TaskCard> {
   /// v1.12.1: latest execution-log note preview — a quote-style block with
   /// a type-colored icon and up to three lines of the entry content.
   /// v1.12.2: larger font + darker color so the preview is readable.
-  Widget _notePreview(ColorScheme palette, ExecutionEntry entry) {
+  Widget _notePreview(ColorScheme palette, ExecutionEntry entry,
+      {bool notion = false}) {
     final (icon, color) = switch (entry.type) {
       EntryType.note => (Icons.sticky_note_2_outlined, palette.primary),
       EntryType.pass => (Icons.check_circle, AppColors.success),
       EntryType.fail => (Icons.cancel, AppColors.error),
       EntryType.blocked => (Icons.block, AppColors.warning),
     };
+    // v1.12.59: on paper the note reads as a Notion quote block — a 2px
+    // hairline rule on the left, no filled card. The dark board keeps its
+    // tinted chip (confirmed good).
+    if (notion) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.only(left: 8),
+        decoration: BoxDecoration(
+          border: Border(
+            left: BorderSide(
+                color: palette.outline.withValues(alpha: 0.60), width: 2),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 12.5, color: color),
+            const SizedBox(width: 5),
+            Expanded(
+              child: Text(
+                entry.content,
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.4,
+                  color: palette.onSurface.withValues(alpha: 0.68),
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
@@ -571,23 +646,32 @@ class _TaskCardState extends ConsumerState<TaskCard> {
 
   /// Due-date chip: red when overdue, theme-primary when due today.
   Widget _dueChip(
-      ThemeData theme, ColorScheme palette, Task task, Color muted) {
+      ThemeData theme, ColorScheme palette, Task task, Color muted,
+      {bool notion = false}) {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
     final due = task.dueDate!;
     final isOverdue = due.isBefore(todayStart) && !_isDoneTask(task);
     final isToday = _isSameDay(due, now);
 
-    final color = isOverdue
+    final rawColor = isOverdue
         ? AppColors.error
         : isToday
             ? palette.primary
-            : muted;
+            : notion
+                ? palette.onSurface.withValues(alpha: 0.65)
+                : muted;
+    // v1.12.59: on paper the 10px label must clear AA — walk the semantic
+    // colour (red / theme accent) until it does, exactly like user-picked
+    // project / tag pastels.
+    final color = notion ? AppColors.legibleInk(rawColor, Colors.white) : rawColor;
     final background = isOverdue
-        ? AppColors.error.withOpacity(0.12)
+        ? AppColors.error.withValues(alpha: notion ? 0.08 : 0.12)
         : isToday
-            ? palette.primary.withOpacity(0.12)
-            : palette.outline.withOpacity(0.10);
+            ? palette.primary.withValues(alpha: notion ? 0.08 : 0.12)
+            : notion
+                ? palette.onSurface.withValues(alpha: 0.05)
+                : palette.outline.withOpacity(0.10);
 
     final differsFromCurrentYear = due.year != now.year;
     final label = DateFormat('MMM d').format(due) +
@@ -599,6 +683,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
       color: color,
       background: background,
       bold: isOverdue,
+      notion: notion,
     );
   }
 
@@ -615,34 +700,41 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     IconData? icon,
     Color? dotColor,
     bool bold = false,
+    bool notion = false,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+      padding: notion
+          ? const EdgeInsets.symmetric(horizontal: 6, vertical: 2)
+          : const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(999),
+        // Notion property pills are softly squared (5px), not full capsules;
+        // the dark board keeps its pill language.
+        borderRadius: BorderRadius.circular(notion ? 5 : 999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 10, color: color),
-            const SizedBox(width: 3),
+            Icon(icon, size: notion ? 10.5 : 10, color: color),
+            SizedBox(width: notion ? 4 : 3),
           ],
           if (dotColor != null) ...[
             Container(
-              width: 6,
-              height: 6,
+              width: notion ? 5 : 6,
+              height: notion ? 5 : 6,
               decoration:
                   BoxDecoration(color: dotColor, shape: BoxShape.circle),
             ),
-            const SizedBox(width: 3),
+            SizedBox(width: notion ? 4 : 3),
           ],
           Text(
             label,
             style: TextStyle(
-              fontSize: 10,
-              fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
+              fontSize: notion ? 10.5 : 10,
+              fontWeight: bold
+                  ? FontWeight.w700
+                  : (notion ? FontWeight.w500 : FontWeight.w600),
               color: color,
             ),
           ),

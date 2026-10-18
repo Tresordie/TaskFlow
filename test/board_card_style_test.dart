@@ -341,18 +341,38 @@ void main() {
       expect(doneFade(tester), 1.0);
     });
 
-    // v1.12.49: the 3px left priority bar the TaskCard doc has advertised
-    // since v1.10.0 — painted for the first time, and only on paper. The
-    // dark board's colour identity (glass + orbs) is confirmed good; the
-    // light board's white slabs needed per-card colour anchoring.
-    testWidgets('paper cards carry the left priority bar', (tester) async {
+    // v1.12.59: paper cards take the Notion skin — flat white page, hairline
+    // border, 10px radius and NO left colour rail; the priority property pill
+    // carries the colour instead (user: 任务卡像 Notion). The dark board was
+    // confirmed good and keeps its v1.12.49 shell (14px, no rail).
+    testWidgets('paper cards render the Notion skin', (tester) async {
       await pumpCardWith(tester, AppThemeMode.inkBlue, TaskStatus.inProgress);
-      expect(find.byKey(const Key('priority-bar')), findsOneWidget);
+      expect(find.byKey(const Key('priority-bar')), findsNothing,
+          reason: 'a Notion card has no left colour rail');
+      final shell = tester.widget<AnimatedContainer>(
+          find.byKey(const Key('task-card-shell')));
+      final decoration = shell.decoration! as BoxDecoration;
+      expect(decoration.borderRadius, BorderRadius.circular(10),
+          reason: 'Notion cards are softly squared, not 14px app slabs');
+      final border = (decoration.border! as Border).top;
+      expect(border.width, 1);
+      expect(
+        border.color,
+        AppTheme.buildTheme(AppThemeMode.inkBlue)
+            .colorScheme
+            .outline
+            .withValues(alpha: 0.55),
+        reason: 'the flat card is separated by a hairline, not elevation',
+      );
     });
 
-    testWidgets('the dark board keeps its bar-free card', (tester) async {
+    testWidgets('the dark board keeps its 14px glass card', (tester) async {
       await pumpCardWith(tester, AppThemeMode.dark, TaskStatus.inProgress);
       expect(find.byKey(const Key('priority-bar')), findsNothing);
+      final shell = tester.widget<AnimatedContainer>(
+          find.byKey(const Key('task-card-shell')));
+      final decoration = shell.decoration! as BoxDecoration;
+      expect(decoration.borderRadius, BorderRadius.circular(14));
     });
 
     testWidgets('board-glass theme (inkBlue) renders glass by default',
