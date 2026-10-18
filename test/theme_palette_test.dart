@@ -13,15 +13,15 @@ import 'package:taskflow/core/theme/app_theme.dart';
 ///    always lift off the canvas (the v1.4.98 Latte lesson, generalized);
 ///  - brightness grouping is correct (the GFM alert color table and the
 ///    buildTheme light/dark branches both depend on it);
-///  - the four kept light palettes carry their designed signature colors
+///  - the five kept light palettes carry their designed signature colors
 ///    so a refactor can't silently flatten them into each other.
 void main() {
   group('AppThemeMode catalog (v1.7.0, trimmed v1.8.0 / v1.12.17 / v1.12.36 / v1.12.37)',
       () {
-    test('11 themes with unique names and non-empty bilingual labels', () {
-      expect(AppThemeMode.values.length, 11);
+    test('12 themes with unique names and non-empty bilingual labels', () {
+      expect(AppThemeMode.values.length, 12);
       final names = AppThemeMode.values.map((m) => m.name).toSet();
-      expect(names.length, 11);
+      expect(names.length, 12);
       for (final mode in AppThemeMode.values) {
         expect(mode.label.isNotEmpty, isTrue, reason: '${mode.name}.label');
         expect(mode.labelZh.isNotEmpty, isTrue, reason: '${mode.name}.labelZh');
@@ -87,6 +87,7 @@ void main() {
         AppThemeMode.inkBlue,
         AppThemeMode.tealSky,
         AppThemeMode.violetDusk,
+        AppThemeMode.mossGarden,
       ];
       const dark = [
         AppThemeMode.dark,
@@ -177,6 +178,25 @@ void main() {
       // Joins the polished light glass dashboard (frost trays + glass cards).
       expect(AppThemeMode.violetDusk.boardGlass, isTrue);
       expect(AppThemeMode.violetDusk.boardTinted, isTrue);
+    });
+
+    // v1.12.56: the fifth light hue — moss olive, the earthy yellow-green the
+    // family was missing. Locked against the neutral canvas, the deep moss
+    // accent, the sage chip ghost and the olive-cast ink so a refactor can't
+    // flatten it into warmSand (umber) or tealSky (blue-green). It is not a
+    // return of the candy pastel greens deleted in v1.12.17: this accent is
+    // deliberately dark, so white button text clears 6.2:1.
+    test('mossGarden keeps the moss accent, sage ghost + neutral canvas', () {
+      final p = AppThemeMode.mossGarden.palette;
+      expect(p.primary, const Color(0xFF55663A));
+      expect(p.primaryGhost, const Color(0xFFEDF1E4));
+      expect(p.bg, const Color(0xFFF4F5F7));
+      expect(AppThemeMode.mossGarden.label, 'Moss Garden');
+      expect(AppThemeMode.mossGarden.labelZh, '苔庭');
+      expect(AppThemeMode.mossGarden.brightness, Brightness.light);
+      // Joins the polished light glass dashboard (tinted trays + glass cards).
+      expect(AppThemeMode.mossGarden.boardGlass, isTrue);
+      expect(AppThemeMode.mossGarden.boardTinted, isTrue);
     });
 
     test('notionBoard keeps the near-black kanban palette', () {

@@ -211,6 +211,29 @@ class AppColors {
     primaryGhost: Color(0xFFEDEAF7),
   );
 
+  // ─── Moss Garden (苔庭, v1.12.56) ───
+  // The fifth hue of the light family: a quiet moss-garden olive. The four
+  // earlier lights cover warm umber, porcelain navy, blue-green and amethyst;
+  // this one adds the missing earthy yellow-green without repeating the
+  // candy-pastel greens pruned in v1.12.17 (celadon / freshGreen). It follows
+  // the v1.12.55 family rule — the page stays on the shared NEUTRAL canvas and
+  // the identity lives entirely in three pieces: the deep moss accent, the
+  // sage chip ghost and the olive-cast charcoal ink. White text on the accent
+  // clears AA (6.27:1), the ink clears AAA on canvas and card (13.3 / 13.5),
+  // and the struck-through / muted / faint roles all clear their budgets.
+  static const ThemePalette mossGarden = ThemePalette(
+    bg: Color(0xFFF4F5F7),
+    surface: Color(0xFFFDFDFE),
+    card: Color(0xFFFFFFFF),
+    border: Color(0xFFE4E6EB),
+    textPrimary: Color(0xFF2B3026),
+    textSecondary: Color(0xFF666E5B),
+    primary: Color(0xFF55663A),
+    primaryLight: Color(0xFF9FAE80),
+    primaryDark: Color(0xFF3B4A26),
+    primaryGhost: Color(0xFFEDF1E4),
+  );
+
   // ═════════════ Board-tinted family (v1.12.19) ═════════════
   // Notion-template-style palettes (user reference screenshots): every
   // kanban column is tinted by its own semantic accent (see the

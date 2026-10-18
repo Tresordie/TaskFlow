@@ -11,6 +11,9 @@ enum AppThemeMode {
   // v1.12.52: deep-violet light theme from the user's dashboard reference —
   // the fourth hue of the light family.
   violetDusk,
+  // v1.12.56: moss-garden olive light theme — the fifth hue of the light
+  // family, on the same neutral canvas.
+  mossGarden,
   dark,
   nordNight,
   // v1.12.18: Notion-template near-black kanban (accent-tinted columns).
@@ -39,6 +42,7 @@ enum AppThemeMode {
         AppThemeMode.inkBlue ||
         AppThemeMode.tealSky ||
         AppThemeMode.violetDusk ||
+        AppThemeMode.mossGarden ||
         AppThemeMode.notionBoard ||
         AppThemeMode.midnightBoard =>
           true,
@@ -54,7 +58,8 @@ enum AppThemeMode {
         AppThemeMode.warmSand ||
         AppThemeMode.inkBlue ||
         AppThemeMode.tealSky ||
-        AppThemeMode.violetDusk =>
+        AppThemeMode.violetDusk ||
+        AppThemeMode.mossGarden =>
           true,
         _ => false,
       };
@@ -69,6 +74,8 @@ enum AppThemeMode {
         return 'Teal Sky';
       case AppThemeMode.violetDusk:
         return 'Violet Dusk';
+      case AppThemeMode.mossGarden:
+        return 'Moss Garden';
       case AppThemeMode.dark:
         return 'Dark';
       case AppThemeMode.nordNight:
@@ -96,6 +103,8 @@ enum AppThemeMode {
         return '碧落';
       case AppThemeMode.violetDusk:
         return '暮紫';
+      case AppThemeMode.mossGarden:
+        return '苔庭';
       case AppThemeMode.dark:
         return '暗夜模式';
       case AppThemeMode.nordNight:
@@ -123,6 +132,8 @@ enum AppThemeMode {
         return AppColors.tealSky;
       case AppThemeMode.violetDusk:
         return AppColors.violetDusk;
+      case AppThemeMode.mossGarden:
+        return AppColors.mossGarden;
       case AppThemeMode.dark:
         return AppColors.dark;
       case AppThemeMode.nordNight:
@@ -146,6 +157,7 @@ enum AppThemeMode {
       case AppThemeMode.inkBlue:
       case AppThemeMode.tealSky:
       case AppThemeMode.violetDusk:
+      case AppThemeMode.mossGarden:
         return Brightness.light;
       case AppThemeMode.dark:
       case AppThemeMode.nordNight:
