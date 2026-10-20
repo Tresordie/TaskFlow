@@ -1,7 +1,7 @@
 name: taskflow
 description: Cross-platform task management app for hardware test engineers.
 publish_to: 'none'
-version: 1.12.61+1
+version: 1.12.62+1
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -89,5 +89,6 @@ flutter:
   assets:
     # Font license declarations shipped with the app (v1.5.2).
     - assets/fonts/FONT_LICENSES.md
+
 
 

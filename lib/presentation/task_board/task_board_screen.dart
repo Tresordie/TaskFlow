@@ -151,7 +151,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
             Expanded(
               child: tasksAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Error: $e')),
+                error: (e, _) => _DatabaseErrorView(error: e),
                 data: (_) => _buildBody(
                     theme,
                     board,
@@ -1597,6 +1597,69 @@ class _EmptyState extends StatelessWidget {
             style: theme.textTheme.bodyMedium,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// v1.12.62: an Isar open failure used to surface as a raw one-line
+/// `IsarError: ... MdbxError (5)` in the middle of the dashboard, which reads
+/// like a broken build. The overwhelmingly common cause is a second TaskFlow
+/// instance holding the MDBX environment, so the message now says exactly
+/// what to do (and the single-instance guard in main.dart prevents it in the
+/// first place). The raw error stays selectable for support.
+class _DatabaseErrorView extends StatelessWidget {
+  final Object error;
+
+  const _DatabaseErrorView({required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final palette = theme.colorScheme;
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 560),
+        margin: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: palette.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: palette.outline.withOpacity(0.45)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.storage_rounded, size: 19, color: palette.primary),
+                const SizedBox(width: 8),
+                Text('无法打开任务数据库',
+                    style: theme.textTheme.titleMedium),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '同一个数据库只能被一个 TaskFlow 实例打开。请先完全关闭所有 '
+              'TaskFlow 窗口，再重新打开。\n\n'
+              '若仍然失败：关闭应用后删除 '
+              'Documents\\taskflow.isar-lck（只删这个锁文件，不要删 '
+              'taskflow.isar），然后重试；仍无法打开时，可从 '
+              'Documents\\TaskFlow\\backups 的备份恢复。',
+              style: theme.textTheme.bodyMedium?.copyWith(height: 1.55),
+            ),
+            const SizedBox(height: 12),
+            SelectableText(
+              '$error',
+              style: TextStyle(
+                fontSize: 11,
+                height: 1.4,
+                color: palette.onSurface.withOpacity(0.55),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
