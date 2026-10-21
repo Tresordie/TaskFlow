@@ -28,12 +28,13 @@ Task _task(
 
 void main() {
   group('buildKanbanColumns · status dimension', () {
-    test('buckets tasks into the four fixed columns in order', () {
+    test('buckets tasks into the five fixed columns in order', () {
       final columns = buildKanbanColumns([
         _task(1, status: TaskStatus.blocked),
         _task(2, status: TaskStatus.completed),
         _task(3, status: TaskStatus.inProgress),
         _task(4, status: TaskStatus.planned),
+        _task(5, status: TaskStatus.archived),
       ], BoardDimension.status);
 
       expect(columns.map((c) => c.key).toList(), [
@@ -41,20 +42,23 @@ void main() {
         TaskStatus.inProgress.name,
         TaskStatus.completed.name,
         TaskStatus.blocked.name,
+        TaskStatus.archived.name,
       ]);
       expect(columns[0].tasks.map((t) => t.id), [4]);
       expect(columns[1].tasks.map((t) => t.id), [3]);
       expect(columns[2].tasks.map((t) => t.id), [2]);
       expect(columns[3].tasks.map((t) => t.id), [1]);
+      expect(columns[4].tasks.map((t) => t.id), [5]);
     });
 
-    test('archived tasks render in the Done column (app-wide convention)',
-        () {
+    test('archived tasks render in their own Archive column, not Done '
+        '(v1.12.64)', () {
       final columns = buildKanbanColumns([
         _task(1, status: TaskStatus.archived),
         _task(2, status: TaskStatus.completed),
       ], BoardDimension.status);
-      expect(columns[2].tasks.map((t) => t.id).toSet(), {1, 2});
+      expect(columns[2].tasks.map((t) => t.id).toSet(), {2});
+      expect(columns[4].tasks.map((t) => t.id).toSet(), {1});
     });
   });
 

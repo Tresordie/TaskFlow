@@ -110,7 +110,8 @@ class KanbanColumnData {
   const KanbanColumnData({required this.key, required this.tasks});
 }
 
-/// Everything the Today kanban needs: the four columns plus the global
+/// Everything the Today kanban needs: the status columns (five as of
+/// v1.12.64) plus the global
 /// KPI numbers for the stat cards (computed over ALL tasks, ignoring
 /// filters — mirroring translate_tool's stat panel behaviour).
 class KanbanBoardData {
@@ -148,10 +149,10 @@ bool _isSameDay(DateTime a, DateTime b) =>
 bool _isDone(Task t) =>
     t.status == TaskStatus.completed || t.status == TaskStatus.archived;
 
-/// The status-mode column key a task belongs to (the Done column holds both
-/// completed and archived — the app-wide `completed || archived` convention).
-String statusColumnKeyOf(Task t) =>
-    _isDone(t) ? TaskStatus.completed.name : t.status.name;
+/// The status-mode column key a task belongs to. v1.12.64: archived tasks
+/// get their own Archive column — Done holds only completed. (KPI stats
+/// still count `completed || archived` as done via [_isDone].)
+String statusColumnKeyOf(Task t) => t.status.name;
 
 /// Column-internal order: earliest due date first (no due date sinks to the
 /// bottom), then priority P0→P3, then newest created first.
@@ -204,6 +205,7 @@ List<KanbanColumnData> buildKanbanColumns(
           TaskStatus.inProgress,
           TaskStatus.completed,
           TaskStatus.blocked,
+          TaskStatus.archived,
         ])
           s.name: <Task>[],
       };

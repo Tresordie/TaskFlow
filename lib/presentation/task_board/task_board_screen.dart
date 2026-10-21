@@ -22,8 +22,8 @@ import 'kanban_column.dart';
 /// board dimension switcher (Status / Project / Priority), and a board
 /// whose columns depend on the dimension. Dropping a card onto a column
 /// applies that column's attribute; dropping it onto another card still
-/// converts it into a sub-step. Archived tasks render in the Done column
-/// (app-wide `completed || archived` convention).
+/// converts it into a sub-step. Archived tasks render in their own Archive
+/// column (v1.12.64); KPI stats still count `completed || archived` as done.
 class TaskBoardScreen extends ConsumerStatefulWidget {
   const TaskBoardScreen({super.key});
 
@@ -653,9 +653,12 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
       // the row 56px wider than the viewport and clipped the last column.
       child: LayoutBuilder(builder: (context, constraints) {
         final available = constraints.maxWidth;
-        // Columns share the width equally once it fits; below 4×252px the
+        // Columns share the width equally once it fits; below n×252px the
         // board scrolls horizontally instead of squeezing the cards.
-        final colWidth = max(252.0, (available - gap * 3) / 4);
+        // Generalised over the column count in v1.12.64 (status mode now
+        // has five columns including Archive).
+        final n = board.columns.length;
+        final colWidth = max(252.0, (available - gap * (n - 1)) / n);
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: ConstrainedBox(
@@ -766,8 +769,14 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
       case TaskStatus.inProgress:
         return ('In Progress', Icons.play_arrow_rounded, AppColors.info);
       case TaskStatus.completed:
-      case TaskStatus.archived:
         return ('Done', Icons.check_circle_outline, AppColors.success);
+      case TaskStatus.archived:
+        // v1.12.64: its own column — Done holds only completed.
+        return (
+          'Archive',
+          Icons.archive_outlined,
+          AppColors.statusColor(TaskStatus.archived)
+        );
       case TaskStatus.blocked:
         return ('Blocked', Icons.block, AppColors.error);
     }

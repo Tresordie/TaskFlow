@@ -131,10 +131,10 @@ test/
 - **所有已保存记录**（工作日志条目、AI 总结、执行日志笔记、任务描述、AI 解析任务描述、报告预览、总结历史）均以 Markdown 预览方式展现，支持**鼠标拖动整篇选中**，右键菜单提供 **“Copy as Markdown”** 复制原始 Markdown 源码
 
 ### 阶段 8 — 今日看板 Dashboard
-- Today 页重构为看板（对标 translate_tool 任务清单页）：四张 KPI 统计卡（今日进度含动画进度条 / To Do+逾期 / In Progress+高优先 / Done+完成率）+ 固定四列看板
-- 看板维度：**Status**（To Do / In Progress / Done / Blocked）、**Project**（每个在用项目一列）、**Priority**（P0–P3）——拖拽卡片到某列即应用该属性（状态/项目/优先级）；列头「+」新建的任务自动继承
+- Today 页重构为看板（对标 translate_tool 任务清单页）：四张 KPI 统计卡（今日进度含动画进度条 / To Do+逾期 / In Progress+高优先 / Done+完成率）+ 固定五列看板
+- 看板维度：**Status**（To Do / In Progress / Done / Blocked / Archive）、**Project**（每个在用项目一列）、**Priority**（P0–P3）——拖拽卡片到某列即应用该属性（状态/项目/优先级）；列头「+」新建的任务自动继承
 - **完整字段的新建任务对话框**：顶部与列头的内联快加保留「输入→Enter 秒建」的轻量路径；输入框旁的「更多选项」按钮打开完整表单——标题、项目、截止日期、Markdown 描述、优先级、标签、子任务——并自动预填已输入的标题与该列属性
-- 顶部快捷筛选（All / Due Today / High Priority）；拖 A 卡到 B 卡可转为子任务；Archived 任务归入 Done 列展示
+- 顶部快捷筛选（All / Due Today / High Priority）；拖 A 卡到 B 卡可转为子任务；Archived 任务归入独立的 Archive 列展示（v1.12.64——Done 列只放 Complete 任务；顶部 KPI 统计仍按 completed + archived 计为已完成）
 - 富任务卡片：描述 3 行预览、最近一条执行日志预览（note/pass/fail/blocked 类型着色图标）、meta 胶囊（优先级/截止/项目/标签）、统计行（附件数/日志条数/子任务进度环）
 - 环境画布 + 缓慢漂移的彩色光晕；浅色主题走「纸感」配方（着色画布 + 纯白卡片 + 玻璃列），深色主题保持调色板阶梯
 - 卡片外观设置位于 **设置 → Today Board Cards**：背景透明度滑块（0%–100%）、**玻璃态**开关与模糊强度滑块（背景模糊 + 亮边的磨砂玻璃卡片），带迷你画布实时预览
