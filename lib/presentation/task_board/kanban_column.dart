@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/task.dart';
 import '../../providers/task_providers.dart';
+import '../../providers/window_activity_provider.dart';
 import '../shared/glass_sheen.dart';
 import 'task_card_widget.dart';
 
@@ -355,7 +356,7 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
   Widget _buildContent(ThemeData theme, ColorScheme palette, Color muted) {
     if (widget.data.tasks.isEmpty) {
       // Breathing dashed-style empty box, inviting a drag.
-      return Container(
+      Widget box = Container(
         width: double.infinity,
         margin: const EdgeInsets.only(top: 2),
         decoration: BoxDecoration(
@@ -377,9 +378,16 @@ class _KanbanColumnState extends ConsumerState<KanbanColumn> {
             ),
           ],
         ),
-      )
-          .animate(onPlay: (controller) => controller.repeat(reverse: true))
-          .fade(begin: 0.55, end: 1.0, duration: 1800.ms);
+      );
+      // The breathing fade is suspended while the window is minimized:
+      // every empty column holds a repeat() controller, and any scheduled
+      // controller keeps the vsync pipeline producing frames off-screen.
+      if (ref.watch(windowActiveProvider)) {
+        box = box
+            .animate(onPlay: (controller) => controller.repeat(reverse: true))
+            .fade(begin: 0.55, end: 1.0, duration: 1800.ms);
+      }
+      return box;
     }
 
     return Scrollbar(

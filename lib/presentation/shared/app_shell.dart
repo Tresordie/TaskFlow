@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/app_glass_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/window_activity_provider.dart';
 import 'custom_title_bar.dart';
 import 'glass_panel.dart';
 
@@ -169,6 +170,10 @@ class AppShell extends ConsumerWidget {
         : Color.alphaBlend(
             p.border.withOpacity(glass ? 0.72 : 0.32), p.surface);
     final orbAlpha = glass ? 1.0 : 0.32;
+    // While the window is minimized, render the orbs statically: a scheduled
+    // repeat() controller keeps the Windows vsync pipeline producing frames
+    // off-screen (~17% CPU / ~34% GPU on an idle, minimized board).
+    final orbActive = ref.watch(windowActiveProvider);
 
     Widget orb(Color color, double size, double opacity) {
       final container = Container(
@@ -186,7 +191,7 @@ class AppShell extends ConsumerWidget {
       // v1.12.15: the drift animation runs only in glass mode — the whisper
       // canvas stays STATIC so pages settle cleanly (pumpAndSettle) and the
       // motion language stays reserved for the glass look.
-      if (!glass) return container;
+      if (!glass || !orbActive) return container;
       return container
           .animate(onPlay: (controller) => controller.repeat(reverse: true))
           .moveX(

@@ -123,7 +123,7 @@ test/
 - Desktop-only chrome guarded for iOS/Android (custom title bar & window_manager skipped on mobile)
 - Custom date-range picker (Timeline / Calendar / Reports): ONE dialog with the same calendar grid as the Daily/Weekly popup — tap the start day, tap the end day, confirm
 - **Single-instance guard**: a second launch raises the already-running TaskFlow window to the foreground (the lock file carries the holder's PID) instead of opening a second copy or hitting an Isar `MdbxError`; only when no window can be found does it show a clearly titled "TaskFlow — 已在运行" explanation window with recovery steps; if the database still cannot open, the board explains how to recover (close every instance, remove the stale `taskflow.isar-lck`, restore from backups) and keeps the raw error selectable
-- Unit + widget test suite (`flutter test`, 404 tests as of v1.12.64): report period math, AI config, LaTeX rendering, title bar
+- Unit + widget test suite (`flutter test`, 404 tests as of v1.12.65): report period math, AI config, LaTeX rendering, title bar
 
 ### Phase 7 — Unified rich-text input & record display
 - **Every input area** (Work Log, execution log + edit dialog, task description create/edit dialogs, AI Parse notes, Report editor) supports Markdown + rich text with instant **Write/Preview toggle** — the preview uses the SAME style sheet as the saved content (true WYSIWYG "input-as-preview")
@@ -139,6 +139,7 @@ test/
 - Quick-filter pills (All / Due Today / High Priority); drag a card onto another card to convert it into a sub-step; archived tasks get their own Archive column (v1.12.64 — Done holds only completed; KPI stats still count completed + archived as done)
 - Rich task cards: 3-line description preview, latest execution-log note preview (type-colored icon: note / pass / fail / blocked), meta chips (priority / due date / project / tags), stats row (attachments / log entries / sub-task progress ring)
 - Ambient backdrop with drifting accent orbs; light themes use the “paper” recipe (tinted canvas + pure-white cards + glassy columns), dark themes keep the palette ladder
+- **Idle-friendly ambient canvas** (v1.12.65): the drifting orbs, the breathing empty-column box and the pulsing empty state all pause when the window is minimized — with no scheduled animation the Windows render loop parks instead of compositing off-screen (a minimized, untouched app used to sit at ~17% CPU / ~34% GPU)
 - Card appearance settings in **Settings → Today Board Cards**: background opacity slider (0%–100%) and a **glass effect** toggle with adjustable blur strength (frosted-glass cards via backdrop blur + bright rim), with a live mini-canvas preview
 - **Interface Glass** (Settings) extends the same treatment to the whole app: title bar, sidebar and content panels become frosted glass over an ambient canvas, and the theme's surface/card colors go translucent app-wide — with panel opacity (0%–100%) and blur strength sliders; light themes keep the ambient canvas even without glass
 - 13 kanban contract tests (column bucketing / in-column ordering / quick filters / KPI math)

@@ -11,6 +11,7 @@ import '../../providers/board_card_style_provider.dart';
 import '../../providers/color_settings_provider.dart';
 import '../../providers/task_providers.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/window_activity_provider.dart';
 import '../shared/glass_panel.dart';
 import '../shared/glass_sheen.dart';
 import '../shared/suggestion_field.dart';
@@ -188,7 +189,7 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
     final orbScale = glassActive ? 1.45 : 1.0;
 
     Widget orb(Color color, double size, double opacity) {
-      return Container(
+      final container = Container(
         width: size,
         height: size,
         decoration: BoxDecoration(
@@ -199,7 +200,13 @@ class _TaskBoardScreenState extends ConsumerState<TaskBoardScreen> {
             ],
           ),
         ),
-      ).animate(onPlay: (controller) => controller.repeat(reverse: true)).moveX(
+      );
+      // Minimized: no repeat() controller, or no frames — a scheduled
+      // animation keeps the Windows vsync pipeline spinning off-screen.
+      if (!ref.watch(windowActiveProvider)) return container;
+      return container
+          .animate(onPlay: (controller) => controller.repeat(reverse: true))
+          .moveX(
             begin: -18,
             end: 18,
             duration: 14000.ms,
@@ -1570,29 +1577,36 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
 
 // ─── Empty state ─────────────────────────────────────────────────────────────
 
-class _EmptyState extends StatelessWidget {
+class _EmptyState extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    // The breathing pulse is suspended while the window is minimized —
+    // a repeat() controller keeps frames scheduled off-screen.
+    final pulse = ref.watch(windowActiveProvider);
+    Widget emblem = Container(
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withOpacity(0.08),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        Icons.check_circle_outline,
+        size: 36,
+        color: theme.colorScheme.primary.withOpacity(0.5),
+      ),
+    );
+    if (pulse) {
+      emblem = emblem
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .scaleXY(begin: 1.0, end: 1.06, duration: 1400.ms);
+    }
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.08),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.check_circle_outline,
-              size: 36,
-              color: theme.colorScheme.primary.withOpacity(0.5),
-            ),
-          )
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .scaleXY(begin: 1.0, end: 1.06, duration: 1400.ms),
+          emblem,
           const SizedBox(height: 16),
           Text(
             'No tasks yet',

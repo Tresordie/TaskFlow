@@ -7,6 +7,7 @@ import '../core/theme/font_stack.dart';
 import '../providers/theme_provider.dart';
 import '../providers/font_provider.dart';
 import '../providers/app_glass_provider.dart';
+import '../providers/window_activity_provider.dart';
 import '../app/router.dart';
 
 class TaskFlowApp extends ConsumerWidget {
@@ -38,7 +39,8 @@ class TaskFlowApp extends ConsumerWidget {
     // Apply the global font-weight preference (v1.4.22, numeric in v1.4.23).
     theme = _applyWeight(theme, FontWeightNotifier.weightFrom(fontWeightValue));
 
-    return MaterialApp.router(
+    return WindowActivityObserver(
+      child: MaterialApp.router(
       title: 'TaskFlow',
       debugShowCheckedModeBanner: false,
       theme: theme,
@@ -61,6 +63,7 @@ class TaskFlowApp extends ConsumerWidget {
           child: child ?? const SizedBox.shrink(),
         );
       },
+      ),
     );
   }
 
