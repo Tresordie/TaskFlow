@@ -389,6 +389,19 @@ class AppTheme {
         elevation: isDark ? 0 : 8,
         shadowColor: Colors.black.withOpacity(0.18),
       ),
+      // v1.13.0: the M3 date picker does NOT use dialogTheme — its default
+      // background is `surfaceContainerHigh`, derived from the colorScheme
+      // surface, which is TRANSLUCENT in glass mode: the calendar opened
+      // over the New Task dialog showed the description text bleeding
+      // through. Pin the opaque palette surface (same recipe as
+      // dialogTheme above) so the picker is always readable.
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: p.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+        ),
+      ),
       // v1.4.29: rounded, floating snackbars + tooltips + popup menus so
       // transient UI matches the card/dialog radius language.
       snackBarTheme: SnackBarThemeData(

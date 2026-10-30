@@ -7,6 +7,7 @@ import '../core/theme/font_stack.dart';
 import '../providers/theme_provider.dart';
 import '../providers/font_provider.dart';
 import '../providers/app_glass_provider.dart';
+import '../providers/sync_providers.dart';
 import '../providers/window_activity_provider.dart';
 import '../app/router.dart';
 
@@ -15,6 +16,12 @@ class TaskFlowApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // v1.13.0: touch the sync notifier once at startup so the git
+    // auto-sync timer runs for the whole session even if the user never
+    // opens Settings. Read, not watch: sync status changes must not
+    // rebuild MaterialApp.
+    ref.read(syncProvider);
+
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeModeProvider);
     final font = ref.watch(fontProvider);

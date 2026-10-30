@@ -1775,7 +1775,8 @@ class _AiConfigCardState extends ConsumerState<_AiConfigCard> {
   }
 }
 
-/// Backup / restore / Google-Drive-folder sync card (Phase 4).
+/// Backup / restore / git-repo sync card (v1.13.0: git dual-push replaced
+/// the Google-Drive folder mirror).
 class _BackupSyncCard extends ConsumerStatefulWidget {
   const _BackupSyncCard();
 
@@ -1874,7 +1875,7 @@ class _BackupSyncCardState extends ConsumerState<_BackupSyncCard> {
           'This file contains $count task(s).\n\n'
           'Full restore replaces EVERYTHING in the current database.\n'
           'Merge keeps your local tasks and only overwrites tasks '
-          'with matching ids (recommended for Drive sync).',
+          'with matching ids (recommended for git sync).',
         ),
         actions: [
           TextButton(
@@ -1910,11 +1911,11 @@ class _BackupSyncCardState extends ConsumerState<_BackupSyncCard> {
     }
   }
 
-  // ── Drive sync ──
+  // ── Git sync ──
 
   Future<void> _browseFolder() async {
     final path = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Select your Google Drive folder',
+      dialogTitle: 'Select your taskflow_database git clone folder',
     );
     if (path != null) {
       _folderController.text = path;
@@ -1923,9 +1924,10 @@ class _BackupSyncCardState extends ConsumerState<_BackupSyncCard> {
   }
 
   Future<void> _autoDetect() async {
-    final path = SyncNotifier.detectDriveFolder();
+    final path = await SyncNotifier.detectGitRepo();
     if (path == null) {
-      _snack('No Google Drive folder found — select it manually.', error: true);
+      _snack('No taskflow_database clone found — select it manually.',
+          error: true);
       return;
     }
     _folderController.text = path;
@@ -2020,18 +2022,18 @@ class _BackupSyncCardState extends ConsumerState<_BackupSyncCard> {
 
           const Divider(height: 28),
 
-          // Drive sync
+          // Git sync
           Row(
             children: [
               Icon(Icons.cloud_sync_outlined,
                   size: 17, color: theme.colorScheme.primary),
               const SizedBox(width: 8),
-              Text('Google Drive Sync',
+              Text('Git Sync · Gitee + GitHub',
                   style: theme.textTheme.titleMedium
                       ?.copyWith(fontSize: 13, fontWeight: FontWeight.w700)),
               const Spacer(),
               Text(
-                sync.enabled ? 'Enabled' : 'Disabled',
+                sync.enabled ? 'Auto-sync on' : 'Auto-sync off',
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w600,
@@ -2046,9 +2048,13 @@ class _BackupSyncCardState extends ConsumerState<_BackupSyncCard> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Syncs via the Google Drive for Desktop mirror folder '
-            '(TaskFlow/taskflow_sync.json) — no API credentials needed. '
-            'Install Drive for Desktop and sign in, then point TaskFlow at the folder.',
+            'Syncs through a git clone of the taskflow_database repo — the '
+            'snapshot + attachments are committed and pushed to Gitee and '
+            'GitHub (dual pushurl on origin). TaskFlow stores no URLs or '
+            'credentials; the system Git credential manager (GCM / Keychain) '
+            'authenticates. Clone the repo once per machine, point TaskFlow '
+            'at it, then Sync Now — auto-sync keeps machines converging '
+            'every 5 minutes while the app runs.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.45),
               height: 1.4,
@@ -2065,7 +2071,7 @@ class _BackupSyncCardState extends ConsumerState<_BackupSyncCard> {
                   readOnly: true,
                   style: const TextStyle(fontSize: 12.5),
                   decoration: InputDecoration(
-                    hintText: 'e.g. C:\\Users\\you\\Google Drive',
+                    hintText: 'e.g. F:\\gitee\\taskflow_database',
                     isDense: true,
                     prefixIcon: const Icon(Icons.folder_outlined, size: 17),
                     contentPadding: const EdgeInsets.symmetric(
@@ -2093,6 +2099,34 @@ class _BackupSyncCardState extends ConsumerState<_BackupSyncCard> {
               ),
             ],
           ),
+
+          // v1.13.0: live feedback that the selected folder is a git repo.
+          if (sync.configured) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(
+                  sync.isGitRepo
+                      ? Icons.check_circle_outline
+                      : Icons.error_outline,
+                  size: 14,
+                  color: sync.isGitRepo ? Colors.green : Colors.orange,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    sync.isGitRepo
+                        ? 'Git repository detected — Sync Now pushes to all remotes.'
+                        : 'Not a git repository — clone the taskflow_database repo here first (see README, Git Sync).',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: theme.colorScheme.onSurface.withOpacity(0.55),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
 
           // Sync actions

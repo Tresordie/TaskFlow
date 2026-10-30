@@ -6,17 +6,21 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../models/task.dart';
+import '../models/work_log.dart';
 import '../repositories/task_repository.dart';
+import '../repositories/work_log_repository.dart';
 
-/// Serializes the whole task database to a portable JSON snapshot and
-/// restores it. The same snapshot format powers the manual backup/restore
-/// feature and the Google Drive folder sync (Phase 4).
+/// Serializes the whole task database (and, since format v2, the Work Log
+/// lists) to a portable JSON snapshot and restores it. The same snapshot
+/// format powers the manual backup/restore feature and the git sync
+/// (v1.13.0, replacing the old Google Drive folder sync).
 class BackupService {
-  static const int formatVersion = 1;
+  static const int formatVersion = 2;
 
   final TaskRepository _repo;
+  final WorkLogRepository? _workLogs;
 
-  BackupService(this._repo);
+  BackupService(this._repo, [this._workLogs]);
 
   // ────────────────────────── Serialization ──────────────────────────
 
@@ -27,8 +31,20 @@ class BackupService {
       'version': formatVersion,
       'exportedAt': DateTime.now().toIso8601String(),
       'tasks': [for (final t in tasks) _taskToJson(t)],
+      if (_workLogs != null) 'workLogs': await _workLogsSection(_workLogs),
     };
     return const JsonEncoder.withIndent('  ').convert(payload);
+  }
+
+  Future<Map<String, dynamic>> _workLogsSection(WorkLogRepository logs) async {
+    return {
+      'records': [
+        for (final r in await logs.loadRecords()) r.toJson(),
+      ],
+      'summaries': [
+        for (final s in await logs.loadSummaries()) s.toJson(),
+      ],
+    };
   }
 
   Map<String, dynamic> _taskToJson(Task t) => {
@@ -103,7 +119,67 @@ class BackupService {
     ];
 
     await _repo.replaceAllTasks(tasks, merge: merge);
+
+    final wl = root['workLogs'];
+    if (wl is Map<String, dynamic>) await _restoreWorkLogs(wl, merge: merge);
+
     return tasks.length;
+  }
+
+  /// Restores the snapshot's `workLogs` section (format v2). With
+  /// [merge]=true entries are upserted by id keeping the newer `timestamp`
+  /// — never deleted — mirroring the task-merge semantics; a full restore
+  /// ([merge]=false) replaces the lists outright. Both stay bounded to the
+  /// repository caps. The input draft intentionally does NOT sync: it is
+  /// transient per-machine state.
+  Future<void> _restoreWorkLogs(Map<String, dynamic> wl,
+      {required bool merge}) async {
+    final logs = _workLogs;
+    if (logs == null) return;
+
+    final records = _mergeById<WorkLogRecord>(
+      merge ? await logs.loadRecords() : const [],
+      [
+        for (final raw in (wl['records'] as List? ?? []))
+          if (raw is Map<String, dynamic>) WorkLogRecord.fromJson(raw),
+      ],
+      idOf: (r) => r.id,
+      tsOf: (r) => r.timestamp,
+      max: WorkLogRepository.maxRecords,
+    );
+    await logs.saveRecords(records);
+
+    final summaries = _mergeById<WorkLogSummary>(
+      merge ? await logs.loadSummaries() : const [],
+      [
+        for (final raw in (wl['summaries'] as List? ?? []))
+          if (raw is Map<String, dynamic>) WorkLogSummary.fromJson(raw),
+      ],
+      idOf: (s) => s.id,
+      tsOf: (s) => s.timestamp,
+      max: WorkLogRepository.maxSummaries,
+    );
+    await logs.saveSummaries(summaries);
+  }
+
+  /// Union of [local] and [incoming] keyed by id: entries only in one side
+  /// are kept, shared ids take the newer timestamp; result is sorted
+  /// newest-first and trimmed to [max].
+  List<T> _mergeById<T>(
+    List<T> local,
+    List<T> incoming, {
+    required String Function(T) idOf,
+    required int Function(T) tsOf,
+    required int max,
+  }) {
+    final byId = <String, T>{for (final t in local) idOf(t): t};
+    for (final t in incoming) {
+      final prev = byId[idOf(t)];
+      if (prev == null || tsOf(t) >= tsOf(prev)) byId[idOf(t)] = t;
+    }
+    final merged = byId.values.toList()
+      ..sort((a, b) => tsOf(b).compareTo(tsOf(a)));
+    return merged.length > max ? merged.sublist(0, max) : merged;
   }
 
   Task _taskFromJson(Map<String, dynamic> j) {

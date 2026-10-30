@@ -53,7 +53,7 @@ lib/
 │       ├── ai_service.dart            # OpenAI 兼容聊天客户端
 │       ├── report_service.dart        # 周期聚合 + MD/HTML 导出
 │       ├── backup_service.dart        # JSON 快照 / 恢复
-│       └── sync_service.dart          # Google Drive 文件夹同步
+│       └── sync_service.dart          # Git 双推送同步（Gitee+GitHub）
 ├── providers/
 │   ├── task_providers.dart            # 任务状态 + 过滤器
 │   ├── theme_provider.dart            # 持久化主题模式
@@ -111,9 +111,9 @@ test/
 - 按日期 / 项目 / 关键词过滤
 
 ### 阶段 5 — 备份与同步
-- 一键 JSON 备份（任务、日志、子步骤、附件引用）到 `Documents/TaskFlow/backups/` 或任意位置
+- 一键 JSON 备份（任务、日志、子步骤、附件引用，快照 v2 起含工作日志）到 `Documents/TaskFlow/backups/` 或任意位置
 - 恢复支持 **完整恢复**（替换全部）和 **合并**（按 task uid 更新/插入）
-- Google Drive 同步：通过 Drive-for-Desktop 镜像文件夹（`TaskFlow/taskflow_sync.json`）— 推送 / 拉取 / 自动方向，无需 API 凭据
+- **Git 同步**（v1.13.0，取代 Google Drive 文件夹镜像）：快照 + 附件放在 `taskflow_database` git 克隆目录里——`origin` 配双 pushurl，一次 push 同时写 Gitee 和 GitHub。两阶段「拉取合并→推送并集」让所有设备收敛（按 uid upsert，`updatedAt` 新者胜）；应用不存任何仓库 URL 或凭据，认证交给系统 Git 凭据管理器（GCM / 钥匙串），每台机器预先手动 clone + 登录一次，之后所有 git 命令非交互运行。手动 Sync Now / Push / Pull，或开启后应用运行期间每 5 分钟自动同步
 
 ### 阶段 6 — 体验优化
 - 任务看板交错入场动画（flutter_animate）
@@ -152,7 +152,7 @@ test/
 - **玻璃面板共用外壳**：任务卡与 KPI 统计卡走同一个 `GlassSurface`（裁剪 → 背景模糊 → 半透明填充 → 高光层），外壳会把内容钉满面板宽度——否则 `Stack` 会按文字收缩，右上角的图标芯片就会盖在「TO DO / IN PROGRESS」标签上（v1.12.35 修）
 - 浅色主题按「可测量的对比度」把关，不靠肉眼：`AppColors` 为每个表面/文字角色定了一条随亮度变化的规则（删除线标题、次要文字、弱化文字、卡片细边框），`BoardGlassSpec` 让浅色玻璃卡默认 62%、可读下限 35%（上限 100% 可调），`GlassSheen` 在浅色下收掉白色高光，用户自选的项目/标签淡色会被推到 WCAG AA 达标为止——全部由 `test/light_theme_contrast_test.dart` 锁住（v1.12.42，玻璃范围 v1.12.60）
 - **待办状态有颜色**：`TaskStatus.planned` 用靛蓝而不是中性灰——同一个值同时负责 KPI「TO DO」身份条、To Do 列底色和 planned 脊柱，灰色让那三处都「什么都没有」（v1.12.45）
-- 测试套件扩至 404 项（含玻璃/主题/悬停/字体/时间轴/浅色对比度/版本号一致性/看板内联添加焦点/建议下拉层尺寸与不透明/新建任务对话框回归，锁定「玻璃高光不得回坨」「玻璃内容钉满面板宽度」「纸面卡片不跌破可读下限」「浅色列托盘必须半透明」「浅色卡为 Notion 扁平皮肤（10px 圆角/发丝边/无左彩条）而深色卡保持 14px 玻璃壳」「浅色玻璃默认 62% 且 35–100% 可调」「碧落/暮紫/苔庭第三、四、五浅色签名色不得被抹平」「已删主题不得复活」、每款字体配对的两半与下载分支、时间轴表情符号表与脊柱/标签对齐预算，以及每款浅色主题各文字角色的 WCAG 比值；v1.12.36/37 连删冰沙与玛奇朵共 4 款）
+- 测试套件扩至 414 项（含玻璃/主题/悬停/字体/时间轴/浅色对比度/版本号一致性/工作日志快照 v2 往返与合并/玻璃模式日期选择器不透明底色/看板内联添加焦点/建议下拉层尺寸与不透明/新建任务对话框回归，锁定「玻璃高光不得回坨」「玻璃内容钉满面板宽度」「纸面卡片不跌破可读下限」「浅色列托盘必须半透明」「浅色卡为 Notion 扁平皮肤（10px 圆角/发丝边/无左彩条）而深色卡保持 14px 玻璃壳」「浅色玻璃默认 62% 且 35–100% 可调」「碧落/暮紫/苔庭第三、四、五浅色签名色不得被抹平」「已删主题不得复活」、每款字体配对的两半与下载分支、时间轴表情符号表与脊柱/标签对齐预算，以及每款浅色主题各文字角色的 WCAG 比值；v1.12.36/37 连删冰沙与玛奇朵共 4 款）
 
 ## 数据位置
 
@@ -162,10 +162,11 @@ test/
 | 附件 | `Documents/TaskFlow/attachments/` |
 | 报告 | `Documents/TaskFlow/reports/` |
 | 备份 | `Documents/TaskFlow/backups/` |
+| Git 同步仓库 | 你的 `taskflow_database` 克隆——`TaskFlow/taskflow_sync.json` + `TaskFlow/attachments/`（与原 Drive 文件夹布局一致，拷贝即迁移） |
 | 设置 | Windows 注册表 `HKCU\Software\com.taskflow\taskflow` / macOS 偏好设置 |
 
 ## 路线图（规划中）
 
-- 完整 Google Drive OAuth 同步 (googleapis) 作为文件夹同步的替代方案
+- 删除跨机传播（git 同步沿用 Drive 时代的 upsert-only 合并：一台机器删掉的任务不会在其它机器消失）
 - 周期性任务和提醒
 - 从测试工位导出 CSV 导入

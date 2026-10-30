@@ -264,4 +264,24 @@ void main() {
       expect(AppColors.darkTextPrimary, AppColors.dark.textPrimary);
     });
   });
+
+  group('date picker opacity (v1.13.0)', () {
+    test('datePickerTheme background stays opaque in glass mode', () {
+      // The M3 date picker defaults to surfaceContainerHigh, derived from
+      // the colorScheme surface — translucent under glass, which made the
+      // calendar bleed through whatever dialog it opened over. Every theme
+      // must pin the opaque palette surface instead.
+      for (final mode in AppThemeMode.values) {
+        for (final opacity in [1.0, 0.5, 0.0]) {
+          final theme =
+              AppTheme.buildTheme(mode, glass: true, glassOpacity: opacity);
+          final bg = theme.datePickerTheme.backgroundColor!;
+          expect(bg.a, 1.0,
+              reason: '${mode.name} glass $opacity: date picker must be '
+                  'opaque');
+          expect(bg, mode.palette.surface);
+        }
+      }
+    });
+  });
 }
