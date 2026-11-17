@@ -101,6 +101,7 @@ test/
 - Dashboard stats: touched / completed / in-progress / overdue / completion rate / Pass-Fail-Blocked counts / sub-step progress
 - Per-task checkbox picker and project/tag/status/priority filters
 - AI-powered full report generation (OpenAI-compatible LLM) with fallback to deterministic template
+- AI report generation reads every task's notes FIRST — description plus the ENTIRE execution log, understanding each task's background before writing (last-7-days entries drive summaries, older ones are context only); the Status Dashboard Headline cell is a LIST with ONE line per task of the project: "**title** — one-sentence summary of its most recent updates", ordered by recency (v1.13.1)
 - Archived tasks are automatically excluded from reports
 - Live Markdown preview; export to `.md` or styled standalone `.html`
 - Exports land in `Documents/TaskFlow/reports/`

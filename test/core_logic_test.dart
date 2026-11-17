@@ -594,7 +594,10 @@ void main() {
     test('full-report prompt encodes headline list + 7-day focus + '
         'one-line In Progress (v1.9.3)', () {
       final en = ReportService.fullReportPrompt(ReportLanguage.english);
-      expect(en, contains('{headline 1}<br>{headline 2}<br>{headline 3}'));
+      // v1.13.x: Headline cell = ONE line per task — bold title + a
+      // one-sentence summary built from the task's most recent updates.
+      expect(en, contains('{ONE-sentence summary of its most recent updates}'));
+      expect(en, contains('ONE line per task'));
       expect(en, contains('LAST 7 DAYS'));
       expect(en, contains('Earlier context: '));
       expect(en, isNot(contains('- **{Task title}** — {x}/{y} sub-steps')));
@@ -605,7 +608,8 @@ void main() {
       expect(en, isNot(contains('decompose it into multiple rows')));
 
       final zh = ReportService.fullReportPrompt(ReportLanguage.chinese);
-      expect(zh, contains('{要点1}<br>{要点2}<br>{要点3}'));
+      expect(zh, contains('{一句话总结其最近的更新}'));
+      expect(zh, contains('每个任务各占一行'));
       expect(zh, contains('近一周（7 天）'));
       expect(zh, contains('早期背景：'));
       expect(zh, contains('- **{任务标题}** — {一句话总结任务当前状态}'));
