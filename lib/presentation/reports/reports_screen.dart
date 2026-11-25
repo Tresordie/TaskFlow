@@ -1089,66 +1089,70 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       Tooltip(
                         message: 'Export the selected tasks and ALL their '
                             'notes — no Generate needed',
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                                color: theme.colorScheme.outline
-                                    .withOpacity(0.35)),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: null,
-                              isDense: true,
-                              icon: const Icon(Icons.arrow_drop_down, size: 18),
-                              hint: Row(
+                        child: PopupMenuButton<String>(
+                          // v1.13.5: open UNDER the trigger. A DropdownButton
+                          // anchors its first menu item ON the button — fine
+                          // for value selectors (item text == displayed text)
+                          // but an action menu's hint differs from item 0, so
+                          // the item painted over the trigger (user-reported
+                          // overlap). PopupMenuPosition.under avoids it.
+                          position: PopupMenuPosition.under,
+                          enabled: !_exporting,
+                          onSelected: _exportNotes,
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'md',
+                              height: 36,
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.notes_outlined,
+                                  Icon(Icons.description_outlined,
                                       size: 13,
                                       color: theme.colorScheme.primary),
                                   const SizedBox(width: 6),
-                                  const Text('Export notes',
+                                  const Text('Markdown (.md)',
                                       style: TextStyle(fontSize: 12)),
                                 ],
                               ),
-                              items: [
-                                DropdownMenuItem(
-                                  value: 'md',
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.description_outlined,
-                                          size: 13,
-                                          color: theme.colorScheme.primary),
-                                      const SizedBox(width: 6),
-                                      const Text('Markdown (.md)',
-                                          style: TextStyle(fontSize: 12)),
-                                    ],
-                                  ),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'html',
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.html_outlined,
-                                          size: 13,
-                                          color: theme.colorScheme.primary),
-                                      const SizedBox(width: 6),
-                                      const Text('Styled HTML (.html)',
-                                          style: TextStyle(fontSize: 12)),
-                                    ],
-                                  ),
-                                ),
+                            ),
+                            PopupMenuItem(
+                              value: 'html',
+                              height: 36,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.html_outlined,
+                                      size: 13,
+                                      color: theme.colorScheme.primary),
+                                  const SizedBox(width: 6),
+                                  const Text('Styled HTML (.html)',
+                                      style: TextStyle(fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                          ],
+                          // Same dense bordered container idiom as the
+                          // language selector beside it (v1.13.4).
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                  color: theme.colorScheme.outline
+                                      .withOpacity(0.35)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.notes_outlined,
+                                    size: 13,
+                                    color: theme.colorScheme.primary),
+                                const SizedBox(width: 6),
+                                const Text('Export notes',
+                                    style: TextStyle(fontSize: 12)),
+                                const Icon(Icons.arrow_drop_down, size: 18),
                               ],
-                              onChanged: _exporting
-                                  ? null
-                                  : (v) {
-                                      if (v != null) _exportNotes(v);
-                                    },
                             ),
                           ),
                         ),

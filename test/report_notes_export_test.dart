@@ -430,6 +430,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Markdown (.md)'), findsOneWidget);
       expect(find.text('Styled HTML (.html)'), findsOneWidget);
+      // v1.13.5 regression: the menu opens BELOW the trigger — a
+      // DropdownButton anchored item 0 on the button and painted over it.
+      final trigger = tester.getRect(find.text('Export notes'));
+      final firstItem = tester.getRect(find.text('Markdown (.md)'));
+      expect(firstItem.top, greaterThanOrEqualTo(trigger.bottom));
     });
 
     testWidgets('full action cluster never overflows at the 900px minimum',
