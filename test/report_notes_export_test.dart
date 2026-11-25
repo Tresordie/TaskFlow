@@ -410,45 +410,26 @@ void main() {
     testWidgets('available before any generation; menu offers both formats',
         (tester) async {
       SharedPreferences.setMockInitialValues({});
-      await pumpReports(tester, const Size(900, 600));
+      await pumpReports(tester, const Size(1000, 800));
       expect(tester.takeException(), isNull);
       expect(find.text('Export notes'), findsOneWidget);
       // No report generated yet — the summary exports are absent.
       expect(find.text('Export .md'), findsNothing);
 
+      // The controls row scrolls horizontally below the fixed-row
+      // threshold; bring the dropdown into view before tapping.
+      await tester.scrollUntilVisible(
+        find.text('Export notes'),
+        150,
+        scrollable: find.descendant(
+          of: find.byKey(const Key('reportsControlsScroll')),
+          matching: find.byType(Scrollable),
+        ),
+      );
       await tester.tap(find.text('Export notes'));
       await tester.pumpAndSettle();
       expect(find.text('Markdown (.md)'), findsOneWidget);
       expect(find.text('Styled HTML (.html)'), findsOneWidget);
-    });
-
-    testWidgets('pre-generation workspace lists every in-range task',
-        (tester) async {
-      SharedPreferences.setMockInitialValues({});
-      // 1000px: below the controls row's fixed-row threshold, so the row
-      // scrolls (its ~980px budget is tuned for real fonts, not Ahem).
-      await pumpReports(tester, const Size(1000, 900));
-      final container = ProviderScope.containerOf(
-          tester.element(find.byType(ReportsScreen)));
-      final notifier = container.read(reportControllerProvider.notifier);
-      notifier.setPeriod(ReportPeriod.custom);
-      notifier.setCustomRange(DateTimeRange(
-          start: DateTime(2026, 11, 9), end: DateTime(2026, 11, 22)));
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
-      // Both in-range tasks visible at once — no 168px scroll cap.
-      expect(find.text('Thermal validation'), findsOneWidget);
-      expect(find.text('Label redesign'), findsOneWidget);
-      expect(find.text('4 notes'), findsOneWidget);
-      // Scope summary lives in the controls card.
-      expect(find.textContaining('Tasks: 2 of 2 selected'), findsOneWidget);
-
-      // Generate swaps the workspace for preview + compact picker.
-      await notifier.generate();
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
-      expect(find.text('4 notes'), findsNothing);
-      expect(find.textContaining('Tasks: 2 of 2 selected'), findsOneWidget);
     });
 
     testWidgets('full action cluster never overflows at the 900px minimum',
@@ -462,7 +443,8 @@ void main() {
       await container.read(reportControllerProvider.notifier).generate();
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      // Every header action coexists with Export notes without clipping.
+      // Header actions fit without clipping; the Export notes dropdown
+      // lives in the controls row (present even off-screen).
       expect(find.text('Export notes'), findsOneWidget);
       expect(find.text('Export .md'), findsOneWidget);
       expect(find.text('Export .html'), findsOneWidget);

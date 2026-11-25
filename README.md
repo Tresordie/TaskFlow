@@ -99,7 +99,7 @@ test/
 ### Phase 3 — Report generation
 - Daily / weekly / monthly / yearly aggregation of tasks + execution logs
 - Dashboard stats: touched / completed / in-progress / overdue / completion rate / Pass-Fail-Blocked counts / sub-step progress
-- Per-task checkbox picker — before generation the full in-range checklist lives in a selection workspace with scope stats (selected / in range / notes / projects) instead of dead space; self-describing project/tag/status/priority filters (v1.13.3)
+- Per-task checkbox picker and project/tag/status/priority filters
 - AI-powered full report generation (OpenAI-compatible LLM) with fallback to deterministic template
 - AI report generation reads every task's notes FIRST — description plus the ENTIRE execution log, understanding each task's background before writing (last-7-days entries drive summaries, older ones are context only); the Status Dashboard Headline cell is a LIST with ONE line per task of the project: "**title** — one-sentence summary of its most recent updates", ordered by recency (v1.13.1)
 - Archived tasks are automatically excluded from reports
@@ -125,7 +125,7 @@ test/
 - Desktop-only chrome guarded for iOS/Android (custom title bar & window_manager skipped on mobile)
 - Custom date-range picker (Timeline / Calendar / Reports): ONE dialog with the same calendar grid as the Daily/Weekly popup — tap the start day, tap the end day, confirm
 - **Single-instance guard**: a second launch raises the already-running TaskFlow window to the foreground (the lock file carries the holder's PID) instead of opening a second copy or hitting an Isar `MdbxError`; only when no window can be found does it show a clearly titled "TaskFlow — 已在运行" explanation window with recovery steps; if the database still cannot open, the board explains how to recover (close every instance, remove the stale `taskflow.isar-lck`, restore from backups) and keeps the raw error selectable
-- Unit + widget test suite (`flutter test`, 432 tests as of v1.13.3): report period math, AI config, LaTeX rendering, title bar
+- Unit + widget test suite (`flutter test`, 431 tests as of v1.13.4): report period math, AI config, LaTeX rendering, title bar
 
 ### Phase 7 — Unified rich-text input & record display
 - **Every input area** (Work Log, execution log + edit dialog, task description create/edit dialogs, AI Parse notes, Report editor) supports Markdown + rich text with instant **Write/Preview toggle** — the preview uses the SAME style sheet as the saved content (true WYSIWYG "input-as-preview")
@@ -156,7 +156,7 @@ test/
 - **Backlog has a colour**: `TaskStatus.planned` is indigo, not neutral grey, because that one value paints the "TO DO" KPI identity bar, the To Do column tint and the planned spine — grey made all three read as "nothing there" (v1.12.45)
 - **One glass shell for every panel**: task cards and KPI stat cards both route through the shared `GlassSurface` (clip → backdrop blur → translucent fill → specular sheen), and the shell pins its content to the full panel width — otherwise a `Stack` shrink-wraps to the text and the top-right accent chip lands on top of "TO DO" / "IN PROGRESS" (fixed in v1.12.35)
 - Light themes are held to measured contrast, not taste: `AppColors` owns one brightness-aware rule per surface/text role (struck-through titles, muted and faint text, card hairlines, the timeline groove), `BoardGlassSpec` opens light card glass at 62% with a 35% readability floor (adjustable to 100%), `GlassSheen` fades its white wash on light, and user-picked project/tag pastels are walked until they clear WCAG AA on the surface they sit on — all pinned by `test/light_theme_contrast_test.dart` (v1.12.42, glass range v1.12.60)
-- 432-test suite including glass/theme/hover/font/timeline/light-contrast regressions and the raw task-notes export contracts (full-log coverage, in-period marking, selection parity, HTML-injection safety, page-level entry point + narrow-window overflow + selection workspace), with contracts pinning the flat specular profile, the full-width glass content, the deleted-theme list (removed themes stay removed), every font preset's halves + download branch, the timeline emoji vocabulary, the spine/label alignment budget, the Notion-flat light card (10px radius / hairline / no left rail), the light card's 62% default + 35–100% adjustable glass, each new light theme's signature colors and the WCAG ratios of every light-theme ink role
+- 431-test suite including glass/theme/hover/font/timeline/light-contrast regressions and the raw task-notes export contracts (full-log coverage, in-period marking, selection parity, HTML-injection safety, page-level entry point + narrow-window overflow), with contracts pinning the flat specular profile, the full-width glass content, the deleted-theme list (removed themes stay removed), every font preset's halves + download branch, the timeline emoji vocabulary, the spine/label alignment budget, the Notion-flat light card (10px radius / hairline / no left rail), the light card's 62% default + 35–100% adjustable glass, each new light theme's signature colors and the WCAG ratios of every light-theme ink role
 
 ## Data locations
 

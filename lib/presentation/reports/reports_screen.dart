@@ -19,7 +19,6 @@ import '../../providers/task_providers.dart';
 import '../../providers/typography_provider.dart';
 import '../shared/app_date_picker.dart';
 import '../shared/app_markdown_body.dart';
-import '../shared/emoji_glyphs.dart';
 import '../shared/markdown_input.dart';
 
 final reportServiceProvider = Provider<ReportService>((ref) {
@@ -585,7 +584,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
     Widget dropdown<T>({
       required String label,
-      required String allLabel,
       required IconData icon,
       required T? value,
       required List<T> options,
@@ -621,9 +619,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             items: [
               DropdownMenuItem<T?>(
                 value: null,
-                // v1.13.3: name the dimension even in the reset state —
-                // four anonymous "All" boxes read as unlabeled controls.
-                child: Text(allLabel,
+                child: Text('All',
                     style: TextStyle(
                         fontSize: 12,
                         color: theme.colorScheme.onSurface.withOpacity(0.6))),
@@ -651,27 +647,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         s.fStatus != null ||
         s.fPriority != null;
 
-    // v1.13.3: Wrap instead of Row — the self-describing reset labels
-    // ("All projects"…) made the row wider than the 900px minimum window;
-    // wrapping reflows the dropdowns instead of overflowing (8.7).
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    return Row(
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.filter_list,
-                size: 15, color: theme.colorScheme.onSurface.withOpacity(0.5)),
-            const SizedBox(width: 8),
-            Text('Filter:',
-                style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12)),
-          ],
-        ),
+        Icon(Icons.filter_list,
+            size: 15, color: theme.colorScheme.onSurface.withOpacity(0.5)),
+        const SizedBox(width: 8),
+        Text('Filter:',
+            style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12)),
+        const SizedBox(width: 8),
         dropdown<String>(
           label: 'Project',
-          allLabel: 'All projects',
           icon: Icons.folder_outlined,
           value: s.fProject,
           options: projects,
@@ -679,9 +664,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           optionColor: (p) => colors.projectColor(p),
           onChanged: notifier.setFilterProject,
         ),
+        const SizedBox(width: 8),
         dropdown<String>(
           label: 'Tag',
-          allLabel: 'All tags',
           icon: Icons.label_outline,
           value: s.fTag,
           options: tags,
@@ -689,25 +674,26 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           optionColor: (t) => colors.tagColor(t),
           onChanged: notifier.setFilterTag,
         ),
+        const SizedBox(width: 8),
         dropdown<TaskStatus>(
           label: 'Status',
-          allLabel: 'All statuses',
           icon: Icons.track_changes,
           value: s.fStatus,
           options: TaskStatus.values,
           optionLabel: (st) => st.label,
           onChanged: notifier.setFilterStatus,
         ),
+        const SizedBox(width: 8),
         dropdown<Priority>(
           label: 'Priority',
-          allLabel: 'All priorities',
           icon: Icons.flag_outlined,
           value: s.fPriority,
           options: Priority.values,
           optionLabel: (p) => p.label,
           onChanged: notifier.setFilterPriority,
         ),
-        if (active)
+        if (active) ...[
+          const SizedBox(width: 8),
           TextButton.icon(
             onPressed: notifier.clearFilters,
             icon: const Icon(Icons.clear, size: 13),
@@ -719,6 +705,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               visualDensity: VisualDensity.compact,
             ),
           ),
+        ],
       ],
     );
   }
@@ -841,227 +828,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
-  /// v1.13.3: one-line scope summary in the controls card while the full
-  /// checklist occupies the working area below (no report generated yet).
-  Widget _buildSelectionSummary(ThemeData theme) {
-    final s = ref.watch(reportControllerProvider);
-    final notifier = ref.read(reportControllerProvider.notifier);
-    final allTasks = ref.watch(taskListProvider).valueOrNull ?? const <Task>[];
-    final inRange = notifier.tasksInRange(allTasks);
-    final selectedCount =
-        inRange.where((t) => !s.excludedUids.contains(t.uid)).length;
-    final allSelected = inRange.isNotEmpty && selectedCount == inRange.length;
-
-    return Row(
-      children: [
-        Icon(Icons.fact_check_outlined,
-            size: 15, color: theme.colorScheme.onSurface.withOpacity(0.5)),
-        const SizedBox(width: 8),
-        Text(
-          inRange.isEmpty
-              ? 'Tasks: none created in this range'
-              : 'Tasks: $selectedCount of ${inRange.length} selected — '
-                  'full list below',
-          style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
-        ),
-        const Spacer(),
-        if (inRange.isNotEmpty)
-          TextButton(
-            onPressed: () => notifier.setAllSelected(!allSelected),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact,
-            ),
-            child: Text(allSelected ? 'Deselect all' : 'Select all',
-                style: const TextStyle(fontSize: 12)),
-          ),
-      ],
-    );
-  }
-
-  /// v1.13.3: pre-generation working area — the FULL in-range checklist
-  /// plus scope stats. The old 168px scroll box inside the controls card
-  /// hid half the selection and left the page's lower half dead space;
-  /// now the space carries the selection itself. Generate Report swaps
-  /// this panel for the report preview.
-  Widget _buildTaskWorkspace(ThemeData theme) {
-    final s = ref.watch(reportControllerProvider);
-    final notifier = ref.read(reportControllerProvider.notifier);
-    final allTasks = ref.watch(taskListProvider).valueOrNull ?? const <Task>[];
-    final inRange = notifier.tasksInRange(allTasks);
-    final selected =
-        inRange.where((t) => !s.excludedUids.contains(t.uid)).toList();
-    final notes = selected.fold<int>(0, (n, t) => n + t.executionLog.length);
-    final projects = selected
-        .map((t) => t.project.trim())
-        .where((p) => p.isNotEmpty)
-        .toSet()
-        .length;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: theme.colorScheme.outline.withOpacity(0.25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _StatChip(
-                  label: 'Selected',
-                  value: '${selected.length}',
-                  color: theme.colorScheme.primary),
-              _StatChip(
-                  label: 'In range',
-                  value: '${inRange.length}',
-                  color: theme.colorScheme.onSurface.withOpacity(0.5)),
-              _StatChip(
-                  label: 'Notes', value: '$notes', color: AppColors.info),
-              _StatChip(
-                  label: 'Projects',
-                  value: '$projects',
-                  color: AppColors.success),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: inRange.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.insights_outlined,
-                            size: 44,
-                            color:
-                                theme.colorScheme.onSurface.withOpacity(0.15)),
-                        const SizedBox(height: 10),
-                        Text(
-                          'No tasks created in this range',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color:
-                                theme.colorScheme.onSurface.withOpacity(0.35),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : Scrollbar(
-                    child: ListView(
-                      padding: EdgeInsets.zero,
-                      children: [
-                        for (final t in inRange) _workspaceRow(theme, t),
-                      ],
-                    ),
-                  ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Icon(Icons.play_arrow_rounded,
-                  size: 14,
-                  color: theme.colorScheme.onSurface.withOpacity(0.35)),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Generate Report for the AI summary — or Export notes '
-                  'for the raw tasks + notes.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.35),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'Exports land in Documents/TaskFlow/reports/',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.28),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// One row of the pre-generation workspace checklist: checkbox, status
-  /// glyph, title, note count and a status pill (color from the shared
-  /// [AppColors.statusColor] vocabulary).
-  Widget _workspaceRow(ThemeData theme, Task t) {
-    final s = ref.watch(reportControllerProvider);
-    final notifier = ref.read(reportControllerProvider.notifier);
-    final checked = !s.excludedUids.contains(t.uid);
-    final statusColor = AppColors.statusColor(t.status);
-    return InkWell(
-      onTap: () => notifier.toggleTask(t.uid, !checked),
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-        child: Row(
-          children: [
-            Checkbox(
-              value: checked,
-              onChanged: (v) => notifier.toggleTask(t.uid, v ?? true),
-              visualDensity: VisualDensity.compact,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            const SizedBox(width: 6),
-            Text(statusGlyph(t.status), style: const TextStyle(fontSize: 13)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                t.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: checked
-                      ? theme.colorScheme.onSurface
-                      : theme.colorScheme.onSurface.withOpacity(0.45),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '${t.executionLog.length} notes',
-              style: TextStyle(
-                fontSize: 11,
-                color: theme.colorScheme.onSurface.withOpacity(0.45),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                t.status.label,
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
-                  color: statusColor,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1090,88 +856,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      // v1.13.2: raw tasks + notes export — works straight
-                      // from the current range / filters / task selection,
-                      // no Generate (and no AI) needed.
-                      PopupMenuButton<String>(
-                        enabled: !_exporting,
-                        tooltip: 'Export the selected tasks and ALL their '
-                            'notes — no Generate needed',
-                        onSelected: _exportNotes,
-                        itemBuilder: (context) => [
-                          PopupMenuItem(
-                            value: 'md',
-                            child: Row(
-                              children: [
-                                Icon(Icons.description_outlined,
-                                    size: 15,
-                                    color: theme.colorScheme.primary),
-                                const SizedBox(width: 8),
-                                // Flexible + ellipsis: the menu width can
-                                // be narrower than the label (pitfall 8.7).
-                                const Flexible(
-                                  child: Text('Markdown (.md)',
-                                      style: TextStyle(fontSize: 12.5),
-                                      overflow: TextOverflow.ellipsis),
-                                ),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'html',
-                            child: Row(
-                              children: [
-                                Icon(Icons.html_outlined,
-                                    size: 15,
-                                    color: theme.colorScheme.primary),
-                                const SizedBox(width: 8),
-                                const Flexible(
-                                  child: Text('Styled HTML (.html)',
-                                      style: TextStyle(fontSize: 12.5),
-                                      overflow: TextOverflow.ellipsis),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                        // Styled like the themed OutlinedButton family
-                        // (radius 12, same padding / label weight).
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 13),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color: theme.colorScheme.outline, width: 1.2),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _exporting
-                                  ? const SizedBox(
-                                      width: 13,
-                                      height: 13,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2))
-                                  : Icon(Icons.notes_outlined,
-                                      size: 15,
-                                      color: theme.colorScheme.primary),
-                              const SizedBox(width: 8),
-                              Text('Export notes',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: theme.colorScheme.primary,
-                                  )),
-                              Icon(Icons.arrow_drop_down,
-                                  size: 18,
-                                  color: theme.colorScheme.primary),
-                            ],
-                          ),
-                        ),
-                      ),
                       if (s.data != null) ...[
-                        const SizedBox(width: 8),
                         s.editing
                             ? FilledButton.icon(
                                 onPressed: () => notifier.setEditing(false),
@@ -1394,6 +1079,80 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           onSelected: notifier.setUseAiSummary,
                         ),
                       ),
+                      const SizedBox(width: 10),
+                      // v1.13.4: raw tasks + notes export — a dense bordered
+                      // dropdown in the controls row, the SAME idiom as the
+                      // language selector beside it. (v1.13.2's header
+                      // popup-button hybrid read as foreign to the page;
+                      // v1.13.3's full-page rework was reverted.) Selecting
+                      // a format fires the export; the hint always returns.
+                      Tooltip(
+                        message: 'Export the selected tasks and ALL their '
+                            'notes — no Generate needed',
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                                color: theme.colorScheme.outline
+                                    .withOpacity(0.35)),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: null,
+                              isDense: true,
+                              icon: const Icon(Icons.arrow_drop_down, size: 18),
+                              hint: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.notes_outlined,
+                                      size: 13,
+                                      color: theme.colorScheme.primary),
+                                  const SizedBox(width: 6),
+                                  const Text('Export notes',
+                                      style: TextStyle(fontSize: 12)),
+                                ],
+                              ),
+                              items: [
+                                DropdownMenuItem(
+                                  value: 'md',
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.description_outlined,
+                                          size: 13,
+                                          color: theme.colorScheme.primary),
+                                      const SizedBox(width: 6),
+                                      const Text('Markdown (.md)',
+                                          style: TextStyle(fontSize: 12)),
+                                    ],
+                                  ),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'html',
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.html_outlined,
+                                          size: 13,
+                                          color: theme.colorScheme.primary),
+                                      const SizedBox(width: 6),
+                                      const Text('Styled HTML (.html)',
+                                          style: TextStyle(fontSize: 12)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              onChanged: _exporting
+                                  ? null
+                                  : (v) {
+                                      if (v != null) _exportNotes(v);
+                                    },
+                            ),
+                          ),
+                        ),
+                      ),
                     ];
 
                     final generateButton = FilledButton.icon(
@@ -1419,10 +1178,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     // Everything stays on ONE row. When there is room, a Spacer
                     // pushes Generate to the right edge; when the window is too
                     // narrow, the row scrolls horizontally instead of clipping.
-                    // The controls + Generate button need ~980px, so only use
-                    // the fixed single row once there is clearly enough room —
+                    // The controls + Generate button need ~1110px (v1.13.4
+                    // added the Export notes dropdown), so only use the
+                    // fixed single row once there is clearly enough room —
                     // below that, scroll so the button is never clipped.
-                    final fits = constraints.maxWidth >= 1040;
+                    final fits = constraints.maxWidth >= 1170;
                     return fits
                         ? Row(children: [
                             ...controls,
@@ -1430,6 +1190,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                             generateButton
                           ])
                         : SingleChildScrollView(
+                            key: const Key('reportsControlsScroll'),
                             scrollDirection: Axis.horizontal,
                             child: Row(
                               children: [
@@ -1444,13 +1205,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 const SizedBox(height: 10),
                 _buildFilterRow(theme),
                 const SizedBox(height: 10),
-                // v1.13.3: before generation the FULL checklist lives in
-                // the working area below; the card keeps a summary row.
-                // After generation the compact picker returns here.
-                if (s.data != null)
-                  _buildTaskSelection(theme)
-                else
-                  _buildSelectionSummary(theme),
+                _buildTaskSelection(theme),
               ],
             ),
           ),
@@ -1517,7 +1272,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
           const SizedBox(height: 16),
 
-          // Preview / pre-generation selection workspace
+          // Preview / empty state
           Expanded(
             child: s.markdown != null && s.data != null
                 ? _ReportPreview(
@@ -1526,7 +1281,33 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     editing: s.editing,
                     onMarkdownChanged: notifier.setMarkdown,
                   )
-                : _buildTaskWorkspace(theme),
+                : Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.insights_outlined,
+                            size: 48,
+                            color:
+                                theme.colorScheme.onSurface.withOpacity(0.15)),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Pick a period and press Generate Report',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color:
+                                theme.colorScheme.onSurface.withOpacity(0.35),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Exports land in Documents/TaskFlow/reports/',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color:
+                                theme.colorScheme.onSurface.withOpacity(0.28),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
           ),
         ],
       ),
