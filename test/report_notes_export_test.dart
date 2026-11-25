@@ -422,6 +422,35 @@ void main() {
       expect(find.text('Styled HTML (.html)'), findsOneWidget);
     });
 
+    testWidgets('pre-generation workspace lists every in-range task',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      // 1000px: below the controls row's fixed-row threshold, so the row
+      // scrolls (its ~980px budget is tuned for real fonts, not Ahem).
+      await pumpReports(tester, const Size(1000, 900));
+      final container = ProviderScope.containerOf(
+          tester.element(find.byType(ReportsScreen)));
+      final notifier = container.read(reportControllerProvider.notifier);
+      notifier.setPeriod(ReportPeriod.custom);
+      notifier.setCustomRange(DateTimeRange(
+          start: DateTime(2026, 11, 9), end: DateTime(2026, 11, 22)));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      // Both in-range tasks visible at once — no 168px scroll cap.
+      expect(find.text('Thermal validation'), findsOneWidget);
+      expect(find.text('Label redesign'), findsOneWidget);
+      expect(find.text('4 notes'), findsOneWidget);
+      // Scope summary lives in the controls card.
+      expect(find.textContaining('Tasks: 2 of 2 selected'), findsOneWidget);
+
+      // Generate swaps the workspace for preview + compact picker.
+      await notifier.generate();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('4 notes'), findsNothing);
+      expect(find.textContaining('Tasks: 2 of 2 selected'), findsOneWidget);
+    });
+
     testWidgets('full action cluster never overflows at the 900px minimum',
         (tester) async {
       SharedPreferences.setMockInitialValues({});
