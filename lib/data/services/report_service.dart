@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:intl/intl.dart';
@@ -10,6 +11,7 @@ import '../../core/markdown/table_support.dart' as table_support;
 import '../models/task.dart';
 import '../repositories/task_repository.dart';
 import 'ai_service.dart';
+import 'attachment_service.dart';
 
 enum ReportPeriod {
   daily,
@@ -267,6 +269,69 @@ class _L {
       _zh ? '阻塞：$content' : 'blocked: $content';
   String needsDecision(String content) =>
       _zh ? '需决策：$content' : 'needs decision: $content';
+
+  // Task-notes export (v1.13.2) — raw tasks + full notes, no AI.
+  String get notesTitle =>
+      _zh ? 'TaskFlow 任务笔记 — ' : 'TaskFlow Task Notes — ';
+  String get tasksWord => _zh ? '个任务' : 'tasks';
+  String get notesWord => _zh ? '条笔记' : 'notes';
+  String get entriesWord => _zh ? '条' : 'entries';
+  String get inPeriod => _zh ? '期内' : 'in period';
+  String get inPeriodMark => _zh ? '（期内）' : '(in period)';
+  String get descriptionLabel => _zh ? '描述' : 'Description';
+  String get subStepsLabel => _zh ? '子步骤' : 'Sub-steps';
+  String get executionLogLabel => _zh ? '执行日志' : 'Execution log';
+  String get createdOn => _zh ? '创建' : 'Created';
+  String get startedOn => _zh ? '开始' : 'Started';
+  String get completedOn => _zh ? '完成' : 'Completed';
+  String get tagsLabel => _zh ? '标签' : 'Tags';
+  String get contents => _zh ? '目录' : 'Contents';
+  String get overdueWord => _zh ? '逾期' : 'Overdue';
+  String get attachmentsLabel => _zh ? '附件' : 'Attachments';
+  String get noTasksInRange =>
+      _zh ? '当前范围内没有任务。' : 'No tasks in the selected range.';
+  String get noNotes => _zh ? '暂无笔记。' : 'No notes yet.';
+  String get tasksChip => _zh ? '任务' : 'Tasks';
+  String get notesChip => _zh ? '笔记' : 'Notes';
+  String get inPeriodChip => _zh ? '期内笔记' : 'In-period notes';
+  String get doneChip => _zh ? '已完成' : 'Completed';
+
+  String notesStats(int tasks, int notes, int inPeriodNotes, int done) => _zh
+      ? '$tasks 个任务 · $notes 条笔记（$inPeriodNotes 条期内）· $done 个已完成'
+      : '$tasks tasks · $notes notes ($inPeriodNotes in period) · $done completed';
+  String logCount(int total, int inPeriodNotes) => _zh
+      ? '$total 条（$inPeriodNotes 条期内）'
+      : '$total entries ($inPeriodNotes in period)';
+
+  String statusLabel(TaskStatus s) {
+    if (!_zh) return s.label;
+    switch (s) {
+      case TaskStatus.planned:
+        return '计划中';
+      case TaskStatus.inProgress:
+        return '进行中';
+      case TaskStatus.completed:
+        return '已完成';
+      case TaskStatus.archived:
+        return '已归档';
+      case TaskStatus.blocked:
+        return '阻塞';
+    }
+  }
+
+  String entryTypeLabel(EntryType t) {
+    if (!_zh) return t.label;
+    switch (t) {
+      case EntryType.note:
+        return '笔记';
+      case EntryType.pass:
+        return '通过';
+      case EntryType.fail:
+        return '失败';
+      case EntryType.blocked:
+        return '阻塞';
+    }
+  }
 }
 
 class ReportService {
@@ -1689,7 +1754,93 @@ $bodyOpen$innerHead''');
   /// (v1.5.9 user report). Reports never legitimately use ~~strikethrough~~
   /// — the approx sign is what tildes mean here — so the escape is safe.
   /// `&#126;` renders as a plain `~` in every browser and mail client.
-  String _escapeTildesForHtml(String markdown) => markdown.replaceAll('~', '&#126;');
+  static String _escapeTildesForHtml(String markdown) =>
+      markdown.replaceAll('~', '&#126;');
+
+  /// Prepares user note/description Markdown for safe HTML export
+  /// (v1.13.2). The markdown package passes raw HTML through verbatim —
+  /// `<script>`, `<img onerror=…>`, `<div onclick=…>` would all execute in
+  /// the exported document. Every tag is therefore entity-escaped EXCEPT
+  /// the app's own rich-text vocabulary: `<br>` and `<font color/size>`
+  /// (attributes strictly validated and rebuilt). Code fences and inline
+  /// code spans are left untouched — the package escapes their content
+  /// itself, and pre-escaping would double-escape it. Tildes are escaped
+  /// only OUTSIDE code for the same reason (v1.5.9 strikethrough rule).
+  static String _sanitizeNoteMarkdown(String source) {
+    var s = _normalizeMultilineTableRows(source);
+    final re = RegExp(
+        r'(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]*`)|(</?[a-zA-Z][^>]*>)');
+    final b = StringBuffer();
+    var last = 0;
+    for (final m in re.allMatches(s)) {
+      b.write(_escapeTildesForHtml(s.substring(last, m.start)));
+      if (m.group(1) != null) {
+        b.write(m.group(1)); // code span/fence — the package escapes it
+      } else {
+        b.write(_escapeRawTag(m.group(2)!));
+      }
+      last = m.end;
+    }
+    b.write(_escapeTildesForHtml(s.substring(last)));
+    return b.toString();
+  }
+
+  /// Entity-escapes a raw HTML tag unless it is `<br>` or a `<font>` carrying
+  /// only valid color/size attributes (the only raw HTML the app renders).
+  static String _escapeRawTag(String tag) {
+    if (RegExp(r'^<br\s*/?>$', caseSensitive: false).hasMatch(tag)) return tag;
+    if (RegExp(r'^</font\s*>$', caseSensitive: false).hasMatch(tag)) {
+      return '</font>';
+    }
+    final open =
+        RegExp(r'^<font\s+([^>]*?)\s*>$', caseSensitive: false).firstMatch(tag);
+    if (open != null) {
+      final attrs = <String>[];
+      final attrRe = RegExp(
+          r'''([a-zA-Z]+)\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))''');
+      for (final a in attrRe.allMatches(open.group(1)!)) {
+        final name = a.group(1)!.toLowerCase();
+        final value = a.group(3) ?? a.group(4) ?? a.group(5) ?? '';
+        if (name == 'color' &&
+            RegExp(r'^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{3,20})$').hasMatch(value)) {
+          attrs.add('color="$value"');
+        } else if (name == 'size' && RegExp(r'^[0-9]{1,2}$').hasMatch(value)) {
+          attrs.add('size="$value"');
+        }
+      }
+      if (attrs.isNotEmpty) return '<font ${attrs.join(' ')}>';
+    }
+    return tag
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
+  }
+
+  /// Neutralizes dangerous URL schemes in markdown-generated links/images
+  /// (the package passes `[x](javascript:…)` through untouched). Relative
+  /// URLs and anchors stay; `data:` is allowed for images only.
+  static String _sanitizeUrls(String html) {
+    final re = RegExp(r'<(a|img)(\s[^>]*?)?\s(href|src)="([^"]*)"',
+        caseSensitive: false);
+    return html.replaceAllMapped(re, (m) {
+      final tag = m.group(1)!.toLowerCase();
+      final attr = m.group(3)!.toLowerCase();
+      // Browsers strip tab/LF/CR inside URLs — normalize before checking.
+      final url = m.group(4)!.replaceAll(RegExp(r'[\s\x00-\x1F]'), '');
+      final scheme = RegExp(r'^([a-zA-Z][a-zA-Z0-9+.-]*):')
+          .firstMatch(url)
+          ?.group(1)
+          ?.toLowerCase();
+      final allowed = tag == 'a'
+          ? const {'http', 'https', 'mailto', 'file', 'ftp'}
+          : const {'http', 'https', 'file'};
+      final ok = scheme == null ||
+          allowed.contains(scheme) ||
+          (tag == 'img' && url.startsWith('data:image/'));
+      if (ok) return m.group(0)!;
+      return '<${m.group(1)}${m.group(2) ?? ''} $attr="#"';
+    });
+  }
 
   /// Converts a Markdown string (typically the user-edited report source)
   /// into a standalone, styled HTML document.
@@ -1894,6 +2045,533 @@ $body
   static String inlineEmailStylesForTest(String html) =>
       _inlineEmailStyles(html);
 
+  // ───────────────── Task notes export (raw, no AI) ─────────────────
+
+  /// Every task that appears in the report — touched tasks plus overdue
+  /// tasks that only show up in Risks/Blockers — de-duplicated by identity.
+  /// Exactly the set Generate Report summarizes, so the notes export and
+  /// the report always cover the same tasks.
+  List<Task> _notesTasks(ReportData d) {
+    final seen = <Task>{};
+    final out = <Task>[];
+    for (final t in [...d.touchedTasks, ...d.overdue]) {
+      if (seen.add(t)) out.add(t);
+    }
+    return out;
+  }
+
+  bool _entryInPeriod(ExecutionEntry e, ReportData d) =>
+      !e.timestamp.isBefore(d.start) && e.timestamp.isBefore(d.end);
+
+  /// Task-status glyph for the notes export — mirrors the app-wide
+  /// vocabulary in emoji_glyphs.dart (the data layer must not import
+  /// presentation, so the mapping is duplicated here).
+  String _notesStatusGlyph(Task t) {
+    switch (t.status) {
+      case TaskStatus.planned:
+        return '🗓';
+      case TaskStatus.inProgress:
+        return '🚧';
+      case TaskStatus.completed:
+        return '✅';
+      case TaskStatus.archived:
+        return '📦';
+      case TaskStatus.blocked:
+        return '⛔';
+    }
+  }
+
+  /// Entry-type glyph — same vocabulary as emoji_glyphs.dart.
+  String _notesEntryGlyph(EntryType type) {
+    switch (type) {
+      case EntryType.note:
+        return '📝';
+      case EntryType.pass:
+        return '✅';
+      case EntryType.fail:
+        return '❌';
+      case EntryType.blocked:
+        return '⛔';
+    }
+  }
+
+  /// Nesting depth of a sub-step derived from its parentUid chain — the
+  /// stored [SubStep.depth] is an untrusted cache (normalizeSubStepDepths).
+  int _subStepDepth(List<SubStep> steps, SubStep s) {
+    final byUid = {for (final x in steps) x.uid: x};
+    final visiting = <String>{s.uid};
+    var depth = 0;
+    var cur = s;
+    while (cur.parentUid != null &&
+        byUid.containsKey(cur.parentUid) &&
+        visiting.add(cur.parentUid!)) {
+      depth++;
+      cur = byUid[cur.parentUid]!;
+    }
+    return depth;
+  }
+
+  /// Structured, lossless Markdown export of the report's tasks and ALL
+  /// their notes (v1.13.2): grouped by project, each task carries its
+  /// metadata, description, sub-steps and its FULL execution log in
+  /// chronological order; entries inside the report period are marked.
+  /// No AI is involved — note content is copied verbatim.
+  String tasksNotesToMarkdown(
+    ReportData d, {
+    ReportLanguage lang = ReportLanguage.english,
+  }) {
+    final l = _L(lang);
+    final tasks = _notesTasks(d);
+    final groups = _groupByProject(tasks, l);
+    final f = DateFormat('yyyy-MM-dd');
+    final ft = DateFormat('yyyy-MM-dd HH:mm');
+    final b = StringBuffer();
+
+    var totalNotes = 0, inPeriodNotes = 0;
+    for (final t in tasks) {
+      for (final e in t.executionLog) {
+        totalNotes++;
+        if (_entryInPeriod(e, d)) inPeriodNotes++;
+      }
+    }
+    final done = tasks.where((t) => t.status == TaskStatus.completed).length;
+
+    b.writeln('# ${l.notesTitle}${d.titlePrefix}');
+    b.writeln(
+        '**${l.period}:** ${d.rangeLabel} | **${l.prepared}:** ${f.format(DateTime.now())}'
+        '${d.filter.isActive ? ' | **${l.filters}:** ${d.filter.describe()}' : ''}');
+    b.writeln();
+    b.writeln('> ${l.notesStats(tasks.length, totalNotes, inPeriodNotes, done)}');
+    b.writeln();
+    b.writeln('---');
+    b.writeln();
+
+    if (tasks.isEmpty) {
+      b.writeln('_${l.noTasksInRange}_');
+      return b.toString();
+    }
+
+    for (final g in groups.entries) {
+      b.writeln('## ${g.key}');
+      b.writeln();
+      for (final t in g.value) {
+        b.writeln('### ${_notesStatusGlyph(t)} ${t.title}');
+        b.writeln();
+        b.writeln([
+          '**${l.status}:** ${l.statusLabel(t.status)}',
+          '**${l.priority}:** ${t.priority.shortLabel}',
+          if (t.tags.isNotEmpty)
+            '**${l.tagsLabel}:** ${t.tags.map((x) => '#$x').join(' ')}',
+        ].join(' · '));
+        b.writeln([
+          '**${l.createdOn}:** ${f.format(t.createdAt)}',
+          if (t.dueDate != null) '**${l.due}:** ${f.format(t.dueDate!)}',
+          if (t.startedAt != null) '**${l.startedOn}:** ${f.format(t.startedAt!)}',
+          if (t.completedAt != null)
+            '**${l.completedOn}:** ${f.format(t.completedAt!)}',
+        ].join(' · '));
+        b.writeln();
+
+        final desc = t.description?.trim();
+        if (desc != null && desc.isNotEmpty) {
+          b.writeln('**${l.descriptionLabel}**');
+          b.writeln();
+          b.writeln(desc);
+          b.writeln();
+        }
+
+        if (t.subSteps.isNotEmpty) {
+          final ordered = subStepsInDisplayOrder(t.subSteps);
+          final ssDone = ordered.where((s) => s.completed).length;
+          b.writeln('**${l.subStepsLabel} ($ssDone/${ordered.length})**');
+          b.writeln();
+          for (final s in ordered) {
+            final indent = '  ' * _subStepDepth(t.subSteps, s);
+            b.writeln('$indent- [${s.completed ? 'x' : ' '}] ${s.title}');
+          }
+          b.writeln();
+        }
+
+        final entries = [...t.executionLog]
+          ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        final inPeriod = entries.where((e) => _entryInPeriod(e, d)).length;
+        b.writeln(
+            '**${l.executionLogLabel} — ${l.logCount(entries.length, inPeriod)}**');
+        b.writeln();
+        if (entries.isEmpty) {
+          b.writeln('_${l.noNotes}_');
+          b.writeln();
+        }
+        for (final e in entries) {
+          b.writeln(
+              '**${_notesEntryGlyph(e.type)} ${ft.format(e.timestamp)} · ${l.entryTypeLabel(e.type)}**'
+              '${_entryInPeriod(e, d) ? ' _${l.inPeriodMark}_' : ''}');
+          b.writeln();
+          final content = e.content.trim();
+          if (content.isNotEmpty) {
+            b.writeln(content);
+            b.writeln();
+          }
+          for (final a in e.attachments) {
+            if (a.type == AttachmentType.image) {
+              b.writeln('![${a.name}](${AttachmentService.resolvePathSync(a.path)})');
+            } else {
+              b.writeln('📎 ${a.name} (${AttachmentService.formatSize(a.size)})');
+            }
+          }
+          if (e.attachments.isNotEmpty) b.writeln();
+        }
+        b.writeln('---');
+        b.writeln();
+      }
+    }
+    b.writeln(
+        '_${l.generatedBy} · ${l.notesStats(tasks.length, totalNotes, inPeriodNotes, done)}_');
+    return b.toString();
+  }
+
+  /// MIME type for an embedded attachment image, by file extension.
+  static String _imageMime(String name) {
+    switch (p.extension(name).toLowerCase()) {
+      case '.jpg':
+      case '.jpeg':
+        return 'image/jpeg';
+      case '.gif':
+        return 'image/gif';
+      case '.bmp':
+        return 'image/bmp';
+      case '.webp':
+        return 'image/webp';
+      case '.ico':
+        return 'image/x-icon';
+      case '.tif':
+      case '.tiff':
+        return 'image/tiff';
+      default:
+        return 'image/png';
+    }
+  }
+
+  /// Beautiful standalone HTML export of the report's tasks and ALL their
+  /// notes (v1.13.2) — the raw-data counterpart of [toHtml]: a table of
+  /// contents, per-project sections, one card per task (metadata pills,
+  /// description, sub-step checklist) and a chronological note timeline
+  /// with type pills; in-period entries are highlighted. Note content is
+  /// rendered as Markdown; images are embedded as base64 data URIs (each
+  /// ≤2MB, ≤20MB per document) so the file is fully self-contained.
+  Future<String> tasksNotesToHtml(
+    ReportData d, {
+    ReportLanguage lang = ReportLanguage.english,
+  }) async {
+    final l = _L(lang);
+    final tasks = _notesTasks(d);
+    final groups = _groupByProject(tasks, l);
+    final f = DateFormat('yyyy-MM-dd');
+    final ft = DateFormat('yyyy-MM-dd HH:mm');
+
+    String esc(String s) => s
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
+
+    // Note/description Markdown → HTML. Same pipeline as the report
+    // exports: multiline table cells normalized (8.10), tildes escaped so
+    // engineering "~" text never becomes strikethrough (v1.5.9). Unlike
+    // the AI report source, notes are arbitrary user content — the
+    // markdown package passes raw HTML through VERBATIM (block AND
+    // inline), so [_sanitizeNoteMarkdown] escapes every tag outside the
+    // app's own rich-text vocabulary before conversion, and
+    // [_sanitizeUrls] neutralizes javascript: link destinations after it.
+    String renderMd(String source) => _sanitizeUrls(md.markdownToHtml(
+          _sanitizeNoteMarkdown(source),
+          extensionSet: md.ExtensionSet.gitHubWeb,
+        ));
+
+    // Pre-read embeddable images (bounded so a huge attachment history
+    // cannot blow up the document): ≤2MB each, ≤20MB total. Anything
+    // skipped falls back to a name chip.
+    const maxImageBytes = 2 * 1024 * 1024;
+    const maxTotalBytes = 20 * 1024 * 1024;
+    final images = <String, String>{}; // attachment uid -> data URI
+    var embeddedBytes = 0;
+    for (final t in tasks) {
+      for (final e in t.executionLog) {
+        for (final a in e.attachments) {
+          if (a.type != AttachmentType.image) continue;
+          final file = File(AttachmentService.resolvePathSync(a.path));
+          if (!file.existsSync()) continue;
+          final len = file.lengthSync();
+          if (len > maxImageBytes || embeddedBytes + len > maxTotalBytes) {
+            continue;
+          }
+          try {
+            final bytes = await file.readAsBytes();
+            images[a.uid] =
+                'data:${_imageMime(a.name)};base64,${base64Encode(bytes)}';
+            embeddedBytes += bytes.length;
+          } catch (_) {
+            // Unreadable file — the name chip fallback covers it.
+          }
+        }
+      }
+    }
+
+    var totalNotes = 0, inPeriodNotes = 0;
+    for (final t in tasks) {
+      for (final e in t.executionLog) {
+        totalNotes++;
+        if (_entryInPeriod(e, d)) inPeriodNotes++;
+      }
+    }
+    final done = tasks.where((t) => t.status == TaskStatus.completed).length;
+
+    String pill(String text, String bg, String fg) =>
+        '<span class="pill" style="background:$bg;color:$fg;">$text</span>';
+
+    ({String bg, String fg}) statusColors(TaskStatus s) {
+      switch (s) {
+        case TaskStatus.completed:
+          return (bg: '#F0FDF4', fg: '#16A34A');
+        case TaskStatus.inProgress:
+          return (bg: '#EFF6FF', fg: '#2563EB');
+        case TaskStatus.blocked:
+          return (bg: '#FEF2F2', fg: '#DC2626');
+        case TaskStatus.planned:
+        case TaskStatus.archived:
+          return (bg: '#EEF2FF', fg: '#4F46E5');
+      }
+    }
+
+    ({String bg, String fg}) priorityColors(Priority pr) {
+      switch (pr) {
+        case Priority.p0Critical:
+          return (bg: '#FEF2F2', fg: '#DC2626');
+        case Priority.p1High:
+          return (bg: '#FFFBEB', fg: '#D97706');
+        case Priority.p2Medium:
+          return (bg: '#EFF6FF', fg: '#2563EB');
+        case Priority.p3Low:
+          return (bg: '#F1F5F9', fg: '#64748B');
+      }
+    }
+
+    ({String bg, String fg}) entryColors(EntryType ty) {
+      switch (ty) {
+        case EntryType.pass:
+          return (bg: '#F0FDF4', fg: '#16A34A');
+        case EntryType.fail:
+          return (bg: '#FEF2F2', fg: '#DC2626');
+        case EntryType.blocked:
+          return (bg: '#FFFBEB', fg: '#D97706');
+        case EntryType.note:
+          return (bg: '#F1F5F9', fg: '#475569');
+      }
+    }
+
+    String attachmentsHtml(ExecutionEntry e) {
+      if (e.attachments.isEmpty) return '';
+      final out = StringBuffer();
+      for (final a in e.attachments) {
+        final uri = images[a.uid];
+        if (uri != null) {
+          out.write('<img src="$uri" alt="${esc(a.name)}" style="max-width:100%;'
+              'border-radius:8px;margin:6px 0;display:block;">');
+        } else {
+          final icon = a.type == AttachmentType.image ? '🖼' : '📎';
+          out.write('<span class="att">$icon ${esc(a.name)} '
+              '(${AttachmentService.formatSize(a.size)})</span>');
+        }
+      }
+      return out.toString();
+    }
+
+    final htmlLang = lang == ReportLanguage.chinese ? 'zh-CN' : 'en';
+    final title = '${esc(l.notesTitle)}${esc(d.titlePrefix)}';
+    final b = StringBuffer();
+    b.write('''<!DOCTYPE html>
+<html lang="$htmlLang">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>$title</title>
+<style>
+  :root { --primary:#6366F1; --border:#E2E8F0; --muted:#64748B; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,"Segoe UI",Roboto,"Noto Sans SC","Microsoft YaHei",sans-serif;
+         margin:0; background:#F8FAFC; color:#1E293B; }
+  .wrap { max-width:1000px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:24px; margin:0 0 4px; }
+  .meta { color:var(--muted); font-size:13px; margin-bottom:16px; }
+  .stats { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px; }
+  .stat { background:#fff; border:1px solid var(--border); border-radius:10px;
+          padding:8px 16px; font-size:11.5px; color:var(--muted); }
+  .stat b { display:block; font-size:18px; color:#1E293B; margin-bottom:2px; }
+  h2 { font-size:16px; margin:28px 0 12px; border-bottom:1px solid var(--border);
+       padding-bottom:6px; }
+  .toc { background:#fff; border:1px solid var(--border); border-radius:12px;
+         padding:14px 18px; margin-bottom:8px; }
+  .toc-title { font-size:11px; text-transform:uppercase; letter-spacing:.5px;
+               color:var(--muted); font-weight:700; margin-bottom:6px; }
+  .toc-project { font-weight:700; font-size:12.5px; color:var(--primary);
+                 margin:8px 0 4px; }
+  .toc ul { margin:0; padding-left:18px; }
+  .toc li { margin:2px 0; font-size:12.5px; }
+  .toc a { color:#334155; text-decoration:none; }
+  .toc a:hover { color:var(--primary); text-decoration:underline; }
+  .toc-count { color:var(--muted); font-size:11.5px; }
+  .task { background:#fff; border:1px solid var(--border); border-radius:12px;
+          padding:18px 20px; margin-bottom:14px; }
+  .task-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .task-title { font-size:15px; font-weight:700; margin:0; }
+  .pill { display:inline-block; padding:2px 10px; border-radius:999px;
+          font-size:11px; font-weight:700; white-space:nowrap; }
+  .task-meta { color:var(--muted); font-size:12px; margin-top:8px; }
+  .section-label { font-size:11px; text-transform:uppercase; letter-spacing:.5px;
+                   color:var(--muted); font-weight:700; margin:14px 0 6px; }
+  .desc { font-size:13px; line-height:1.55; background:#F8FAFC;
+          border-radius:8px; padding:10px 14px; }
+  .desc p { margin:0 0 6px; }
+  .steps { margin:0; padding-left:4px; list-style:none; font-size:13px; }
+  .steps li { margin:3px 0; }
+  .steps .done { color:var(--muted); text-decoration:line-through; }
+  .entry { padding:10px 12px; border-radius:8px; margin-bottom:6px;
+           background:#F8FAFC; }
+  .entry.in-period { background:#EEF2FF; border-left:3px solid var(--primary); }
+  .entry-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+                margin-bottom:6px; }
+  .entry-time { font-size:12px; color:var(--muted);
+                font-variant-numeric:tabular-nums; }
+  .entry-body { font-size:13px; line-height:1.55; }
+  .entry-body p { margin:0 0 6px; }
+  .entry-body ul, .entry-body ol { margin:4px 0; padding-left:20px; }
+  .entry-body code { background:#E2E8F0; border-radius:4px; padding:1px 5px;
+                     font-size:12px; }
+  .entry-body pre { background:#E2E8F0; border-radius:6px; padding:10px;
+                    overflow:auto; }
+  .entry-body blockquote { border-left:3px solid var(--border); margin:6px 0;
+                           padding:4px 12px; color:#475569; }
+  .entry-body table { border-collapse:collapse; margin:6px 0; }
+  .entry-body th, .entry-body td { border:1px solid var(--border);
+                                   padding:4px 8px; font-size:12px; }
+  .att { display:inline-block; font-size:11.5px; color:var(--muted);
+         background:#fff; border:1px solid var(--border); border-radius:6px;
+         padding:2px 8px; margin:4px 6px 0 0; }
+  .none { color:var(--muted); font-style:italic; font-size:13px; margin:6px 0; }
+  footer { margin-top:36px; color:var(--muted); font-size:12px;
+           border-top:1px solid var(--border); padding-top:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>$title</h1>
+<div class="meta">${l.period}: ${d.rangeLabel} · ${l.prepared} ${f.format(DateTime.now())}${d.filter.isActive ? ' · ${l.filters}: ${esc(d.filter.describe())}' : ''}</div>
+<div class="stats">
+<div class="stat"><b>${tasks.length}</b>${l.tasksChip}</div>
+<div class="stat"><b>$totalNotes</b>${l.notesChip}</div>
+<div class="stat"><b>$inPeriodNotes</b>${l.inPeriodChip}</div>
+<div class="stat"><b>$done</b>${l.doneChip}</div>
+</div>
+''');
+
+    if (tasks.isEmpty) {
+      b.write('<p class="none">${l.noTasksInRange}</p>\n');
+    } else {
+      // Table of contents — anchor links into the task cards below.
+      b.write('<div class="toc">\n<div class="toc-title">${l.contents}</div>\n');
+      for (final g in groups.entries) {
+        b.write('<div class="toc-project">${esc(g.key)} '
+            '<span class="toc-count">(${g.value.length})</span></div>\n<ul>\n');
+        for (final t in g.value) {
+          b.write('<li><a href="#task-${t.uid}">${_notesStatusGlyph(t)} '
+              '${esc(t.title)}</a> <span class="toc-count">· '
+              '${t.executionLog.length} ${l.notesWord}</span></li>\n');
+        }
+        b.write('</ul>\n');
+      }
+      b.write('</div>\n');
+
+      for (final g in groups.entries) {
+        b.write('<h2>${esc(g.key)}</h2>\n');
+        for (final t in g.value) {
+          final sc = statusColors(t.status);
+          final pc = priorityColors(t.priority);
+          b.write('<div class="task" id="task-${t.uid}">\n'
+              '<div class="task-head"><span>${_notesStatusGlyph(t)}</span>'
+              '<h3 class="task-title">${esc(t.title)}</h3>'
+              '${pill(esc(l.statusLabel(t.status)), sc.bg, sc.fg)}'
+              '${pill(t.priority.shortLabel, pc.bg, pc.fg)}');
+          if (_isOverdue(t, d)) {
+            b.write(pill('⚠ ${l.overdueWord}', '#FEF2F2', '#DC2626'));
+          }
+          b.write('</div>\n<div class="task-meta">'
+              '${l.createdOn} ${f.format(t.createdAt)}');
+          if (t.dueDate != null) b.write(' · ${l.due} ${f.format(t.dueDate!)}');
+          if (t.startedAt != null) {
+            b.write(' · ${l.startedOn} ${f.format(t.startedAt!)}');
+          }
+          if (t.completedAt != null) {
+            b.write(' · ${l.completedOn} ${f.format(t.completedAt!)}');
+          }
+          if (t.tags.isNotEmpty) {
+            b.write(' · ${t.tags.map((x) => '#${esc(x)}').join(' ')}');
+          }
+          b.write('</div>\n');
+
+          final desc = t.description?.trim();
+          if (desc != null && desc.isNotEmpty) {
+            b.write('<div class="section-label">${l.descriptionLabel}</div>'
+                '<div class="desc">${renderMd(desc)}</div>\n');
+          }
+
+          if (t.subSteps.isNotEmpty) {
+            final ordered = subStepsInDisplayOrder(t.subSteps);
+            final ssDone = ordered.where((s) => s.completed).length;
+            b.write('<div class="section-label">${l.subStepsLabel} '
+                '($ssDone/${ordered.length})</div><ul class="steps">\n');
+            for (final s in ordered) {
+              final indent = 18 * _subStepDepth(t.subSteps, s);
+              final glyph = s.completed ? '☑' : '☐';
+              final cls = s.completed ? ' class="done"' : '';
+              b.write('<li$cls style="margin-left:${indent}px;">'
+                  '$glyph ${esc(s.title)}</li>\n');
+            }
+            b.write('</ul>\n');
+          }
+
+          final entries = [...t.executionLog]
+            ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+          final inPeriod = entries.where((e) => _entryInPeriod(e, d)).length;
+          b.write('<div class="section-label">${l.executionLogLabel} — '
+              '${l.logCount(entries.length, inPeriod)}</div>\n');
+          if (entries.isEmpty) {
+            b.write('<p class="none">${l.noNotes}</p>\n');
+          }
+          for (final e in entries) {
+            final ec = entryColors(e.type);
+            final isIn = _entryInPeriod(e, d);
+            b.write('<div class="entry${isIn ? ' in-period' : ''}">\n'
+                '<div class="entry-head">'
+                '${pill('${_notesEntryGlyph(e.type)} ${l.entryTypeLabel(e.type)}', ec.bg, ec.fg)}'
+                '<span class="entry-time">${ft.format(e.timestamp)}</span>');
+            if (isIn) b.write(pill(l.inPeriod, '#E0E7FF', '#4F46E5'));
+            b.write('</div>\n');
+            final content = e.content.trim();
+            if (content.isNotEmpty) {
+              b.write('<div class="entry-body">${renderMd(content)}</div>\n');
+            }
+            b.write('${attachmentsHtml(e)}</div>\n');
+          }
+          b.write('</div>\n');
+        }
+      }
+    }
+
+    b.write('<footer>${l.generatedBy} · '
+        '${l.notesStats(tasks.length, totalNotes, inPeriodNotes, done)}'
+        '</footer>\n</div>\n</body>\n</html>');
+    return b.toString();
+  }
+
   // ─────────────────────────── Export ───────────────────────────
 
   /// Writes [content] to `<Documents>/TaskFlow/reports/<fileName>` and
@@ -1909,4 +2587,9 @@ $body
 
   String suggestFileName(ReportData d, String ext) =>
       'TaskFlow_${d.period.label}_${d.titlePrefix}.$ext';
+
+  /// File name for the raw task-notes export (v1.13.2) — distinct from the
+  /// summarized report so both can coexist in the reports folder.
+  String suggestNotesFileName(ReportData d, String ext) =>
+      'TaskFlow_Notes_${d.titlePrefix}.$ext';
 }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -268,38 +270,47 @@ class ReportController extends StateNotifier<ReportsState> {
   // ------------------------------------------------------------------
   // Generate pipeline (moved verbatim from the old widget `_generate`).
 
+  /// Aggregates the report data for the CURRENT controls (period/range,
+  /// filters, checkbox selection) with no AI pass. Shared by [generate]
+  /// and the raw task-notes export (v1.13.2) so both always cover exactly
+  /// the same task set. Returns null only when the Custom period has no
+  /// range picked yet.
+  Future<ReportData?> aggregateCurrent() async {
+    final service = ref.read(reportServiceProvider);
+    final filter = ReportFilter(
+      project: state.fProject,
+      tag: state.fTag,
+      status: state.fStatus,
+      priority: state.fPriority,
+    );
+    // Checkbox selection: null = every task in range; otherwise only the
+    // checked ones (tasks in range minus the excluded uids).
+    final Set<String>? onlyUids = state.excludedUids.isEmpty
+        ? null
+        : tasksInRange(
+                ref.read(taskListProvider).valueOrNull ?? const <Task>[])
+            .where((t) => !state.excludedUids.contains(t.uid))
+            .map((t) => t.uid)
+            .toSet();
+    if (state.period == ReportPeriod.custom) {
+      final range = state.customRange;
+      if (range == null) return null;
+      return service.generateRange(range.start, range.end,
+          filter: filter, onlyUids: onlyUids);
+    }
+    return service.generate(state.period, state.anchor,
+        filter: filter, onlyUids: onlyUids);
+  }
+
   Future<void> generate() async {
     state = state.copyWith(generating: true, error: null);
     try {
       final service = ref.read(reportServiceProvider);
-      final filter = ReportFilter(
-        project: state.fProject,
-        tag: state.fTag,
-        status: state.fStatus,
-        priority: state.fPriority,
-      );
-      // Checkbox selection: null = every task in range; otherwise only the
-      // checked ones (tasks in range minus the excluded uids).
-      final Set<String>? onlyUids = state.excludedUids.isEmpty
-          ? null
-          : tasksInRange(
-                  ref.read(taskListProvider).valueOrNull ?? const <Task>[])
-              .where((t) => !state.excludedUids.contains(t.uid))
-              .map((t) => t.uid)
-              .toSet();
-      final ReportData data;
-      if (state.period == ReportPeriod.custom) {
-        final range = state.customRange;
-        if (range == null) {
-          state = state.copyWith(
-              generating: false, error: 'Pick a custom date range first.');
-          return;
-        }
-        data = await service.generateRange(range.start, range.end,
-            filter: filter, onlyUids: onlyUids);
-      } else {
-        data = await service.generate(state.period, state.anchor,
-            filter: filter, onlyUids: onlyUids);
+      final data = await aggregateCurrent();
+      if (data == null) {
+        state = state.copyWith(
+            generating: false, error: 'Pick a custom date range first.');
+        return;
       }
 
       // AI pass. Two tiers:
@@ -450,40 +461,85 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       }
       final file = await service.export(fileName, content);
       if (!mounted) return;
-      // Replace any queued snackbar so repeated exports never stack up a
-      // permanent-looking banner, and force-hide after the duration as a
-      // safety net (desktop focus-loss can stall the internal timer).
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Saved: ${file.path}'),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
-          showCloseIcon: true,
-          action: SnackBarAction(
-            label: 'Open folder',
-            // launchUrl(Uri.file(...)) blocks the UI thread on Windows
-            // ("Not responding"); openFolder spawns explorer fire-and-forget.
-            onPressed: () => openFolder(file.parent.path),
-          ),
-        ),
-      );
-      Future.delayed(const Duration(seconds: 5), () {
-        if (mounted) messenger.hideCurrentSnackBar();
-      });
+      _showSavedSnackBar(file);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Export failed: $e'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _showExportError('Export failed: $e');
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
+  }
+
+  /// v1.13.2: raw export of every task the current controls would report
+  /// on (range + filters + checkbox selection) together with ALL of each
+  /// task's notes — structured Markdown or styled HTML, no Generate / AI
+  /// pass required.
+  Future<void> _exportNotes(String ext) async {
+    setState(() => _exporting = true);
+    try {
+      final notifier = ref.read(reportControllerProvider.notifier);
+      final data = await notifier.aggregateCurrent();
+      if (!mounted) return;
+      if (data == null) {
+        _showExportError('Pick a custom date range first.');
+        return;
+      }
+      if (data.touchedTasks.isEmpty && data.overdue.isEmpty) {
+        _showExportError('No tasks match the current range and filters.');
+        return;
+      }
+      final service = ref.read(reportServiceProvider);
+      final lang = ref.read(reportControllerProvider).lang;
+      final content = ext == 'md'
+          ? service.tasksNotesToMarkdown(data, lang: lang)
+          : await service.tasksNotesToHtml(data, lang: lang);
+      if (!mounted) return;
+      final file =
+          await service.export(service.suggestNotesFileName(data, ext), content);
+      if (!mounted) return;
+      _showSavedSnackBar(file);
+    } catch (e) {
+      if (!mounted) return;
+      _showExportError('Export failed: $e');
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  /// Shared "Saved: <path>" snackbar for every export path. Replaces any
+  /// queued snackbar so repeated exports never stack up a permanent-looking
+  /// banner, and force-hides after the duration as a safety net (desktop
+  /// focus-loss can stall the internal timer).
+  void _showSavedSnackBar(File file) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Saved: ${file.path}'),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        showCloseIcon: true,
+        action: SnackBarAction(
+          label: 'Open folder',
+          // launchUrl(Uri.file(...)) blocks the UI thread on Windows
+          // ("Not responding"); openFolder spawns explorer fire-and-forget.
+          onPressed: () => openFolder(file.parent.path),
+        ),
+      ),
+    );
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) messenger.hideCurrentSnackBar();
+    });
+  }
+
+  void _showExportError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<void> _pickDate() async {
@@ -793,64 +849,155 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   style: theme.textTheme.titleLarge
                       ?.copyWith(fontWeight: FontWeight.w700, fontSize: 18)),
               const Spacer(),
-              if (s.data != null) ...[
-                s.editing
-                    ? FilledButton.icon(
-                        onPressed: () => notifier.setEditing(false),
-                        icon: const Icon(Icons.check, size: 15),
-                        label: const Text('Done'),
-                      )
-                    : OutlinedButton.icon(
-                        onPressed: () => notifier.setEditing(true),
-                        icon: const Icon(Icons.edit_outlined, size: 15),
-                        label: const Text('Edit'),
-                      ),
-                const SizedBox(width: 8),
-                // One-click copy of the generated report as clean Markdown
-                // (sanitized — same text the user sees / edits).
-                OutlinedButton.icon(
-                  onPressed: s.markdown == null || s.markdown!.isEmpty
-                      ? null
-                      : () {
-                          final text = sanitizeHtmlInMarkdown(s.markdown!);
-                          Clipboard.setData(ClipboardData(text: text));
-                          final messenger = ScaffoldMessenger.of(context);
-                          messenger.hideCurrentSnackBar();
-                          messenger.showSnackBar(
-                            const SnackBar(
-                              content: Text('Report copied as Markdown'),
-                              behavior: SnackBarBehavior.floating,
-                              duration: Duration(seconds: 2),
+              // Action cluster scrolls horizontally on narrow windows
+              // (min width 900) so buttons are never clipped (pitfall 8.7).
+              Flexible(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      // v1.13.2: raw tasks + notes export — works straight
+                      // from the current range / filters / task selection,
+                      // no Generate (and no AI) needed.
+                      PopupMenuButton<String>(
+                        enabled: !_exporting,
+                        tooltip: 'Export the selected tasks and ALL their '
+                            'notes — no Generate needed',
+                        onSelected: _exportNotes,
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'md',
+                            child: Row(
+                              children: [
+                                Icon(Icons.description_outlined,
+                                    size: 15,
+                                    color: theme.colorScheme.primary),
+                                const SizedBox(width: 8),
+                                const Text('Markdown (.md)',
+                                    style: TextStyle(fontSize: 12.5)),
+                              ],
                             ),
-                          );
-                        },
-                  icon: const Icon(Icons.copy_outlined, size: 15),
-                  label: const Text('Copy MD'),
+                          ),
+                          PopupMenuItem(
+                            value: 'html',
+                            child: Row(
+                              children: [
+                                Icon(Icons.html_outlined,
+                                    size: 15,
+                                    color: theme.colorScheme.primary),
+                                const SizedBox(width: 8),
+                                const Text('Styled HTML (.html)',
+                                    style: TextStyle(fontSize: 12.5)),
+                              ],
+                            ),
+                          ),
+                        ],
+                        // Styled like the themed OutlinedButton family
+                        // (radius 12, same padding / label weight).
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 13),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: theme.colorScheme.outline, width: 1.2),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _exporting
+                                  ? const SizedBox(
+                                      width: 13,
+                                      height: 13,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2))
+                                  : Icon(Icons.notes_outlined,
+                                      size: 15,
+                                      color: theme.colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Text('Export notes',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.primary,
+                                  )),
+                              Icon(Icons.arrow_drop_down,
+                                  size: 18,
+                                  color: theme.colorScheme.primary),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (s.data != null) ...[
+                        const SizedBox(width: 8),
+                        s.editing
+                            ? FilledButton.icon(
+                                onPressed: () => notifier.setEditing(false),
+                                icon: const Icon(Icons.check, size: 15),
+                                label: const Text('Done'),
+                              )
+                            : OutlinedButton.icon(
+                                onPressed: () => notifier.setEditing(true),
+                                icon: const Icon(Icons.edit_outlined, size: 15),
+                                label: const Text('Edit'),
+                              ),
+                        const SizedBox(width: 8),
+                        // One-click copy of the generated report as clean
+                        // Markdown (sanitized — same text the user sees /
+                        // edits).
+                        OutlinedButton.icon(
+                          onPressed: s.markdown == null || s.markdown!.isEmpty
+                              ? null
+                              : () {
+                                  final text =
+                                      sanitizeHtmlInMarkdown(s.markdown!);
+                                  Clipboard.setData(
+                                      ClipboardData(text: text));
+                                  final messenger =
+                                      ScaffoldMessenger.of(context);
+                                  messenger.hideCurrentSnackBar();
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content:
+                                          Text('Report copied as Markdown'),
+                                      behavior: SnackBarBehavior.floating,
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                },
+                          icon: const Icon(Icons.copy_outlined, size: 15),
+                          label: const Text('Copy MD'),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: _exporting ? null : () => _export('md'),
+                          icon: _exporting
+                              ? const SizedBox(
+                                  width: 13,
+                                  height: 13,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2))
+                              : const Icon(Icons.description_outlined,
+                                  size: 15),
+                          label: const Text('Export .md'),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          onPressed: _exporting ? null : () => _export('html'),
+                          icon: const Icon(Icons.html_outlined, size: 15),
+                          label: const Text('Export .html'),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: _exporting ? null : () => _export('email'),
+                          icon: const Icon(Icons.mail_outline, size: 15),
+                          label: const Text('Email .html'),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: _exporting ? null : () => _export('md'),
-                  icon: _exporting
-                      ? const SizedBox(
-                          width: 13,
-                          height: 13,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.description_outlined, size: 15),
-                  label: const Text('Export .md'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: _exporting ? null : () => _export('html'),
-                  icon: const Icon(Icons.html_outlined, size: 15),
-                  label: const Text('Export .html'),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: _exporting ? null : () => _export('email'),
-                  icon: const Icon(Icons.mail_outline, size: 15),
-                  label: const Text('Email .html'),
-                ),
-              ],
+              ),
             ],
           ),
           const SizedBox(height: 16),
