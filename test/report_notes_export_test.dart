@@ -1,9 +1,14 @@
 import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taskflow/data/models/task.dart';
 import 'package:taskflow/data/repositories/task_repository.dart';
 import 'package:taskflow/data/services/report_service.dart';
+import 'package:taskflow/presentation/reports/reports_screen.dart';
+import 'package:taskflow/providers/task_providers.dart';
 
 /// In-memory [TaskRepository] so report aggregation (_build) can be
 /// unit-tested without opening an Isar database (same pattern as
@@ -384,6 +389,55 @@ void main() {
       final html = await svc.tasksNotesToHtml(d);
       expect(html, startsWith('<!DOCTYPE html>'));
       expect(html, contains('No tasks in the selected range.'));
+    });
+  });
+
+  group('Reports page — Export notes entry point', () {
+    Future<void> pumpReports(WidgetTester tester, Size size) async {
+      await tester.binding.setSurfaceSize(size);
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            taskRepositoryProvider.overrideWithValue(_FakeRepo(sampleTasks())),
+          ],
+          child: const MaterialApp(home: Scaffold(body: ReportsScreen())),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('available before any generation; menu offers both formats',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await pumpReports(tester, const Size(900, 600));
+      expect(tester.takeException(), isNull);
+      expect(find.text('Export notes'), findsOneWidget);
+      // No report generated yet — the summary exports are absent.
+      expect(find.text('Export .md'), findsNothing);
+
+      await tester.tap(find.text('Export notes'));
+      await tester.pumpAndSettle();
+      expect(find.text('Markdown (.md)'), findsOneWidget);
+      expect(find.text('Styled HTML (.html)'), findsOneWidget);
+    });
+
+    testWidgets('full action cluster never overflows at the 900px minimum',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await pumpReports(tester, const Size(900, 600));
+      // Generate via the controller (the Generate button itself may sit
+      // off-screen in the horizontally scrolling controls row at 900px).
+      final container = ProviderScope.containerOf(
+          tester.element(find.byType(ReportsScreen)));
+      await container.read(reportControllerProvider.notifier).generate();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      // Every header action coexists with Export notes without clipping.
+      expect(find.text('Export notes'), findsOneWidget);
+      expect(find.text('Export .md'), findsOneWidget);
+      expect(find.text('Export .html'), findsOneWidget);
+      expect(find.text('Email .html'), findsOneWidget);
     });
   });
 }

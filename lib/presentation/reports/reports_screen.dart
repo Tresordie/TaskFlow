@@ -873,8 +873,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                     size: 15,
                                     color: theme.colorScheme.primary),
                                 const SizedBox(width: 8),
-                                const Text('Markdown (.md)',
-                                    style: TextStyle(fontSize: 12.5)),
+                                // Flexible + ellipsis: the menu width can
+                                // be narrower than the label (pitfall 8.7).
+                                const Flexible(
+                                  child: Text('Markdown (.md)',
+                                      style: TextStyle(fontSize: 12.5),
+                                      overflow: TextOverflow.ellipsis),
+                                ),
                               ],
                             ),
                           ),
@@ -886,8 +891,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                     size: 15,
                                     color: theme.colorScheme.primary),
                                 const SizedBox(width: 8),
-                                const Text('Styled HTML (.html)',
-                                    style: TextStyle(fontSize: 12.5)),
+                                const Flexible(
+                                  child: Text('Styled HTML (.html)',
+                                      style: TextStyle(fontSize: 12.5),
+                                      overflow: TextOverflow.ellipsis),
+                                ),
                               ],
                             ),
                           ),
