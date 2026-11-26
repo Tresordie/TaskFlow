@@ -51,7 +51,7 @@ Before generating output, you MUST:
 
 ## Output Format
 
-**CRITICAL: The report MUST contain ALL 5 sections below, in order, without exception.** Never omit, truncate, or skip any section — even if a section has no relevant data, include it with "None this period." A report missing any section is considered INVALID.
+**CRITICAL: The report MUST contain the TL;DR blockquote and ALL 5 sections below, in order, without exception.** Never omit, truncate, or skip any section — even if a section has no relevant data, include it with "None this period." A report missing any section is considered INVALID.
 
 Generate the report using the exact structure below. Use Markdown formatting.
 
@@ -61,55 +61,83 @@ Generate the report using the exact structure below. Use Markdown formatting.
 
 ---
 
+> **TL;DR**
+>
+> - **Closed**
+>   - {completed task title} (done {MM-DD})   ← ONE sub-bullet per completed task, or "None this period"
+> - **Needs attention**
+>   - {task title} — {root cause / impact, ONE line}   ← the 1–3 most severe risks (blocked first, then overdue), or "None this period"
+> - **Need from you:** {the single most important decision/input needed from the reader, or "None this period"}
+
+---
+
 ## 1. Status Dashboard
 
-| Project | Status | Progress | Headline |
-|:-----:|:------:|:--------:|:---------|
-| {Project} | {emoji} {label} | {done}/{total} | {one-line headline of most significant task} |
+*Sorted by severity. 🔴 Blocked = waiting on an external party · 🟡 At Risk = overdue or has fail entries · 🟢 On Track = progressing and on schedule · 🕐 Planned = not started yet.*
 
-**Overall:** {emoji} {label} — {N} tasks touched · {M} completed ({pct}%) · sub-steps {x}/{y}
+| Project | Status | Open · closed | Headline |
+|:-----|:------:|:--------:|:---------|
+| {Project} | {emoji} {label} | {open} · {closed} | {per-task headlines — ONE line per task: **{task title}** — {one-sentence summary of its most recent updates}, joined by <br>} |
+
+(rows sorted worst severity first: 🔴 projects, then 🟡, then the rest)
 
 ---
 
 ## 2. Executive Summary
 
-### ✅ Achievements (Completed)
-- **{Task title}** (completed {MM-DD})
-  - {1–2 sentence incisive summary of what was accomplished and why it matters.}
+### Open items (by severity)
 
-### 🚧 In Progress (Watch)
-- **{Task title}** — {x}/{y} sub-steps
-  - {1–2 sentence summary of current state and what remains.}
+| Item | Status | Change this period | Next step | Owner | ETA |
+|:-----|:------:|:------|:------|:------|:---:|
+| **{Project}** · {Task title} | {emoji} {label} | {what the in-period log entries moved, ONE line; "No change" only when zero in-period log entries; prefix "New: " when started in the period} | {concrete next action, naming WHO must act when external} | {party we wait on (vendor / customer / another team) or "—"} | {MM-DD or —, ⚠️-marked when overdue} |
 
-### ⚠️ Risks / Blockers
-- **{Task title}** — blocked since {MM-DD}
-  - {1–2 sentence summary including the root cause of the block and impact.}
+(ONE row per open task, sorted 🔴 → 🟡 → 🟢 → 🕐, ties by priority P0 first; completed tasks NEVER listed here)
+
+### Closed this period
+
+| Item | Result | Follow-up |
+|:-----|:-----|:-----|
+| **{Project}** · {Task title} | {completed {MM-DD} + 1–2 sentences on the OUTCOME} | {what remains (tickets, pending confirmations) or "—"} |
+
+### Decisions / sign-offs
+
+- {Item requiring external input, escalation, or cross-team decision}
 - (If none: "None this period")
 
 ---
 
-## 3. Progress Details
-*(Grouped by project)*
+## 3. Last Period's Plan vs. Actual
+
+The input contains a "PREVIOUS PERIOD PLAN" block (present when the previous period's plan was archived). Render ONE row per planned task, copying the annotated outcome VERBATIM:
+
+| Planned (previous period) | Due | Result |
+|:-----|:---:|:-----|
+| {planned task title} | {planned due MM-DD or —} | {✅ Done in period {MM-DD} / ⏩ Still open (now due {MM-DD}) / ❔ No longer tracked — as annotated in the block} |
+
+If NO "PREVIOUS PERIOD PLAN" block is present in the input, write exactly one line: _No recorded plan for the previous period._
+
+---
+
+## 4. Progress Details
+*(Grouped by project, SAME project order as section 1)*
 
 ### {Project Name}
 
-| Item | Status | Details |
-|:-----|:------:|:--------|
-| {Task title} | {🟩/🟨/🟥/⬜} | • {bullet 1}<br>• {bullet 2}<br>... |
+#### {🟩/🔴/🟡/🟢/🕐} {Task title} — {Completed {MM-DD} / Blocked / At Risk / On Track / Planned} · due {MM-DD or —}
+- {detail item 1}
+- {detail item 2}
+
+(repeat the block for each task, blank line between blocks)
 
 ---
 
-## 4. Plan for Next Period
+## 5. Plan for Next Period
 
 | Project | Task | Due | Priority |
 |:-----:|:-----|:---:|:--------:|
-| {Project} | {Task or decomposed sub-task} | {MM-DD or —} | {P0–P3} |
+| {Project} | {Task} | {MM-DD or —} | {P0–P3} |
 
----
-
-## 5. Asks / Decisions Needed
-- {Item requiring external input, escalation, or cross-team decision}
-- (If none: "None this period")
+(ONE row per open task — blocked and overdue INCLUDED, completed tasks EXCLUDED; sorted 🔴 → 🟡 → 🟢 → 🕐, ties by priority)
 
 ---
 _Generated by TaskFlow · Log entries: Pass {n} / Fail {n} / Blocked {n} / Note {n}_
@@ -119,81 +147,74 @@ _Generated by TaskFlow · Log entries: Pass {n} / Fail {n} / Blocked {n} / Note 
 
 ## Section-Specific Rules
 
-### 1. Status Dashboard
+### 1. TL;DR
 
-- One row per project that has at least one task in the period.
-- **Status** emoji mapping:
-  - 🟢 On Track — all tasks progressing normally or completed
-  - 🟡 At Risk — delays, pending external dependencies, or approaching deadlines with incomplete work
-  - 🔴 Blocked — one or more tasks explicitly blocked
-- **Progress** = completed tasks / total tasks for that project.
-- **Headline** = the single most impactful task title or outcome for the project this period.
-- The **Overall** line aggregates across all projects.
+- A Markdown BLOCKQUOTE (every line prefixed "> "). Exactly 3 top bullets — Closed, Needs attention, Need from you — each with its sub-bullets exactly as in the skeleton. One line per item, no paragraphs.
+- **Need from you** must be ONE concrete, actionable request (a decision, an approval, an escalation, input from another team) drawn from the most severe blocker; "None this period" when nothing is needed. Never hedge.
 
-### 2. Executive Summary
+### 2. Status Dashboard
 
-- **Achievements**: Only tasks with status `Completed` (including tasks archived within the reporting period). Present as a bullet list; each task gets exactly 1–2 sentences of incisive summary focusing on the outcome and its significance, not the process. Do NOT write paragraphs — keep it tight and scannable.
-- **In Progress**: Tasks with status `In Progress`. Include sub-step ratio. Summarize what was advanced this period and what remains.
-- **Risks / Blockers**: Tasks with status `Blocked`. MUST include the reason for the block. If the block has schedule impact, state it.
-- Keep every bullet incisive — no filler, no restating the task title in the summary body.
+- One row per project that has at least one task in the period, rows sorted by severity: projects containing a 🔴 task first, then 🟡, then the rest.
+- **Per-task status**: 🔴 Blocked (status Blocked or a blocked log entry — waiting on an external party); 🟡 At Risk (overdue or a fail log entry); 🟢 On Track (in progress, on schedule); 🕐 Planned (not started). The project status = its worst open task.
+- **Open · closed** = number of uncompleted tasks · number of tasks completed in the period.
+- **Headline** = a LIST, ONE line per task of the project (EVERY task must appear), each summarized in exactly ONE sentence centered on its MOST RECENT updates (last-7-days log entries are the core, older entries only background). Order by recency. Lines joined by `<br>`.
 
-### 3. Progress Details
+### 3. Executive Summary
 
-- Group tasks under their Project heading (H3).
-- Use a Markdown table with columns: Item | Status | Details.
-- **Table alignment (STRICT)**: ALL project tables MUST use identical fixed column widths so they align visually across sections. Required width ratios:
-  - Item: 25%
-  - Status: 8%
-  - Details: 67%
-  - In HTML output, enforce via `<colgroup><col style="width:25%"><col style="width:8%"><col style="width:67%"></colgroup>` inside every `<table>`. Do NOT let content auto-size columns differently per table.
-- **Status icons**: 🟩 = Completed, 🟨 = In Progress, 🟥 = Blocked, ⬜ = Planned.
-  - Archived tasks are omitted from this table unless archived within the reporting period (show as 🟩).
-- **Details column** (MANDATORY for ALL tasks regardless of status):
-  - Summarize from BOTH the **task description** AND **Execution Log Notes** — combine information from both sources into a coherent summary. This applies equally to Completed, In Progress, Blocked, and Planned tasks.
-  - Present as a bullet list (use `•` separated by `<br>`), maximum 5 bullets per task.
+- **Open items table**: EVERY uncompleted task appears EXACTLY once — no omissions, no duplicates; completed tasks NEVER listed here.
+- **Change this period** = what the in-period log entries moved (tests run, decisions made, replies received); "No change" only when the period has zero log entries for the task; prefix "New: " when the task started in the period.
+- **Next step** must be concrete and actionable, naming WHO acts next when it is an external party. **Owner** = the party we are waiting on (vendor, customer, another team) inferred from the task text and logs, "—" when nothing is awaited. **ETA** = the task due date, ⚠️-marked when overdue, "—" when none.
+- **Closed this period**: Result = the OUTCOME (not the process), 1–2 sentences; Follow-up = what remains after the close (tickets, pending confirmations) or "—".
+- **Decisions / sign-offs**: extract from blockers, pending confirmations and cross-team dependencies; each item states WHO needs to decide/provide WHAT, and by WHEN if inferable; "None this period" when nothing is needed.
+
+### 4. Last Period's Plan vs. Actual
+
+- Use ONLY the "PREVIOUS PERIOD PLAN" block — never invent plan rows, never recompute outcomes; copy each row's annotated outcome verbatim into the Result column.
+- When no block is present, write exactly the one-line italic note; NEVER fabricate a comparison.
+
+### 5. Progress Details
+
+- Group tasks under their Project heading (H3); the project order MUST match section 1 (worst severity first). Within a project, tasks sorted 🔴 → 🟡 → 🟢 → 🕐, ties by priority (P0 first).
+- Layout (STRICT): each task is a CONTENT LIST, NOT a table. One H4 header line `#### {status emoji} {Task title} — {status label} · due {MM-DD}`, followed immediately by its detail items as plain "- " bullets — EXACTLY ONE item per line. NEVER put multiple items on one line; NEVER use `<br>` or a table for details. Leave one blank line between two task blocks.
+- Header status emoji: 🟩 Completed (+ completion date), 🔴 Blocked, 🟡 At Risk, 🟢 On Track, 🕐 Planned.
+- **Detail bullets** (MANDATORY for ALL tasks regardless of status):
+  - Summarize from BOTH the **task description** AND **Execution Log Notes** — RECENCY FOCUS: entries from the LAST 7 DAYS drive the summary; entries labeled "(older than 7 days — context only)" are condensed into AT MOST ONE history sentence placed as the LAST bullet, prefixed "Earlier context: ".
+  - Maximum 5 bullets per task (the earlier-context sentence counts toward the 5).
   - Each bullet = one distinct fact or milestone. Do not merge unrelated facts.
   - Preserve technical specifics: part numbers, firmware versions, voltage/current values, dates, vendor names, tracking numbers.
-  - **Completed tasks are NOT exempt** — their Details must contain a full summary of what was done, how, and the outcome.
-  - **NEVER dismiss a task that has content.** If a task has a description or any Execution Log entry (even if the log timestamp falls slightly outside the reporting period), you MUST summarize that content. The fallback "No execution logs in the reporting period" is ONLY permitted when the task has literally NO description text AND NO Execution Log entries at all.
+  - **Completed tasks are NOT exempt** — their bullets must contain a full summary of what was done, how, and the outcome.
+  - **NEVER dismiss a task that has content.** The fallback "No execution logs in the reporting period" is ONLY permitted when the task has literally NO description text AND NO Execution Log entries at all.
 
-### 4. Plan for Next Period (MANDATORY — never omit)
+### 6. Plan for Next Period (MANDATORY — never omit)
 
-- This section is REQUIRED in every report. If there are no upcoming tasks, still include the section header with a note.
-- Include: `Planned` tasks, `In Progress` tasks (remaining work), and `Blocked` tasks (unblock steps).
-- **Grouping rule (STRICT)**: Rows MUST be grouped into contiguous blocks by Project — all tasks belonging to one project appear together as a single block before moving to the next project. NEVER interleave rows from different projects. Within each project block, order rows by priority (P0 first, then P1, P2, P3).
-- **Task decomposition**: If your understanding of the Execution Log suggests a task should be broken into smaller actionable steps, decompose it into multiple rows. Each decomposed row should be a concrete, completable action.
-- **Due date**: Use the task's due date if set; otherwise use "—" or infer a reasonable date from context.
+- This section is REQUIRED in every report. If there are no open tasks, still include the section header with a note.
+- Include ONLY uncompleted tasks: `In Progress`, `Planned`, and `Blocked`/overdue tasks (unblock steps). NEVER include completed tasks.
+- ONE row per task — NEVER decompose a task into multiple rows or sub-task steps; the Task column carries the task title as-is.
+- Rows sorted 🔴 → 🟡 → 🟢 → 🕐, ties by priority (P0 first).
+- **Due date**: use the task's due date if set; otherwise "—".
 - **Priority assignment**:
   - P0 = critical path, blocks other work or has imminent deadline
   - P1 = important, should complete next period
   - P2 = planned but flexible
   - P3 = nice-to-have / backlog
 
-### 5. Asks / Decisions Needed (MANDATORY — never omit)
-
-- This section is REQUIRED in every report. If nothing is needed, write "None this period" — but the section header must still appear.
-- Extract from your understanding of blockers, pending confirmations, cross-team dependencies, or unresolved questions mentioned in Execution Log Notes.
-- Each item should be actionable: state WHO needs to decide/provide WHAT, and by WHEN if inferable.
-- If genuinely nothing is needed, write "None this period".
-
 ---
 
 ## Quality Checklist (self-verify before outputting)
 
-- [ ] ALL 5 sections are present: Status Dashboard, Executive Summary, Progress Details, Plan for Next Period, Asks / Decisions Needed.
+- [ ] The TL;DR blockquote + ALL 5 sections are present, in order: TL;DR, Status Dashboard, Executive Summary (Open items / Closed this period / Decisions), Last Period's Plan vs. Actual, Progress Details, Plan for Next Period.
 - [ ] Every task in the input appears in at least one section (except pre-period Archived tasks).
 - [ ] Archived tasks are excluded unless their archive date falls within the reporting period.
 - [ ] No Chinese characters in the output.
 - [ ] Technical terms, part numbers, abbreviations, and measurements are preserved verbatim — none rewritten or generalized.
 - [ ] Every bullet states exactly one fact — no merged multi-fact bullets.
 - [ ] All summaries use nested bullet hierarchy — zero flat paragraphs anywhere in the report.
-- [ ] Executive Summary bullets are ≤ 2 sentences each.
-- [ ] Progress Details bullets are ≤ 5 per task.
-- [ ] All Progress Details project tables use identical column widths (25%/8%/67%) — visually aligned.
-- [ ] Status Dashboard progress fractions are arithmetically correct.
-- [ ] Plan for Next Period rows form contiguous per-project blocks (no interleaving), ordered by priority within each block.
+- [ ] TL;DR is a blockquote with exactly 3 top bullets; "Need from you" is one concrete request or "None this period".
+- [ ] Open items table lists EVERY uncompleted task exactly once, sorted 🔴 → 🟡 → 🟢 → 🕐; closed tasks only in the Closed table.
+- [ ] Status Dashboard Headline cells are <br>-separated lists — one line per task, never bare titles, never one long line.
+- [ ] Progress Details: every task is an H4 header + "- " bullet list, exactly one item per line, max 5 bullets per task; no tables and no <br> in this section.
+- [ ] Plan rows: uncompleted tasks only, one row per task (no decomposition), sorted by severity then priority.
 - [ ] The report reads as a coherent narrative a US-based director can scan in under 2 minutes.
-
 ---
 
 ## Usage

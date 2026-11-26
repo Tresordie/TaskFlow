@@ -9,6 +9,7 @@ import 'package:taskflow/data/models/task.dart';
 import 'package:taskflow/data/models/work_log.dart';
 import 'package:taskflow/data/repositories/task_repository.dart';
 import 'package:taskflow/data/services/ai_service.dart';
+import 'package:taskflow/data/services/report_plan_store.dart';
 import 'package:taskflow/data/services/report_service.dart';
 import 'package:taskflow/presentation/reports/reports_screen.dart';
 import 'package:taskflow/presentation/shared/markdown_input.dart';
@@ -359,14 +360,15 @@ void main() {
       );
     }
 
-    test('markdown has the 5 numbered sections in order', () {
+    test('markdown has the 5 numbered sections + TL;DR in order', () {
       final md = ReportService(TaskRepository()).toMarkdown(sampleWeekly());
       final sections = [
+        '> **TL;DR**',
         '## 1. Status Dashboard',
         '## 2. Executive Summary',
-        '## 3. Progress Details',
-        '## 4. Plan for Next Week',
-        '## 5. Asks / Decisions Needed',
+        "## 3. Last Period's Plan vs. Actual",
+        '## 4. Progress Details',
+        '## 5. Plan for Next Week',
       ];
       var idx = -1;
       for (final s in sections) {
@@ -376,16 +378,19 @@ void main() {
       }
     });
 
-    test('markdown groups by project and computes RAG status', () {
+    test('markdown groups by project, severity-sorted, open·closed counts',
+        () {
       final md = ReportService(TaskRepository()).toMarkdown(sampleWeekly());
-      // Cosmo has a blocked entry -> At Risk (red).
-      expect(md, contains('| Cosmo | 🔴 At Risk |'));
-      // Metro has an overdue task -> Watch (yellow).
-      expect(md, contains('| Metro | 🟡 Watch |'));
-      // Executive summary sub-headers.
-      expect(md, contains('### ✅ Achievements (Done / Closed)'));
-      expect(md, contains('### 🚧 In Progress (Watch)'));
-      expect(md, contains('### ⚠️ Risks / Blockers'));
+      // Cosmo has a blocked entry -> 🔴 Blocked, 1 open · 1 closed.
+      expect(md, contains('| Cosmo | 🔴 Blocked | 1 · 1 |'));
+      // Metro has an overdue task -> 🟡 At Risk, 2 open · 0 closed.
+      expect(md, contains('| Metro | 🟡 At Risk | 2 · 0 |'));
+      // Dashboard legend line.
+      expect(md, contains('*Sorted by severity.'));
+      // TL;DR block with its 3 top bullets.
+      expect(md, contains('> - **Closed**'));
+      expect(md, contains('> - **Needs attention**'));
+      expect(md, contains('> - **Need from you:**'));
     });
 
     test('chinese markdown renders localized headers', () {
@@ -393,10 +398,12 @@ void main() {
           .toMarkdown(sampleWeekly(), lang: ReportLanguage.chinese);
       expect(md, contains('## 1. 状态仪表盘'));
       expect(md, contains('## 2. 执行摘要'));
-      expect(md, contains('## 3. 进度明细'));
-      expect(md, contains('## 4. 下周计划'));
-      expect(md, contains('## 5. 需决策事项'));
-      expect(md, contains('🔴 有风险'));
+      expect(md, contains('## 3. 上期计划对比'));
+      expect(md, contains('## 4. 进度明细'));
+      expect(md, contains('## 5. 下周计划'));
+      expect(md, contains('🔴 阻塞'));
+      expect(md, contains('> - **已完成**'));
+      expect(md, contains('> - **需要您:**'));
     });
 
     test('english report contains no Chinese characters anywhere', () {
@@ -405,7 +412,8 @@ void main() {
       // Scan the whole output so any future hardcoded string fails here.
       final service = ReportService(TaskRepository());
       final md = service.toMarkdown(sampleWeekly());
-      final html = service.toHtml(sampleWeekly());
+      final html = service
+          .markdownToStyledHtml(service.toMarkdown(sampleWeekly()));
       final cjk = RegExp(r'[\u4e00-\u9fff]');
       expect(
         cjk.hasMatch(md),
@@ -419,7 +427,8 @@ void main() {
         reason: 'English HTML leaked Chinese: '
             '${cjk.allMatches(html).map((m) => m.group(0)).toSet()}',
       );
-      expect(md, contains('| Project | Status | Progress | Headline |'));
+      expect(
+          md, contains('| Project | Status | Open · closed | Headline |'));
     });
 
     test('AI summaries override the details column', () {
@@ -437,12 +446,14 @@ void main() {
       final md = ReportService(TaskRepository()).toMarkdown(data);
       // Cosmo group = completed 'idbase64 fix deployed' + in-progress
       // 'PDA data sync' → two headline lines inside the cell (the group
-      // RAG is 🔴 because of the blocked log entry).
+      // RAG is 🔴 because of the blocked log entry), open·closed = 1 · 1.
       expect(md, contains('| Cosmo | 🔴'));
       expect(
-          md, contains('1/2 | idbase64 fix deployed<br>PDA data sync |'));
+          md, contains('1 · 1 | idbase64 fix deployed<br>PDA data sync |'));
 
-      final html = ReportService(TaskRepository()).toHtml(data);
+      final html = ReportService(TaskRepository())
+          .markdownToStyledHtml(
+              ReportService(TaskRepository()).toMarkdown(data));
       expect(html, contains('idbase64 fix deployed<br>PDA data sync</td>'));
     });
 
@@ -451,8 +462,10 @@ void main() {
       final md = ReportService(TaskRepository()).toMarkdown(data);
       expect(md, isNot(contains('**Overall:**')));
 
-      final html = ReportService(TaskRepository()).toHtml(data);
-      expect(html, isNot(contains('class="overall"')));
+      final html = ReportService(TaskRepository())
+          .markdownToStyledHtml(
+              ReportService(TaskRepository()).toMarkdown(data));
+      expect(html, isNot(contains('**Overall:**')));
 
       // The AI prompts no longer request it either.
       expect(ReportService.fullReportPrompt(ReportLanguage.english),
@@ -461,51 +474,57 @@ void main() {
           isNot(contains('**总体:**')));
     });
 
-    test('executive summary renders the STRUCTURED summary bullets '
-        '(v1.5.9)', () {
+    test('completed-task AI summaries render as details bullets and the '
+        'closed table carries dates (v2 format)', () {
       final data = sampleWeekly();
       final target = data.completed.first;
       final md = ReportService(TaskRepository()).toMarkdown(
         data,
-        aiSummaries: {target: 'Shipped the fix to the factory\nClosed after PVT sign-off'},
+        aiSummaries:
+            {target: 'Shipped the fix to the factory\nClosed after PVT sign-off'},
       );
-      // Title bullet, then EVERY summary line as its own indented bullet.
-      expect(md, contains('- **idbase64 fix deployed**'));
-      expect(md, contains('  - Shipped the fix to the factory'));
-      expect(md, contains('  - Closed after PVT sign-off'));
+      // Closed-this-period table row: project · title | result | follow-up.
+      expect(md, contains('| **Cosmo** · idbase64 fix deployed | '));
+      expect(md, contains('done 07-15'));
+      // Every summary line becomes its own "- " detail bullet in §4.
+      expect(md, contains('- Shipped the fix to the factory'));
+      expect(md, contains('- Closed after PVT sign-off'));
 
-      final html = ReportService(TaskRepository()).toHtml(
-        data,
-        aiSummaries: {target: 'Shipped the fix to the factory\nClosed after PVT sign-off'},
-      );
-      expect(html, contains('>Shipped the fix to the factory</li>'));
-      expect(html, contains('>Closed after PVT sign-off</li>'));
+      final html = ReportService(TaskRepository())
+          .markdownToStyledHtml(
+              ReportService(TaskRepository()).toMarkdown(
+            data,
+            aiSummaries:
+                {target: 'Shipped the fix to the factory\nClosed after PVT sign-off'},
+          ));
+      expect(html, contains('Shipped the fix to the factory</li>'));
+      expect(html, contains('Closed after PVT sign-off</li>'));
     });
 
-    test('In Progress renders ONE line with a single-sentence summary '
-        '(v1.9.3)', () {
+    test('open items table lists every uncompleted task exactly once '
+        '(v2 format)', () {
       final data = sampleWeekly();
       final target = data.inProgress.first; // PDA data sync (Cosmo)
       final md = ReportService(TaskRepository()).toMarkdown(
         data,
         aiSummaries: {target: 'Vendor quote still pending\nBlocking PDA build'},
       );
-      // The task's In-Progress bullet carries the FIRST summary line
-      // inline after the bold title …
-      expect(md,
-          contains('- **PDA data sync** — #Cosmo — Vendor quote still pending'));
-      // … and no indented sub-bullets for it in the Executive Summary.
-      expect(md, isNot(contains('  - Vendor quote still pending')));
-      expect(md, isNot(contains('  - Blocking PDA build')));
-
-      final html = ReportService(TaskRepository()).toHtml(
-        data,
-        aiSummaries: {target: 'Vendor quote still pending\nBlocking PDA build'},
-      );
+      // The Open items section header.
+      expect(md, contains('### Open items (by severity)'));
+      // One row per open task: blocked task first (🔴), with the
+      // project · title item cell.
+      expect(md, contains('| **Cosmo** · PDA data sync | 🔴 Blocked |'));
+      expect(md, contains('| **Metro** · brake sensor validation |'));
+      expect(md, contains('| **Metro** · solar fixture ETA |'));
+      // In-period log entry surfaces as the change cell.
       expect(
-          html,
-          contains('<strong>PDA data sync</strong>'
-              ' — #Cosmo — Vendor quote still pending</li>'));
+          md, contains('1 log entry · Blocked: waiting on vendor quote'));
+      // Next step unblock prefix.
+      expect(md, contains('Unblock: waiting on vendor quote'));
+      // AI summary lines go to the DETAILS section, not the summary table.
+      expect(md, contains('- Vendor quote still pending'));
+      // Completed tasks are never in the open items table.
+      expect(md, isNot(contains('**Cosmo** · idbase64 fix deployed | 🔴')));
     });
 
     test('exported HTML keeps literal tildes (no accidental strikethrough) '
@@ -523,14 +542,22 @@ void main() {
       expect(email, isNot(contains('<del>')));
     });
 
-    test('executive summary drops the sub-step ratio (v1.5.6)', () {
+    test('executive summary keeps sub-step ratios out of the summary tables',
+        () {
       final data = sampleWeekly(); // brake sensor validation: 1/2 sub-steps
       final md = ReportService(TaskRepository()).toMarkdown(data);
-      expect(md, contains('- **brake sensor validation**'));
+      // Regression (v1.5.6): no ratio glued to the title anywhere.
       expect(md, isNot(contains('**brake sensor validation** — 1/2')));
+      // The ratio only appears in the §4 heuristic details line.
+      expect(md, contains('1/2 sub-steps'));
 
-      final html = ReportService(TaskRepository()).toHtml(data);
-      expect(html, contains('<strong>brake sensor validation</strong>'));
+      final html = ReportService(TaskRepository())
+          .markdownToStyledHtml(
+              ReportService(TaskRepository()).toMarkdown(data));
+      // The open items table row keeps the title plain after the bold
+      // project name (the v2 layout bolds only the project).
+      expect(
+          html, contains('<strong>Metro</strong> · brake sensor validation'));
       expect(html, isNot(contains('</strong> — 1/2 sub-steps')));
     });
 
@@ -591,32 +618,38 @@ void main() {
           contains('3 entries total, 1 in period, 2 within the last 7 days'));
     });
 
-    test('full-report prompt encodes headline list + 7-day focus + '
-        'one-line In Progress (v1.9.3)', () {
+    test('full-report prompt encodes the v2 format (TL;DR, open items '
+        'table, plan-vs-actual, h4 details)', () {
       final en = ReportService.fullReportPrompt(ReportLanguage.english);
-      // v1.13.x: Headline cell = ONE line per task — bold title + a
-      // one-sentence summary built from the task's most recent updates.
-      expect(en, contains('{ONE-sentence summary of its most recent updates}'));
+      // v2 skeleton markers.
+      expect(en, contains('> **TL;DR**'));
+      expect(en, contains('| Project | Status | Open · closed | Headline |'));
+      expect(en, contains('### Open items (by severity)'));
+      expect(en, contains("## 3. Last Period's Plan vs. Actual"));
+      expect(en, contains('#### {🟩/🔴/🟡/🟢/🕐}'));
       expect(en, contains('ONE line per task'));
       expect(en, contains('LAST 7 DAYS'));
       expect(en, contains('Earlier context: '));
-      expect(en, isNot(contains('- **{Task title}** — {x}/{y} sub-steps')));
       expect(en, contains('older than 7 days — context only'));
-      // v1.9.3: In Progress is ONE line — title + single-sentence summary.
-      expect(en, contains("- **{Task title}** — {ONE-sentence summary"));
       expect(en, contains('ONE row per task'));
       expect(en, isNot(contains('decompose it into multiple rows')));
+      // Plan archive block is referenced.
+      expect(en, contains('PREVIOUS PERIOD PLAN'));
 
       final zh = ReportService.fullReportPrompt(ReportLanguage.chinese);
-      expect(zh, contains('{一句话总结其最近的更新}'));
+      expect(zh, contains('> **TL;DR**'));
+      expect(zh, contains('| 项目 | 状态 | 未关闭 · 已完成 | 要点 |'));
+      expect(zh, contains('### 未关闭事项（按严重度）'));
+      expect(zh, contains('#### {🟩/🔴/🟡/🟢/🕐}'));
       expect(zh, contains('每个任务各占一行'));
       expect(zh, contains('近一周（7 天）'));
       expect(zh, contains('早期背景：'));
-      expect(zh, contains('- **{任务标题}** — {一句话总结任务当前状态}'));
       expect(zh, contains('禁止把任务分解为多个子任务行'));
+      expect(zh, contains('PREVIOUS PERIOD PLAN'));
     });
 
-    test('multi-line AI summaries render as a content list in Details', () {
+    test('multi-line AI summaries render as a content list under the h4 '
+        'task header', () {
       final data = sampleWeekly();
       final target = data.completed.first; // idbase64 fix deployed
       final md = ReportService(TaskRepository()).toMarkdown(
@@ -625,137 +658,73 @@ void main() {
           target: 'Validated factory release\nClosed after PVT sign-off'
         },
       );
-      // v1.4.88: Details are a content list under a bold task header —
-      // exactly one "- " item per line (the old <br>-joined table cell
-      // rendered as literal "<br>" text in-app) ...
-      expect(md, contains('**🟩 idbase64 fix deployed** — Completed'));
+      // v2: Details are a content list under an H4 task header —
+      // exactly one "- " item per line.
+      expect(md, contains('#### 🟩 idbase64 fix deployed — Completed 07-15'));
       expect(md, contains('- Validated factory release'));
       expect(md, contains('- Closed after PVT sign-off'));
-      // ... and the first bullet shows up under Achievements.
-      expect(md, contains('  - Validated factory release'));
     });
 
-    test('html renders multi-line AI summaries as a real list', () {
-      final data = sampleWeekly();
-      final target = data.completed.first;
-      final html = ReportService(TaskRepository()).toHtml(
-        data,
-        aiSummaries: {
-          target: 'Validated factory release\nClosed after PVT sign-off'
-        },
-      );
-      expect(html, contains('<ul class="details" style="'));
-      expect(html, contains('<li style="'));
-      expect(html, contains('>Validated factory release</li>'));
-      expect(html, contains('>Closed after PVT sign-off</li>'));
-      // Executive summary callout boxes.
-      expect(html, contains('class="sumbox achv"'));
-      expect(html, contains('class="sumbox watch"'));
-      expect(html, contains('class="sumbox risk"'));
-    });
-
-    test('html is paste-proof: inline styles survive Gmail sanitization', () {
-      // Gmail strips <style> blocks and class attributes from pasted HTML
-      // but keeps inline style attributes, so every visual property must be
-      // duplicated inline while the classes stay for the browser view.
-      final data = sampleWeekly();
-      final target = data.completed.first;
-      final html = ReportService(TaskRepository()).toHtml(
-        data,
-        aiSummaries: {
-          target: 'Validated factory release\nClosed after PVT sign-off'
-        },
-      );
-      // Tables keep borders/collapse/width.
-      expect(
-          html,
-          contains(
-              'style="width:100%;border-collapse:collapse;border-spacing:0;'));
-      // Anti-stripe: if Gmail strips border-collapse, border-spacing:0 and
-      // the cellspacing/cellpadding attributes still force zero cell gaps.
-      expect(html, contains('<table cellspacing="0" cellpadding="0"'));
-      // Every table in the document must carry the zero-spacing attribute.
-      expect('cellspacing="0"'.allMatches(html).length,
-          '<table'.allMatches(html).length);
-      // Centered headers must not carry a duplicate text-align declaration
-      // (a sanitizer that keeps the first occurrence would left-align them).
-      expect(html, isNot(contains('background:#F1F5F9;text-align:center;')));
-      // Header and body cells carry their own padding/alignment.
-      expect(html, contains('text-transform:uppercase;'));
-      expect(html, contains('vertical-align:top;'));
-      expect(html, contains('text-align:center;'));
-      expect(html, contains('font-weight:600;'));
-      // RAG pills keep their shape and tint without the .rag class.
-      expect(html, contains('display:inline-block;padding:2px 10px;'));
-      expect(html, contains('border-radius:999px;'));
-      expect(html, contains('background:#EF44441a;color:#EF4444')); // At Risk
-      expect(html, contains('background:#F59E0B1a;color:#F59E0B')); // Watch
-      // Callout boxes keep the colored left border + tinted background.
-      expect(html, contains('border-left:3px solid #22C55E'));
-      expect(html, contains('background:#F0FDF4'));
-      expect(html, contains('border-left:3px solid #3B82F6'));
-      expect(html, contains('background:#EFF6FF'));
-      expect(html, contains('border-left:3px solid #F59E0B'));
-      expect(html, contains('background:#FFFBEB'));
-      // Lists keep indentation and spacing.
-      expect(html, contains('style="margin:6px 0 0;padding-left:20px;"'));
-      expect(html, contains('style="margin:0;padding-left:16px;"'));
-      // Classes are retained so the standalone file looks identical.
-      expect(html, contains('class="wrap"'));
-      expect(html, contains('class="rag"'));
-      expect(html, contains('class="details"'));
-    });
-
-    test('email html matches the reference Gmail-safe template', () {
+    test('styled html renders the report sections and TL;DR callout', () {
       final data = sampleWeekly();
       final service = ReportService(TaskRepository());
-      final html = service.toHtml(data, email: true);
+      final html =
+          service.markdownToStyledHtml(service.toMarkdown(data));
+      expect(html, contains('<strong>TL;DR</strong>'));
+      expect(html, contains('Open items (by severity)'));
+      expect(html, contains('Blocked'));
+      expect(html, contains('At Risk'));
+    });
+
+    test('email html is paste-proof: inline styles survive sanitization', () {
+      // Gmail strips <style> blocks from pasted HTML but keeps inline style
+      // attributes, so every visual property must be inline.
+      final data = sampleWeekly();
+      final service = ReportService(TaskRepository());
+      final html =
+          service.markdownToEmailHtml(service.toMarkdown(data));
+      // Pure inline styles: no <style> block, no CSS variables.
+      expect(html, isNot(contains('<style>')));
+      expect(html, isNot(contains('var(')));
+      // Table cells carry their padding/border inline.
+      expect(html, contains('padding:10px 14px'));
+      expect(html, contains('border:1px solid #E2E8F0'));
+      // Cells keep the markdown alignment via the align attribute.
+      expect(html, contains('align="center"'));
+      // TL;DR blockquote keeps the indigo callout inline.
+      expect(html, contains('border-left:3px solid #6366F1'));
+      expect(html, contains('background-color:#EEF2FF'));
+      // H4 task headers carry the gray bar inline.
+      expect(html, contains('border-left:3px solid #94A3B8'));
+    });
+
+    test('email html matches the Gmail-safe template rules', () {
+      final data = sampleWeekly();
+      final service = ReportService(TaskRepository());
+      final html =
+          service.markdownToEmailHtml(service.toMarkdown(data));
       // Rule 3 — pure inline styles: no <style> block, no CSS variables.
       expect(html, isNot(contains('<style>')));
       expect(html, isNot(contains('var(')));
       // Rule 1 — table-based layout: 100% outer table with vertical
-      // padding, centering a max-width:900px content table.
+      // padding, centering a max-width:1000px content table.
       expect(
           html,
           contains(
-              'style="background-color:#ffffff; margin:0; padding:20px 0;"'));
+              'style="background-color:#ffffff;margin:0;padding:20px 0;"'));
       expect(html, contains('<td align="center">'));
-      expect(
-          html, contains('max-width:900px; padding:0 16px; text-align:left;'));
+      expect(html,
+          contains('max-width:1000px;padding:0 16px;text-align:left;'));
       // Rule 2 — white background everywhere, no full-width colored band.
       expect(
           html,
           contains(
-              '<body style="margin:0; padding:0; background-color:#ffffff; font-family:'));
+              '<body style="margin:0;padding:0;background-color:#ffffff;'));
       expect(html, isNot(contains('#F8FAFC')));
-      // Rule 4 — 6-digit hex only: Google-palette solid pills, never
-      // 8-digit alpha hex or rgba().
-      expect(html, contains('background-color:#FCE8E6;color:#C5221F')); // red
-      expect(html, contains('background-color:#FEF7E0;color:#B06000')); // amber
-      expect(html, isNot(contains('1a;'))); // no #RRGGBBAA tints
+      // Rule 4 — 6-digit hex only (no 8-digit alpha hex, no rgba()).
       expect(html, isNot(contains('rgba(')));
-      // Rule 5 — the ONLY border-radius is the decorative 12px pill; no
-      // radius on layout, no overflow:hidden / flexbox / grid.
-      expect(html, contains('border-radius:12px;'));
-      expect(html.replaceAll('border-radius:12px;', ''),
-          isNot(contains('border-radius')));
-      expect(html, isNot(contains('overflow:hidden')));
-      expect(html, isNot(contains('display:flex')));
-      expect(html, isNot(contains('display:grid')));
-      // Reference details: header-row background on the <tr>, 4px sumbox
-      // accent, data tables carry width/border attributes, footer is a div.
-      expect(html, contains('<tr style="background-color:#F1F5F9;">'));
-      expect(html, contains('border-left:4px solid'));
-      expect(
-          html,
-          contains(
-              '<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse;'));
-      expect(html, contains('<div style="margin-top:36px;'));
-      expect(html, isNot(contains('<footer')));
-      // Zero cell spacing on every table (anti-stripe), layout included.
-      expect('cellspacing="0"'.allMatches(html).length,
-          '<table'.allMatches(html).length);
-      // Closes the nested layout tables before </body>.
+      expect(RegExp(r'#[0-9A-Fa-f]{8}\b').hasMatch(html), isFalse);
+      // The document closes the nested layout tables before </body>.
       expect(html, contains('</table>\n</body>\n</html>'));
       // English email contains no Chinese characters anywhere.
       expect(RegExp(r'[一-鿿]').hasMatch(html), isFalse);
@@ -781,15 +750,60 @@ void main() {
       expect(md, contains('needs decision: waiting on vendor quote'));
     });
 
-    test('html renders dashboard and all five sections', () {
-      final html = ReportService(TaskRepository()).toHtml(sampleWeekly());
+    test('plan vs. actual: archived plan maps done/open/gone rows', () {
+      final data = sampleWeekly();
+      final prev = [
+        ReportPlanRow(
+          uid: 'a',
+          title: 'idbase64 fix deployed',
+          project: 'Cosmo',
+          due: DateTime(2026, 7, 14),
+          priority: 'P1',
+        ),
+        ReportPlanRow(
+          uid: 'b',
+          title: 'PDA data sync',
+          project: 'Cosmo',
+          due: null,
+          priority: 'P2',
+        ),
+        ReportPlanRow(
+          uid: 'gone',
+          title: 'legacy task',
+          project: 'Metro',
+          due: null,
+          priority: 'P3',
+        ),
+      ];
+      final md =
+          ReportService(TaskRepository()).toMarkdown(data, previousPlan: prev);
+      expect(md, contains("| Planned (previous period) | Due | Result |"));
+      // Completed in this period (07-15).
+      expect(md, contains('✅ Done in period 07-15'));
+      // Still open now.
+      expect(md, contains('⏩ Still open'));
+      // Removed / completed earlier.
+      expect(md, contains('❔ No longer tracked'));
+    });
+
+    test('plan vs. actual: no archive shows the placeholder note', () {
+      final md = ReportService(TaskRepository()).toMarkdown(sampleWeekly());
+      expect(md, contains('No recorded plan for the previous period.'));
+    });
+
+    test('styled html renders all five sections with v2 statuses', () {
+      final service = ReportService(TaskRepository());
+      final html =
+          service.markdownToStyledHtml(service.toMarkdown(sampleWeekly()));
       expect(html, contains('1. Status Dashboard'));
       expect(html, contains('2. Executive Summary'));
-      expect(html, contains('3. Progress Details'));
-      expect(html, contains('4. Plan for Next Week'));
-      expect(html, contains('5. Asks / Decisions Needed'));
-      expect(html, contains('🔴 At Risk'));
-      expect(html, contains('🟡 Watch'));
+      expect(html, contains('4. Progress Details'));
+      // The apostrophe in the heading survives the conversion.
+      expect(html, contains('Last Period'));
+      expect(html, contains('4. Progress Details'));
+      expect(html, contains('5. Plan for Next Week'));
+      expect(html, contains('🔴 Blocked'));
+      expect(html, contains('🟡 At Risk'));
     });
 
     test('markdownToStyledHtml renders edited markdown to a styled document',

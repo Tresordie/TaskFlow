@@ -12,6 +12,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/open_folder.dart';
 import '../../data/models/task.dart';
 import '../../data/services/ai_service.dart';
+import '../../data/services/report_plan_store.dart';
 import '../../data/services/report_service.dart';
 import '../../providers/ai_provider.dart';
 import '../../providers/color_settings_provider.dart';
@@ -63,6 +64,10 @@ class ReportsState {
   final Map<Task, String>? aiTitles;
   final Map<String, String>? aiTerms;
 
+  /// Plan archived for the period immediately before [data]'s — the source
+  /// of the "Last Period's Plan vs. Actual" section. Null = no archive.
+  final List<ReportPlanRow>? previousPlan;
+
   ReportsState({
     this.period = ReportPeriod.weekly,
     DateTime? anchor,
@@ -85,6 +90,7 @@ class ReportsState {
     this.aiSummaries,
     this.aiTitles,
     this.aiTerms,
+    this.previousPlan,
   }) : anchor = anchor ?? DateTime.now();
 
   ReportsState copyWith({
@@ -109,6 +115,7 @@ class ReportsState {
     Object? aiSummaries = _unset,
     Object? aiTitles = _unset,
     Object? aiTerms = _unset,
+    Object? previousPlan = _unset,
   }) {
     return ReportsState(
       period: period ?? this.period,
@@ -146,6 +153,9 @@ class ReportsState {
       aiTerms: identical(aiTerms, _unset)
           ? this.aiTerms
           : aiTerms as Map<String, String>?,
+      previousPlan: identical(previousPlan, _unset)
+          ? this.previousPlan
+          : previousPlan as List<ReportPlanRow>?,
     );
   }
 }
@@ -326,6 +336,16 @@ class ReportController extends StateNotifier<ReportsState> {
       String? aiWarning;
       var aiWarningNeedsConfig = false;
       String? markdown;
+
+      // Plan archive: read the previous period's plan for the §3
+      // "Last Period's Plan vs. Actual" comparison, then persist this
+      // period's plan — but ONLY for full-set generations (a filtered or
+      // checkbox-restricted report would archive an incomplete plan).
+      final previousPlan = await service.loadPreviousPlan(data);
+      final unfiltered =
+          !data.filter.isActive && state.excludedUids.isEmpty;
+      if (unfiltered) await service.savePlan(data);
+
       final aiCfg = ref.read(aiConfigProvider);
       if (state.useAiSummary) {
         if (aiCfg.isConfigured) {
@@ -336,9 +356,14 @@ class ReportController extends StateNotifier<ReportsState> {
           );
           // Tier 1: full spec-driven report generation.
           try {
+            final prevBlock =
+                (previousPlan == null || previousPlan.isEmpty)
+                    ? ''
+                    : '\n\n${service.formatPreviousPlan(data, previousPlan)}';
             markdown = await ai.generateFullReport(
               systemPrompt: ReportService.fullReportPrompt(state.lang),
-              taskData: service.formatTaskData(data),
+              taskData:
+                  '${service.formatTaskData(data)}$prevBlock',
             );
           } catch (e) {
             // Tier 2: template + per-task enhancement.
@@ -368,6 +393,7 @@ class ReportController extends StateNotifier<ReportsState> {
 
       state = state.copyWith(
         data: data,
+        previousPlan: previousPlan,
         aiSummaries: summaries,
         aiTitles: titles,
         aiTerms: terms,
@@ -380,6 +406,7 @@ class ReportController extends StateNotifier<ReportsState> {
               aiSummaries: summaries,
               aiTitles: titles,
               aiTerms: terms,
+              previousPlan: previousPlan,
             ),
         editing: false,
         generating: false,
@@ -416,7 +443,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   /// Source markdown for exports. When the user has NOT manually edited the
   /// report, always regenerate from the pristine AI output ([toMarkdown]) —
   /// this keeps the historical export format intact (HTML tables with
-  /// colgroup widths, `<br>`-separated bullets stay inside their cells).
+  /// `<br>`-separated bullets stay inside their cells).
   /// The in-app sanitizer is display-only and must never leak into exports.
   String _exportSource(ReportsState s, ReportService service) {
     if (s.markdown == null) {
@@ -424,7 +451,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           lang: s.lang,
           aiSummaries: s.aiSummaries,
           aiTitles: s.aiTitles,
-          aiTerms: s.aiTerms);
+          aiTerms: s.aiTerms,
+          previousPlan: s.previousPlan);
     }
     return s.markdown!;
   }

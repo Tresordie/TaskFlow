@@ -4,51 +4,77 @@ import 'package:taskflow/data/services/report_service.dart';
 
 /// Regression tests for the email-HTML post-processing helpers that turn the
 /// shared report Markdown into a Gmail-safe document. These guard the risky
-/// regex manipulation: fixed-width colgroups for the 3-column Progress
-/// Details tables, and paste-proof inline style injection.
+/// regex manipulation: the per-column wrap policy (long-text columns may
+/// break anywhere so narrow screens never overflow; short columns keep words
+/// intact) and the paste-proof inline style injection.
 void main() {
-  group('alignProgressTables (colgroup injection)', () {
-    test('3-column table gets fixed 25%/8%/67% colgroup', () {
-      const html = '<table>\n<thead>\n'
-          '<tr><th>Item</th><th>Status</th><th>Details</th></tr>\n'
-          '</thead>\n<tbody>\n'
-          '<tr><td>Task A</td><td>🟩</td><td>• did x</td></tr>\n'
-          '</tbody>\n</table>';
-      final out = ReportService.alignProgressTablesForTest(html);
-      expect(out, contains('<colgroup>'));
-      expect(out, contains('width:25%'));
-      expect(out, contains('width:8%'));
-      expect(out, contains('width:67%'));
-      // Colgroup sits right after the opening <table> tag.
-      expect(out.indexOf('<colgroup>'), lessThan(out.indexOf('<thead>')));
+  group('applyTableColumnPolicy (per-column wrap policy)', () {
+    test('long-text columns get overflow-wrap:anywhere on every cell', () {
+      const long = 'a very long task title that clearly exceeds thirty '
+          'characters in total';
+      final html = '<table>\n<tr><th>Item</th><th>OK</th></tr>\n'
+          '<tr><td>$long</td><td>yes</td></tr>\n</table>';
+      final out = ReportService.applyTableColumnPolicyForTest(html);
+      // Header + body cells of the long column (2 cells) carry the policy.
+      expect('overflow-wrap:anywhere'.allMatches(out).length, 2);
     });
 
-    test('4-column table is left untouched (no colgroup)', () {
-      const html = '<table>\n<thead>\n'
-          '<tr><th>Project</th><th>Status</th><th>Progress</th>'
-          '<th>Headline</th></tr>\n'
-          '</thead>\n</table>';
-      final out = ReportService.alignProgressTablesForTest(html);
-      expect(out, isNot(contains('<colgroup>')));
+    test('short columns keep their words intact (no anywhere)', () {
+      const html = '<table><tr><th>Project</th><th>Status</th></tr>'
+          '<tr><td>Obelisk</td><td>OK</td></tr></table>';
+      final out = ReportService.applyTableColumnPolicyForTest(html);
+      expect(out, isNot(contains('overflow-wrap:anywhere')));
     });
 
     test('each table is handled independently', () {
-      const html = '<table><tr><th>A</th><th>B</th><th>C</th></tr></table>'
-          '<table><tr><th>W</th><th>X</th><th>Y</th><th>Z</th></tr></table>';
-      final out = ReportService.alignProgressTablesForTest(html);
-      // Exactly one colgroup (only the 3-column table).
-      expect('<colgroup>'.allMatches(out).length, 1);
+      final html = '<table><tr><th>A</th><th>B</th></tr>'
+          '<tr><td>short</td><td>ok</td></tr></table>'
+          '<table><tr><th>L</th><th>x</th></tr>'
+          '<tr><td>${'v' * 40}</td><td>y</td></tr></table>';
+      final out = ReportService.applyTableColumnPolicyForTest(html);
+      // The long column's header + body cells (2 cells) carry the policy.
+      expect('overflow-wrap:anywhere'.allMatches(out).length, 2);
+    });
+
+    test('existing style attributes are merged, not replaced', () {
+      final html = '<table><tr><th>H</th></tr>'
+          '<tr><td style="padding:1px">${'w' * 40}</td></tr></table>';
+      final out = ReportService.applyTableColumnPolicyForTest(html);
+      expect(out, contains('style="padding:1px;overflow-wrap:anywhere;"'));
     });
   });
 
   group('inlineEmailStyles (paste-proof inline styles)', () {
     test('block tags receive a style attribute', () {
       final out = ReportService.inlineEmailStylesForTest(
-          '<h2>Section</h2><p>text</p><table><tr><td>cell</td></tr></table>');
+          '<h2>Section</h2><h4>Task</h4><p>text</p>'
+          '<blockquote><p>TL;DR</p></blockquote>'
+          '<table><tr><td>cell</td></tr></table>');
       expect(out, contains('<h2 style="'));
+      expect(out, contains('<h4 style="'));
       expect(out, contains('<p style="'));
+      expect(out, contains('<blockquote style="'));
       expect(out, contains('<table style="'));
       expect(out, contains('<td style="'));
+    });
+
+    test('task-header h4 carries the gray bar style', () {
+      final out = ReportService.inlineEmailStylesForTest('<h4>x</h4>');
+      expect(out, contains('background-color:#F1F5F9'));
+      expect(out, contains('border-left:3px solid #94A3B8'));
+    });
+
+    test('TL;DR blockquote carries the indigo callout style', () {
+      final out =
+          ReportService.inlineEmailStylesForTest('<blockquote>b</blockquote>');
+      expect(out, contains('border-left:3px solid #6366F1'));
+      expect(out, contains('background-color:#EEF2FF'));
+    });
+
+    test('table cells keep words intact by default (break-word)', () {
+      final out = ReportService.inlineEmailStylesForTest(
+          '<table><tr><td>c</td></tr></table>');
+      expect(out, contains('overflow-wrap:break-word'));
     });
 
     test('existing style (table alignment) is preserved and merged', () {
