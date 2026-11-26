@@ -5,6 +5,7 @@ import 'package:taskflow/core/markdown/gfm_extensions.dart';
 import 'package:taskflow/core/markdown/latex_support.dart';
 import 'package:taskflow/core/markdown/line_breaks.dart';
 import 'package:taskflow/core/markdown/table_support.dart' as table_support;
+import 'package:taskflow/core/theme/app_theme.dart';
 import 'package:taskflow/presentation/shared/app_markdown_body.dart';
 import 'package:taskflow/presentation/shared/selectable_markdown_body.dart';
 
@@ -272,6 +273,45 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Note'), findsNothing);
       expect(blockText(tester), contains('[!note]'));
+    });
+
+    // v1.13.2 regression: MarkdownStyleSheet.fromTheme hardcodes the
+    // blockquote background to Colors.blue.shade100 (a pale light-mode blue)
+    // regardless of brightness, which left the report TL;DR card as
+    // near-white text on pale blue under the dark themes. AppMarkdownBody
+    // must replace it with a theme-derived tint.
+    testWidgets('dark theme: blockquote card is theme-derived, never the '
+        'package pale blue', (tester) async {
+      final theme = AppTheme.buildTheme(AppThemeMode.dark);
+      await tester.pumpWidget(MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: AppMarkdownBody(data: '> **TL;DR**\n> - closed'),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      final expected = theme.colorScheme.onSurface.withOpacity(0.06);
+      var themedCards = 0;
+      // flutter_markdown skins the blockquote with a DecoratedBox
+      // (builder.dart, tag == 'blockquote').
+      for (final el in find.byType(DecoratedBox).evaluate()) {
+        final deco = (el.widget as DecoratedBox).decoration;
+        if (deco is! BoxDecoration || deco.color == null) continue;
+        expect(
+          deco.color,
+          isNot(Colors.blue.shade100),
+          reason: 'the package default blockquote background must not leak',
+        );
+        if (deco.color == expected) themedCards++;
+      }
+      expect(
+        themedCards,
+        greaterThan(0),
+        reason: 'the blockquote must paint the theme-derived tint card',
+      );
     });
 
     testWidgets('selectable chain: colored bar label + guttered content '

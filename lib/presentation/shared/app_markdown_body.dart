@@ -70,6 +70,15 @@ class AppMarkdownBody extends StatelessWidget {
       ),
       tableCellsPadding:
           const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      // The package's fromTheme hardcodes blockquoteDecoration to a pale
+      // light-mode blue (Colors.blue.shade100) regardless of brightness, so
+      // dark-theme blockquotes (e.g. the report TL;DR card) end up near-white
+      // text on pale blue. Derive the tint from the theme instead, matching
+      // the app's other callout cards.
+      blockquoteDecoration: BoxDecoration(
+        color: theme.colorScheme.onSurface.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(8),
+      ),
     );
 
     return MarkdownBody(
