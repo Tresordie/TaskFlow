@@ -137,20 +137,23 @@ class AiService {
     }
   }
 
-  /// Streaming variant of [_chat], used by [generateFullReport]. A
-  /// non-streaming request must wait for the WHOLE document before the
-  /// response completes, so it trips the response timeout on long reports.
-  /// Streaming receives tokens continuously — we only guard the gap BETWEEN
-  /// chunks ([chunkTimeout]) — so the total generation may run as long as the
-  /// model needs. Returns the accumulated assistant content plus whether the
-  /// model stopped because it hit its output token limit (`finish_reason:
-  /// length`), i.e. the report is truncated and needs a continuation.
-  /// Reasoning/thinking deltas (`reasoning_content`) are ignored.
+  /// Streaming variant of [_chat], used by [generateFullReport] and
+  /// [streamChat]. A non-streaming request must wait for the WHOLE document
+  /// before the response completes, so it trips the response timeout on long
+  /// reports. Streaming receives tokens continuously — we only guard the gap
+  /// BETWEEN chunks ([chunkTimeout]) — so the total generation may run as
+  /// long as the model needs. Returns the accumulated assistant content plus
+  /// whether the model stopped because it hit its output token limit
+  /// (`finish_reason: length`), i.e. the report is truncated and needs a
+  /// continuation. Reasoning/thinking deltas (`reasoning_content`) are
+  /// ignored. [onDelta] fires after every content chunk (AI Parse streaming
+  /// output).
   Future<({String content, bool truncated})> _chatStream({
     required List<Map<String, String>> messages,
     double? temperature,
     int? maxTokens,
     Map<String, dynamic>? extraBody,
+    void Function(String delta, String full)? onDelta,
     Duration connectTimeout = const Duration(seconds: 15),
     Duration requestTimeout = const Duration(seconds: 15),
     Duration chunkTimeout = const Duration(seconds: 180),
@@ -201,7 +204,10 @@ class AiService {
             final choice = choices.first;
             final delta = choice is Map ? choice['delta'] : null;
             final c = delta is Map ? delta['content'] : null;
-            if (c is String) content.write(c);
+            if (c is String && c.isNotEmpty) {
+              content.write(c);
+              onDelta?.call(c, content.toString());
+            }
             final fr = choice is Map ? choice['finish_reason'] : null;
             if (fr is String && fr.isNotEmpty) finishReason = fr;
           }
@@ -216,6 +222,70 @@ class AiService {
     } finally {
       client.close(force: true);
     }
+  }
+
+  /// Public passthrough for the summarize pipeline's map phase — one plain
+  /// non-streaming completion with the shared reasoning-model handling.
+  Future<String> chat({
+    required List<Map<String, String>> messages,
+    double? temperature,
+    int? maxTokens,
+    Duration responseTimeout = const Duration(seconds: 60),
+  }) {
+    return _chat(
+      messages: messages,
+      temperature: temperature,
+      maxTokens: maxTokens,
+      responseTimeout: responseTimeout,
+    );
+  }
+
+  /// Streaming completion for the AI Parse summarize pipeline (final
+  /// stage): streams via [onDelta] and transparently continues up to 3
+  /// times when the model hits its output limit (same loop as
+  /// [generateFullReport]). Throws [AiCancelledException] between
+  /// continuation rounds when [isCancelled] returns true; the in-flight
+  /// first request cannot be aborted.
+  Future<String> streamChat({
+    required List<Map<String, String>> messages,
+    double? temperature,
+    int? maxTokens,
+    void Function(String delta, String full)? onDelta,
+    bool Function()? isCancelled,
+  }) async {
+    final budget = maxTokens ?? (_isReasoningModel(model) ? 32768 : 16384);
+    var result = await _chatStream(
+      temperature: temperature,
+      maxTokens: budget,
+      messages: messages,
+      onDelta: onDelta,
+    );
+    var content = result.content;
+    var continuations = 0;
+    while (result.truncated && continuations < 3) {
+      if (isCancelled?.call() ?? false) throw const AiCancelledException();
+      continuations++;
+      result = await _chatStream(
+        temperature: temperature,
+        maxTokens: budget,
+        messages: [
+          ...messages,
+          {'role': 'assistant', 'content': content},
+          {
+            'role': 'user',
+            'content': '以上输出在中途被截断。请从停止处继续，不要重复已写内容，'
+                '只输出续写部分，无前缀说明。',
+          },
+        ],
+        onDelta: onDelta,
+      );
+      content += result.content;
+    }
+    content = _stripFences(content);
+    if (content.trim().isEmpty) {
+      throw AiServiceException('AI returned an empty summary.');
+    }
+    return content.trim();
   }
 
   /// Heuristic: reasoning / "thinking" models spend part of the token budget
@@ -533,70 +603,13 @@ Rules:
     }
   }
 
-  /// AI Parse page (v1.6.0): parses / summarizes arbitrary content (pasted
-  /// notes, attached documents, email threads) according to the user's
-  /// free-form instructions. [email] selects the email-thread playbook
-  /// (condensed from the app's email-thread-summarizer skill): timeline in
-  /// chronological order, technical fidelity, risks and a per-party to-do
-  /// list. The raw markdown output is returned untouched.
-  Future<String> analyzeContent({
-    required String content,
-    required String instructions,
-    bool email = false,
-  }) async {
-    final user = instructions.trim().isEmpty
-        ? content
-        : '【解析要求】\n${instructions.trim()}\n\n———\n\n【内容】\n$content';
-    try {
-      final text = await _chat(
-        temperature: 0.3,
-        maxTokens: 3000,
-        responseTimeout: const Duration(seconds: 150),
-        messages: [
-          {
-            'role': 'system',
-            'content': email ? emailThreadSystemPrompt : contentAnalyzeSystemPrompt,
-          },
-          {'role': 'user', 'content': user},
-        ],
-      );
-      final result = _extractContentMultiLine(text).trim();
-      if (result.isEmpty) {
-        throw AiServiceException('Empty analysis returned by the model.');
-      }
-      return result;
-    } on SocketException catch (e) {
-      throw AiServiceException('Network error: ${e.message}');
-    } on TimeoutException {
-      throw AiServiceException('Analysis request timed out.');
-    }
-  }
-
-  /// Generic playbook for the AI Parse analyze mode: structured markdown,
-  /// verbatim technical fidelity, one fact per line, no fabrication.
-  @visibleForTesting
-  static const String contentAnalyzeSystemPrompt = r'''
-# 角色
-你是资深技术分析助理，面向硬件/项目工程师（NPI 电动自行车项目）。
-
-# 任务
-按用户给出的【解析要求】对【内容】进行解析与总结；未给出要求时，输出一份结构化要点总结。
-
-# 铁律
-1. 绝不编造：内容中没有的信息禁止生成；信息不足时明确指出缺什么。
-2. 数字保真：数值、型号、料号、寄存器名、命令名、日期与原文逐字一致，禁止四舍五入或泛化。
-3. 一条一个事实：每个要点只讲一个事实/事件/决策，禁止合并。
-4. 结构化：markdown 标题 + 编号/列表分区，禁止平铺长段落。
-5. 语言：跟随内容语言（中文内容输出中文）。
-
-# 输出
-仅输出 markdown 结果本身，无额外解释、无代码围栏。
-''';
-
   /// Email-thread playbook, condensed from the app's
   /// email-thread-summarizer skill: chronological timeline, cross-checked
-  /// technical points, risks, and a per-party to-do list.
-  @visibleForTesting
+  /// technical points, risks, and a per-party to-do list. Consumed by the
+  /// AI Parse summarize pipeline (summarize_pipeline.dart) when no template
+  /// is selected and the content reads like an email thread.
+  /// (v1.15.0: the old single-shot analyzeContent + generic playbook were
+  /// superseded by the map-reduce pipeline in summarize_pipeline.dart.)
   static const String emailThreadSystemPrompt = r'''
 # 角色
 你是面向硬件/项目工程师的项目秘书。用户给你客户或合作伙伴的邮件线程（常中英混杂、倒序引用、夹带签名档与保密声明），你负责理清并总结。
@@ -1220,4 +1233,14 @@ class AiServiceException implements Exception {
 
   @override
   String toString() => message;
+}
+
+/// Thrown when a caller-requested cancellation is honored mid-operation
+/// (AI Parse summarize pipeline). Distinct from [AiServiceException] so the
+/// UI can show "cancelled" instead of an error banner.
+class AiCancelledException implements Exception {
+  const AiCancelledException();
+
+  @override
+  String toString() => '已取消';
 }

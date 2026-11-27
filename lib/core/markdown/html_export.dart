@@ -1,6 +1,11 @@
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:markdown/markdown.dart' as md;
 
 import '../../data/services/ai_service.dart';
+
+/// Matches ```mermaid fenced blocks (v1.15.0 — AI Parse diagram export).
+final RegExp _mermaidFencePattern =
+    RegExp(r'```\s*mermaid\b', caseSensitive: false);
 
 /// Converts the app's Markdown (including its rich-text extensions) into a
 /// standalone HTML fragment for export.
@@ -12,7 +17,11 @@ import '../../data/services/ai_service.dart';
 ///     through untouched, while `==` / `++` are not syntax it recognises;
 ///  3. run the GitHub-flavored converter so headings, lists, task-list
 ///     checkboxes, fenced code blocks, tables, strikethrough, autolinks
-///     and inline formatting inside headings all work.
+///     and inline formatting inside headings all work;
+///  4. v1.15.0: ` ```mermaid ` fences become `<pre class="mermaid">` blocks
+///     (rendered to diagrams by the bundled mermaid.js when the wrapper
+///     page includes it — see [wrapAiParseHtml]). Content without mermaid
+///     fences is untouched.
 String markdownToHtmlExport(String src) {
   var t = AiService.stripDollarPlaceholders(src);
 
@@ -29,17 +38,55 @@ String markdownToHtmlExport(String src) {
       RegExp(r'==([^=\n]+)=='), (m) => '<mark>${m[1]}</mark>');
   t = t.replaceAllMapped(RegExp(r'\+\+([^+\n]+)\+\+'), (m) => '<u>${m[1]}</u>');
 
-  return md.markdownToHtml(t, extensionSet: md.ExtensionSet.gitHubWeb).trim();
+  var html =
+      md.markdownToHtml(t, extensionSet: md.ExtensionSet.gitHubWeb).trim();
+
+  // package:markdown emits `<pre><code class="language-mermaid">…</code></pre>`;
+  // re-tag so mermaid.js finds the blocks. The inner content stays HTML-
+  // escaped — mermaid reads textContent, which decodes back to the source.
+  html = html.replaceAllMapped(
+      RegExp(r'<pre><code class="language-mermaid">([\s\S]*?)</code></pre>'),
+      (m) => '<pre class="mermaid">${m[1]}</pre>');
+
+  // v1.15.1: ```svg fences (G_SPEC cover blocks / figures) become INLINE
+  // markup — browsers paint inline SVG natively, no script needed. Also
+  // catches unlabeled fences whose content is an svg document.
+  html = html.replaceAllMapped(
+      RegExp(r'<pre><code(?: class="language-svg")?>([\s\S]*?)</code></pre>'),
+      (m) {
+    final content = _unescapeHtmlEntities(m[1]!).trim();
+    if (!content.startsWith('<svg')) return m[0]!;
+    return '<div class="md-figure">$content</div>';
+  });
+  return html;
 }
 
+/// Reverses package:markdown's entity escaping so raw markup (inline SVG)
+/// can be embedded verbatim. `&amp;` is decoded LAST to avoid double
+/// decoding (e.g. `&amp;lt;` → `&lt;` → `<`).
+String _unescapeHtmlEntities(String s) => s
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll('&amp;', '&');
+
 /// Wraps an exported HTML [body] in the dark-themed standalone page used by
-/// the Work Log "save as HTML" action.
-String wrapHtmlExportPage(String body, {String title = 'Work Summary'}) {
+/// the Work Log "save as HTML" action. [extraHead] is injected before
+/// `</head>` (default empty — byte-identical to the pre-mermaid output).
+///
+/// Content width follows the voice_transcription reference exporter
+/// (`max-width: 1280px; padding: 32px 24px`) — the old 960px squeezed the
+/// AI report's wide tables and SVG cover blocks.
+String wrapHtmlExportPage(String body,
+    {String title = 'Work Summary', String extraHead = ''}) {
   return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8"/>\n'
       '<title>$title</title>\n'
       '<style>\n'
       '  body{font-family:Inter,"Segoe UI",sans-serif;background:#0a0a0f;color:#e8eaf0;'
-      'padding:40px 48px;max-width:960px;margin:0 auto;line-height:1.85;font-size:15px;}\n'
+      'padding:32px 24px;max-width:1280px;margin:0 auto;line-height:1.85;font-size:15px;}\n'
+      '  .md-figure{margin:14px 0;}\n'
+      '  .md-figure svg{max-width:100%;height:auto;}\n'
       '  h2{color:#a78bfa;font-size:1.5rem;border-bottom:1px solid rgba(139,92,246,0.3);padding-bottom:10px;margin:32px 0 16px;}\n'
       '  h3{color:#22d3ee;font-size:1.15rem;margin:24px 0 10px;}\n'
       '  h4{color:#c4b5fd;font-size:1rem;margin:18px 0 8px;}\n'
@@ -58,5 +105,23 @@ String wrapHtmlExportPage(String body, {String title = 'Work Summary'}) {
       '  table{border-collapse:collapse;margin:12px 0;}\n'
       '  th,td{border:1px solid rgba(139,92,246,0.25);padding:6px 12px;}\n'
       '  a{color:#22d3ee;}\n'
-      '</style>\n</head>\n<body>\n$body\n</body>\n</html>';
+      '</style>\n'
+      '$extraHead'
+      '</head>\n<body>\n$body\n</body>\n</html>';
+}
+
+/// AI Parse "Save .html": mermaid-aware export. Only when the source
+/// markdown actually contains ```mermaid fences is the bundled mermaid.js
+/// (~3.5 MB) inlined — diagram-free exports stay byte-identical to the
+/// plain wrapper (zero impact on any other exporter).
+Future<String> wrapAiParseHtml(String markdown,
+    {String title = 'AI Parse Summary'}) async {
+  final body = markdownToHtmlExport(markdown);
+  if (!_mermaidFencePattern.hasMatch(markdown)) {
+    return wrapHtmlExportPage(body, title: title);
+  }
+  final js = await rootBundle.loadString('assets/mermaid/mermaid.min.js');
+  final extraHead = '<script>$js</script>\n'
+      '<script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>\n';
+  return wrapHtmlExportPage(body, title: title, extraHead: extraHead);
 }

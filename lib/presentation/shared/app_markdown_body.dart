@@ -6,6 +6,7 @@ import '../../core/markdown/gfm_extensions.dart';
 import '../../core/markdown/latex_support.dart';
 import '../../core/markdown/rich_markdown.dart';
 import '../../core/theme/app_colors.dart';
+import 'mermaid_view.dart';
 
 /// The app-wide Markdown renderer. Wraps [MarkdownBody] with every custom
 /// extension the app supports — LaTeX (`$...$` / `$$...$$`), GFM tables,
@@ -110,6 +111,10 @@ class AppMarkdownBody extends StatelessWidget {
           hardenLineBreaks: hardenLineBreaks,
           styleSheet: sheet,
         ),
+        // v1.15.0: ```mermaid / ```svg fenced blocks render as WebView
+        // diagrams; every OTHER fence returns null → flutter_markdown's
+        // defaultChild() path (ordinary code block) is untouched.
+        'pre': _FenceDispatchBuilder(),
         // (No 'input' builder: the hoisted checkbox at li.children[0] is
         // still VISITED as an inline node, so a builder here would render
         // a second ☐ / ☑ next to the checkboxBuilder bullet. Unknown
@@ -171,6 +176,46 @@ String alertLabel(String type) {
   final t = type.toLowerCase();
   if (t.isEmpty) return t;
   return t[0].toUpperCase() + t.substring(1);
+}
+
+/// v1.15.0: dispatches `pre` fenced code blocks — `mermaid` / `svg`
+/// language fences become WebView diagrams ([MermaidView] / [SvgBlockView]);
+/// anything else returns null so flutter_markdown's default code-block
+/// rendering applies unchanged.
+class _FenceDispatchBuilder extends MarkdownElementBuilder {
+  _FenceDispatchBuilder();
+
+  @override
+  bool isBlockElement() => true;
+
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    final code = element.children?.isNotEmpty == true &&
+            element.children!.first is md.Element
+        ? element.children!.first as md.Element
+        : null;
+    final cls = code?.attributes['class'] ?? '';
+    final language =
+        cls.startsWith('language-') ? cls.substring('language-'.length) : '';
+    final source = code?.textContent.trim() ?? '';
+    if (source.isEmpty) return null;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final lang = language.toLowerCase();
+    if (lang == 'mermaid') {
+      return MermaidView(code: source, dark: dark);
+    }
+    // Labeled ```svg — or an UNLABELED fence whose content IS an svg
+    // document (models sometimes drop the info string on cover blocks).
+    if (lang == 'svg' || (lang.isEmpty && source.startsWith('<svg'))) {
+      return SvgBlockView(svg: source, dark: dark);
+    }
+    return null;
+  }
 }
 
 /// Handles every `div` element: GFM alerts (`div.markdown-alert-*`,

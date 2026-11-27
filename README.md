@@ -93,8 +93,9 @@ test/
 ### Phase 2 — AI note parsing
 - Configure any OpenAI-compatible endpoint (DeepSeek / OpenAI / Qwen / Ollama…) in Settings → AI Assistant, with connection test
 - Paste raw notes (meeting minutes, test logs, chat excerpts) → LLM extracts structured tasks (title, description, priority, tags, sub-steps)
-- Optional parsing prompt + file attachments (txt/md/pdf/docx/xlsx/pptx…) → AI summarizes in Markdown; the summary survives page switches, is copyable as Markdown and downloadable as `.md` / `.html`
+- Optional parsing prompt + file attachments (txt/md/pdf/docx/xlsx/pptx/html/eml… and audio) → AI summarizes in Markdown; the summary survives page switches, is copyable as Markdown and downloadable as `.md` / `.html`
 - Review parsed tasks with checkboxes, then create them all in one click
+- **AI Parse v2** (v1.15.0): attachments render as a **status card list** (type icon, size, live extraction / transcription progress, tap-to-preview extracted text); **audio files are transcribed fully offline** by a bundled **SenseVoice int8 model (~228 MB, zh/en/ja/ko/yue, auto punctuation)** — a local FFI plugin decodes mp3/wav/m4a/aac/ogg/flac to 16 kHz PCM (Media Foundation on Windows, AudioToolbox on Apple, miniaudio for ogg/flac) and sherpa-onnx recognizes it in 30 s segments inside a dedicated worker isolate, no API key or cloud involved; summaries follow **25 scenario templates** (meetings / daily-weekly reports / tasks / email triage / email writing, ported from the voice_transcription reference) plus free-form mode under a shared G_SPEC output contract, selected via a scenario-chip + template-card picker; output **language is selectable across 17 locales** (follow-source default); long material is **map-reduced** (12k-char threshold, 8k chunks, concurrency 2, ~1M-char cap) before a streaming final pass, so the whole attachment set is understood and the summary grows live with a Cancel button; ```mermaid / ```svg blocks **render as real diagrams** (WebView + bundled mermaid.js for flowcharts, flutter_svg for SVG covers) both in-app and in the exported HTML, whose content width now follows the voice_transcription reference (1280px); xlsx extraction reconstructs sheet/row/column structure and docx tables become Markdown tables
 
 ### Phase 3 — Report generation
 - Daily / weekly / monthly / yearly aggregation of tasks + execution logs
@@ -126,7 +127,7 @@ test/
 - Desktop-only chrome guarded for iOS/Android (custom title bar & window_manager skipped on mobile)
 - Custom date-range picker (Timeline / Calendar / Reports): ONE dialog with the same calendar grid as the Daily/Weekly popup — tap the start day, tap the end day, confirm
 - **Single-instance guard**: a second launch raises the already-running TaskFlow window to the foreground (the lock file carries the holder's PID) instead of opening a second copy or hitting an Isar `MdbxError`; only when no window can be found does it show a clearly titled "TaskFlow — 已在运行" explanation window with recovery steps; if the database still cannot open, the board explains how to recover (close every instance, remove the stale `taskflow.isar-lck`, restore from backups) and keeps the raw error selectable
-- Unit + widget test suite (`flutter test`, 442 passing + 2 skipped as of v1.14.0): report period math, AI config, LaTeX rendering, title bar
+- Unit + widget test suite (`flutter test`, 483 passing + 2 skipped as of v1.15.0): report period math, AI config, LaTeX rendering, title bar, AI Parse session/attachment/template pipeline, audio transcript joining, xlsx/docx extraction, HTML export
 
 ### Phase 7 — Unified rich-text input & record display
 - **Every input area** (Work Log, execution log + edit dialog, task description create/edit dialogs, AI Parse notes, Report editor) supports Markdown + rich text with instant **Write/Preview toggle** — the preview uses the SAME style sheet as the saved content (true WYSIWYG "input-as-preview")

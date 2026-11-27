@@ -15,6 +15,9 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models/task.dart';
 import '../../data/services/ai_service.dart';
 import '../../data/services/content_extractor.dart';
+import '../../data/services/summary_templates.dart';
+import '../../data/services/summarize_pipeline.dart'
+    show kOutputLanguages;
 import '../../providers/ai_parse_providers.dart';
 import '../../providers/ai_provider.dart';
 import '../../providers/color_settings_provider.dart';
@@ -25,7 +28,10 @@ import '../shared/markdown_input.dart';
 import '../shared/selectable_markdown_body.dart';
 
 /// Phase 2 — AI note parsing.
-/// Paste raw notes → LLM extracts structured tasks → one-click create.
+/// Paste raw notes / attach documents & audio → LLM turns them into
+/// structured tasks, or follows your prompt + template to parse & summarize
+/// (v1.15.0: multi-attachment list, local SenseVoice audio transcription,
+/// 25 summary templates, 17 output languages, streaming output).
 class AiParseScreen extends ConsumerStatefulWidget {
   const AiParseScreen({super.key});
 
@@ -45,7 +51,9 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
   bool _creating = false;
   bool _previewMode = false;
 
-  static const _maxFileBytes = ContentExtractor.maxFileBytes;
+  // v1.15.0: template picker panel state.
+  bool _templatePanelOpen = false;
+  String _scenarioFilter = '';
 
   // Resizable notes input area height (logical pixels) — drag the grip
   // handle below the field, mirroring the Work Log input behavior.
@@ -88,29 +96,22 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
     super.dispose();
   }
 
+  /// v1.15.0: documents AND audio — each picked file enters the per-file
+  /// pipeline (extract / transcribe) with live status in the list.
   Future<void> _attachFiles() async {
     final picked = await FilePicker.platform.pickFiles(
       allowMultiple: true,
       type: FileType.custom,
-      allowedExtensions: ContentExtractor.supportedExtensions,
+      allowedExtensions: ContentExtractor.pickerExtensions,
     );
     if (picked == null || picked.files.isEmpty) return;
     final notifier = ref.read(aiParseSessionProvider.notifier);
+    notifier.clearError();
     for (final f in picked.files) {
       final path = f.path;
       if (path == null) continue;
-      try {
-        final file = File(path);
-        if (await file.length() > _maxFileBytes) {
-          throw const FormatException('文件超过 150 MB 上限');
-        }
-        final text = await ContentExtractor.extract(file);
-        notifier.addAttachment(name: f.name, content: text);
-        notifier.clearError();
-      } catch (e) {
-        notifier.showError(
-            '${f.name}: ${e.toString().replaceFirst('FormatException: ', '')}');
-      }
+      // Fire-and-forget per file — status/progress shows up in the list.
+      unawaited(notifier.addAttachmentFile(path));
     }
   }
 
@@ -142,9 +143,12 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
     // v1.6.1: fire-and-forget — the work runs inside the session notifier
     // (ai_parse_providers.dart), so switching pages neither cancels the AI
     // call nor loses the result; the UI follows the provider state.
+    // v1.15.0: only READY attachments join the material (the button is
+    // gated on session.attachmentsReady, this is a belt-and-braces filter).
     if (instructions.isNotEmpty || session.attachments.isNotEmpty) {
       final buf = StringBuffer();
       for (final a in session.attachments) {
+        if (a.status != AiParseAttachmentStatus.ready) continue;
         buf.writeln('【附件：${a.name}】');
         buf.writeln(a.content);
         buf.writeln();
@@ -167,7 +171,8 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
   }
 
   /// v1.6.1: saves the summary as a Markdown or standalone HTML file
-  /// (same pipeline as the Work Log downloads).
+  /// (same pipeline as the Work Log downloads). v1.15.0: the HTML path is
+  /// mermaid-aware — diagrams render in the exported file.
   Future<void> _downloadSummary({required bool markdown}) async {
     final summary = ref.read(aiParseSessionProvider).summary;
     if (summary.isEmpty) return;
@@ -182,8 +187,7 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
       if (path == null) return;
       final content = markdown
           ? summary
-          : wrapHtmlExportPage(markdownToHtmlExport(summary),
-              title: 'AI Parse Summary');
+          : await wrapAiParseHtml(summary);
       await File(path).writeAsString(content);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -259,6 +263,7 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
     // session has, including a summary that finished while the user was on
     // another page.
     final session = ref.watch(aiParseSessionProvider);
+    final activeTemplate = findSummaryTemplate(session.selectedTemplateId);
 
     return Padding(
       padding: const EdgeInsets.all(20),
@@ -285,7 +290,7 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Paste raw notes or attach documents — AI turns them into structured tasks, or follows your prompt to parse & summarize.',
+            '粘贴笔记、附加文档或录音 — AI 提取结构化任务，或按模板/提示词总结输出（支持 17 种语言）。',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.55),
             ),
@@ -325,7 +330,8 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              // Attach documents (txt/md/html/docx/xlsx/pptx/pdf/eml…).
+              // Attach documents (txt/md/html/docx/xlsx/pptx/pdf/eml…)
+              // and audio (mp3/wav/m4a/aac/ogg/flac → local SenseVoice).
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: OutlinedButton.icon(
@@ -336,30 +342,70 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
               ),
             ],
           ),
-          if (session.attachments.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: [
-                  for (var i = 0; i < session.attachments.length; i++)
-                    InputChip(
-                      avatar: Icon(Icons.description_outlined,
-                          size: 15, color: theme.colorScheme.primary),
-                      label: Text(
-                        session.attachments[i].name,
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      onDeleted: session.summarizing
-                          ? null
-                          : () => ref
-                              .read(aiParseSessionProvider.notifier)
-                              .removeAttachment(i),
-                    ),
-                ],
+          if (session.attachments.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _AttachmentList(attachments: session.attachments),
+          ],
+          const SizedBox(height: 10),
+
+          // ── v1.15.0: template + output language selectors ──────
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: () =>
+                    setState(() => _templatePanelOpen = !_templatePanelOpen),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
+                  minimumSize: const Size(0, 32),
+                ),
+                icon: Icon(
+                  activeTemplate == null
+                      ? Icons.auto_awesome_outlined
+                      : Icons.dashboard_customize_outlined,
+                  size: 15,
+                ),
+                label: Text(
+                  activeTemplate?.name ?? '自由总结',
+                  style: const TextStyle(fontSize: 12.5),
+                ),
               ),
+              const SizedBox(width: 10),
+              Icon(Icons.translate,
+                  size: 15,
+                  color: theme.colorScheme.onSurface.withOpacity(0.45)),
+              const SizedBox(width: 4),
+              _LanguageDropdown(
+                value: session.outputLanguage,
+                onChanged: (v) => ref
+                    .read(aiParseSessionProvider.notifier)
+                    .setOutputLanguage(v),
+              ),
+              const Spacer(),
+              Text(
+                'Markdown 输出 · mermaid 图表可渲染',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  color: theme.colorScheme.onSurface.withOpacity(0.35),
+                ),
+              ),
+            ],
+          ),
+          if (_templatePanelOpen) ...[
+            const SizedBox(height: 8),
+            _TemplatePicker(
+              filter: _scenarioFilter,
+              selectedId: session.selectedTemplateId,
+              onFilterChanged: (f) => setState(() => _scenarioFilter = f),
+              onSelected: (id) {
+                ref
+                    .read(aiParseSessionProvider.notifier)
+                    .setTemplate(id);
+                setState(() => _templatePanelOpen = false);
+              },
+              onClose: () => setState(() => _templatePanelOpen = false),
             ),
+          ],
           const SizedBox(height: 10),
 
           // Notes input with Write / Preview tabs
@@ -513,7 +559,13 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
           Row(
             children: [
               FilledButton.icon(
-                onPressed: (session.summarizing || _creating) ? null : _parse,
+                // v1.15.0: gated on attachment processing — every file must
+                // be extracted/transcribed before the analyze run starts.
+                onPressed: (session.summarizing ||
+                        _creating ||
+                        !session.attachmentsReady)
+                    ? null
+                    : _parse,
                 style: FilledButton.styleFrom(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -534,6 +586,17 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
                         ? 'Analyze with AI'
                         : 'Parse with AI'),
               ),
+              // v1.15.0: cancel button while an analyze run is in flight.
+              if (session.summarizing) ...[
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: () => ref
+                      .read(aiParseSessionProvider.notifier)
+                      .cancelSummarize(),
+                  icon: const Icon(Icons.stop_circle_outlined, size: 16),
+                  label: const Text('取消'),
+                ),
+              ],
               const SizedBox(width: 12),
               // v1.6.0: copy the analyze-mode summary (raw Markdown).
               // v1.6.1: plus one-click Markdown / HTML file downloads.
@@ -604,6 +667,30 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
             ],
           ),
 
+          // v1.15.0: pipeline stage line (map-reduce progress / generation).
+          if (session.summarizing && session.stageText.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: theme.colorScheme.primary.withOpacity(0.7)),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  session.stageText,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: theme.colorScheme.onSurface.withOpacity(0.55),
+                  ),
+                ),
+              ],
+            ),
+          ],
+
           // Error
           if (session.error != null) ...[
             const SizedBox(height: 12),
@@ -637,6 +724,7 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
 
           // Results — v1.6.0: analyze-mode markdown summary first, then the
           // structured task cards from the classic extraction flow.
+          // v1.15.0: the summary area updates LIVE while the run streams.
           if (session.summary.isNotEmpty) ...[
             Expanded(
               child: Container(
@@ -704,6 +792,606 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// v1.15.0: attachment list card — per-file status/progress rows.
+// ---------------------------------------------------------------------------
+
+class _AttachmentList extends ConsumerWidget {
+  final List<AiParseAttachment> attachments;
+
+  const _AttachmentList({required this.attachments});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.22),
+        ),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < attachments.length; i++)
+            _AttachmentTile(
+              attachment: attachments[i],
+              removeEnabled: !ref.watch(aiParseSessionProvider).summarizing,
+              onRemove: () => ref
+                  .read(aiParseSessionProvider.notifier)
+                  .removeAttachment(i),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AttachmentTile extends StatelessWidget {
+  final AiParseAttachment attachment;
+  final bool removeEnabled;
+  final VoidCallback onRemove;
+
+  const _AttachmentTile({
+    required this.attachment,
+    required this.removeEnabled,
+    required this.onRemove,
+  });
+
+  IconData get _icon {
+    switch (attachment.ext) {
+      case 'mp3':
+      case 'wav':
+      case 'm4a':
+      case 'aac':
+      case 'ogg':
+      case 'oga':
+      case 'flac':
+      case 'm4b':
+        return Icons.graphic_eq;
+      case 'pdf':
+        return Icons.picture_as_pdf_outlined;
+      case 'docx':
+        return Icons.article_outlined;
+      case 'xlsx':
+        return Icons.table_chart_outlined;
+      case 'pptx':
+        return Icons.slideshow_outlined;
+      case 'eml':
+        return Icons.mail_outline;
+      case 'html':
+      case 'htm':
+      case 'xml':
+      case 'json':
+        return Icons.code;
+      default:
+        return Icons.description_outlined;
+    }
+  }
+
+  String get _sizeLabel {
+    final bytes = attachment.sizeBytes;
+    if (bytes <= 0) return '';
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
+    return '${(bytes / 1024 / 1024).toStringAsFixed(1)} MB';
+  }
+
+  String get _durationLabel {
+    final s = attachment.durationSec;
+    if (s == null || s <= 0) return '';
+    final total = s.round();
+    final h = total ~/ 3600;
+    final m = (total % 3600) ~/ 60;
+    final sec = total % 60;
+    if (h > 0) return '$h:${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
+    return '$m:${sec.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final a = attachment;
+    final isAudio = a.kind == AiParseAttachmentKind.audio;
+    final iconColor = isAudio
+        ? theme.colorScheme.tertiary
+        : theme.colorScheme.primary;
+
+    Widget status;
+    switch (a.status) {
+      case AiParseAttachmentStatus.extracting:
+        status = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 11,
+              height: 11,
+              child: CircularProgressIndicator(
+                  strokeWidth: 1.6,
+                  color: theme.colorScheme.primary.withOpacity(0.7)),
+            ),
+            const SizedBox(width: 6),
+            Text('解析中…', style: TextStyle(
+                fontSize: 11,
+                color: theme.colorScheme.onSurface.withOpacity(0.55))),
+          ],
+        );
+      case AiParseAttachmentStatus.transcribing:
+        final label = a.total > 0
+            ? '本地识别中 ${a.done}/${a.total}'
+            : '准备中（加载模型/解码音频）…';
+        status = Expanded(
+          child: Row(
+            children: [
+              Text(label, style: TextStyle(
+                  fontSize: 11,
+                  color: theme.colorScheme.onSurface.withOpacity(0.55))),
+              const SizedBox(width: 8),
+              if (a.total > 0)
+                Expanded(
+                  child: LinearProgressIndicator(
+                    value: a.total > 0 ? a.done / a.total : null,
+                    minHeight: 3,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              if (a.durationSec != null && a.durationSec! > 0) ...[
+                const SizedBox(width: 8),
+                Text('时长 ${_durationLabel}',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: theme.colorScheme.onSurface.withOpacity(0.45))),
+              ],
+            ],
+          ),
+        );
+      case AiParseAttachmentStatus.ready:
+        final bits = <String>['✓ 已就绪'];
+        if (isAudio && a.durationSec != null && a.durationSec! > 0) {
+          bits.add('时长 ${_durationLabel}');
+        }
+        if (a.content.isNotEmpty) {
+          bits.add('${a.content.length} 字');
+        }
+        status = Text(
+          bits.join(' · '),
+          style: TextStyle(
+            fontSize: 11,
+            color: theme.colorScheme.onSurface.withOpacity(0.45),
+          ),
+        );
+      case AiParseAttachmentStatus.failed:
+        status = Expanded(
+          child: Text(
+            a.error ?? '处理失败',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, color: AppColors.error),
+          ),
+        );
+    }
+
+    return InkWell(
+      onTap: a.status == AiParseAttachmentStatus.ready && a.content.isNotEmpty
+          ? () => _showPreview(context)
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        child: Row(
+          children: [
+            Icon(_icon, size: 17, color: iconColor),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          a.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 12.5, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      if (_sizeLabel.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Text(_sizeLabel,
+                            style: TextStyle(
+                                fontSize: 10.5,
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.4))),
+                      ],
+                      if (isAudio) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.tertiary.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '语音',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              color: theme.colorScheme.tertiary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  status is Row || status is Expanded
+                      ? Row(children: [status])
+                      : status,
+                ],
+              ),
+            ),
+            if (a.status == AiParseAttachmentStatus.ready)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Icon(Icons.visibility_outlined,
+                    size: 14,
+                    color: theme.colorScheme.onSurface.withOpacity(0.3)),
+              ),
+            IconButton(
+              onPressed: removeEnabled ? onRemove : null,
+              visualDensity: VisualDensity.compact,
+              iconSize: 16,
+              icon: Icon(Icons.close,
+                  color: theme.colorScheme.onSurface.withOpacity(0.4)),
+              tooltip: '移除',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPreview(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          attachment.name,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        ),
+        content: SizedBox(
+          width: 640,
+          height: 480,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              attachment.content,
+              style: const TextStyle(fontSize: 12.5, height: 1.5),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// v1.15.0: template picker + output language dropdown.
+// ---------------------------------------------------------------------------
+
+class _TemplatePicker extends StatefulWidget {
+  final String filter;
+  final String selectedId;
+  final ValueChanged<String> onFilterChanged;
+  final ValueChanged<String> onSelected;
+  final VoidCallback onClose;
+
+  const _TemplatePicker({
+    required this.filter,
+    required this.selectedId,
+    required this.onFilterChanged,
+    required this.onSelected,
+    required this.onClose,
+  });
+
+  @override
+  State<_TemplatePicker> createState() => _TemplatePickerState();
+}
+
+class _TemplatePickerState extends State<_TemplatePicker> {
+  final _listController = ScrollController();
+
+  @override
+  void dispose() {
+    _listController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final templates = summaryTemplates
+        .where((t) => widget.filter.isEmpty || t.scenario == widget.filter)
+        .toList();
+
+    return Container(
+      height: 300,
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.22),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _ScenarioChip(
+                label: '全部',
+                active: widget.filter.isEmpty,
+                onTap: () => widget.onFilterChanged(''),
+              ),
+              for (final s in summaryScenarios)
+                _ScenarioChip(
+                  label: s.label,
+                  active: widget.filter == s.id,
+                  onTap: () => widget.onFilterChanged(s.id),
+                ),
+              const Spacer(),
+              _ScenarioChip(
+                label: '✨ 自由总结',
+                active: widget.selectedId == 'free',
+                onTap: () => widget.onSelected('free'),
+              ),
+              IconButton(
+                onPressed: widget.onClose,
+                visualDensity: VisualDensity.compact,
+                iconSize: 16,
+                icon: Icon(Icons.close,
+                    color: theme.colorScheme.onSurface.withOpacity(0.4)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Expanded(
+            // Visible scrollbar + tail padding — a mid-card cut at the panel
+            // edge must always read as scrollable content, not clipping.
+            child: Scrollbar(
+              controller: _listController,
+              thumbVisibility: true,
+              child: ListView.separated(
+                controller: _listController,
+                padding: const EdgeInsets.only(bottom: 10),
+                itemCount: templates.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 6),
+                itemBuilder: (context, i) => _TemplateCard(
+                  template: templates[i],
+                  selected: templates[i].id == widget.selectedId,
+                  onTap: () => widget.onSelected(templates[i].id),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScenarioChip extends StatelessWidget {
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _ScenarioChip({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          decoration: BoxDecoration(
+            color: active
+                ? theme.colorScheme.primary.withOpacity(0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: active
+                  ? theme.colorScheme.primary.withOpacity(0.5)
+                  : theme.colorScheme.outline.withOpacity(0.35),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+              color: active
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurface.withOpacity(0.6),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TemplateCard extends StatelessWidget {
+  final SummaryTemplate template;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _TemplateCard({
+    required this.template,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected
+              ? theme.colorScheme.primary.withOpacity(0.08)
+              : theme.colorScheme.onSurface.withOpacity(0.02),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected
+                ? theme.colorScheme.primary.withOpacity(0.55)
+                : theme.colorScheme.outline.withOpacity(0.2),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        template.name,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: selected
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurface.withOpacity(0.85),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.onSurface.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          template.type,
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            color:
+                                theme.colorScheme.onSurface.withOpacity(0.55),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${template.modules.length} 个模块',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color:
+                              theme.colorScheme.onSurface.withOpacity(0.35),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    template.desc,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: theme.colorScheme.onSurface.withOpacity(0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (selected)
+              Icon(Icons.check_circle,
+                  size: 16, color: theme.colorScheme.primary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LanguageDropdown extends StatelessWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  const _LanguageDropdown({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    // Glass mode makes colorScheme.surface TRANSLUCENT — without an opaque
+    // dropdownColor the menu lets page content bleed through and the items
+    // become unreadable (same pitfall as the v1.13.0 date-picker fix; the
+    // dialog theme carries the pinned opaque palette surface).
+    final menuColor =
+        theme.dialogTheme.backgroundColor ?? theme.colorScheme.surface;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.35),
+        ),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isDense: true,
+          borderRadius: BorderRadius.circular(8),
+          dropdownColor: menuColor,
+          style: TextStyle(
+            fontSize: 12.5,
+            color: theme.colorScheme.onSurface,
+          ),
+          iconEnabledColor: theme.colorScheme.onSurface.withOpacity(0.45),
+          iconDisabledColor: theme.colorScheme.onSurface.withOpacity(0.3),
+          items: [
+            for (final lang in kOutputLanguages)
+              DropdownMenuItem<String>(
+                value: lang.value,
+                child: Text(
+                  lang.label,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+          ],
+          onChanged: (v) {
+            if (v != null) onChanged(v);
+          },
+        ),
       ),
     );
   }

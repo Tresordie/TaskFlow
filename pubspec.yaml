@@ -1,7 +1,7 @@
 name: taskflow
 description: Cross-platform task management app for hardware test engineers.
 publish_to: 'none'
-version: 1.14.1+2
+version: 1.15.0+3
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -50,6 +50,28 @@ dependencies:
   pdf_document: ^0.1.0
   pdf_graphics: ^0.1.0
 
+  # v1.15.0 AI Parse upgrade:
+  #  - sherpa_onnx: local SenseVoice speech recognition (bundled offline
+  #    model, official k2-fsa Flutter bindings with prebuilt native libs
+  #    for Windows/macOS/iOS).
+  #  - webview_flutter / webview_windows: mermaid + SVG rendering of AI
+  #    output (WKWebView on iOS/macOS, WebView2 on Windows).
+  #  - audio_decoder: local FFI plugin — decodes audio files to the raw
+  #    16 kHz mono PCM the recognizer consumes (miniaudio + Media
+  #    Foundation on Windows, + AudioToolbox on Apple).
+  sherpa_onnx: ^2.0.3
+  webview_flutter: ^4.14.1
+  # webview_windows is VENDORED (path dep): upstream 0.4.0 uses std::format
+  # (<format>, C++20), which needs MSVC >= 14.32 — this repo builds with
+  # VS2022 17.0 / toolset 14.30, so plugins/webview_windows carries a small
+  # patch replacing the 4 std::format call sites with plain concatenation.
+  # See plugins/webview_windows/VENDORED.md.
+  webview_windows:
+    path: plugins/webview_windows
+  audio_decoder:
+    path: plugins/audio_decoder
+  flutter_svg: ^2.5.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -92,6 +114,16 @@ flutter:
   assets:
     # Font license declarations shipped with the app (v1.5.2).
     - assets/fonts/FONT_LICENSES.md
+
+    # v1.15.0 AI Parse upgrade:
+    #  - mermaid.min.js renders ```mermaid / ```svg blocks of AI output
+    #    inside the app WebView and in exported HTML (no CDN, offline).
+    #  - SenseVoice int8 ASR model bundled with the app (user decision):
+    #    fetched by scripts/fetch_asr_model.ps1 — NOT committed to git,
+    #    so run the script once before building.
+    - assets/mermaid/mermaid.min.js
+    - assets/models/sensevoice/tokens.txt
+    - assets/models/sensevoice/model.int8.onnx
 
 
 

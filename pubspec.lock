@@ -49,6 +49,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.13.1"
+  audio_decoder:
+    dependency: "direct main"
+    description:
+      path: "plugins/audio_decoder"
+      relative: true
+    source: path
+    version: "0.0.1"
   boolean_selector:
     dependency: transitive
     description:
@@ -137,6 +144,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.0.4"
+  cli_util:
+    dependency: transitive
+    description:
+      name: cli_util
+      sha256: da2a2b22f919995eb427edab07725e2be0b1281ef26770f6ce3a213355565262
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.6.1"
   clock:
     dependency: transitive
     description:
@@ -324,13 +339,13 @@ packages:
     source: hosted
     version: "0.1.3"
   flutter_svg:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: flutter_svg
-      sha256: "35882981abcbfb8c15b286f0cd690ff25bac12d95eff3e25ee207f37d4c42e7f"
+      sha256: "5b0dd02de78d110e4acaca042e3be80c9b2ec04c1f41a83ca39a717497c7e2d2"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "2.3.0"
+    version: "2.5.1"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -919,6 +934,86 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.0.1"
+  sherpa_onnx:
+    dependency: "direct main"
+    description:
+      name: sherpa_onnx
+      sha256: c3e72726a08d381f97c5249608919e9b5c022d9296a0f8463c6d2c61d53d3a6c
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.0.3"
+  sherpa_onnx_android_arm64:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_android_arm64
+      sha256: "061eb67015ac1dbfc04dff9462d5a086fd10575e7c11bf1d3c14b854525b3c27"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.0.3"
+  sherpa_onnx_android_armeabi:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_android_armeabi
+      sha256: f3967b39bd4b2091546d6e150f85aec03dd0a3ec5e3c3a8e7957b77964359d0e
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.0.3"
+  sherpa_onnx_android_x86:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_android_x86
+      sha256: ba209b0463c1e350f28e4d9100edbe073673d8c659290064658ab77c49136d89
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.0.3"
+  sherpa_onnx_android_x86_64:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_android_x86_64
+      sha256: c662bf6e5f9b90c8ad688d2aa69fa44f954fa064a49e9cba54a6dd1a510607b1
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.0.3"
+  sherpa_onnx_ios:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_ios
+      sha256: "436eada1a4ecff5ab8b45f75379177106c4175eb422c96722ac9983a4504b823"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.0.3"
+  sherpa_onnx_linux:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_linux
+      sha256: "20dca4da8089c52a4c527168bc158657817f1d72ce639f0474685cc41869cee8"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.0.3"
+  sherpa_onnx_macos:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_macos
+      sha256: "6028041e790cffebbf1ecec72d49359cb8b63d234cd9c04d75923c67615e6211"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.0.3"
+  sherpa_onnx_web:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_web
+      sha256: "07b395676417b7a35d14fc90ff1b20a1bbca4d9198933493af3f08e7539c9c41"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.0.3"
+  sherpa_onnx_windows:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_windows
+      sha256: "9fafd1e209aaf64458faef10c9d8e514aba6b38626a4c8fe494fff1f3390692c"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.0.3"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -1128,10 +1223,10 @@ packages:
     dependency: transitive
     description:
       name: vector_graphics_compiler
-      sha256: "142a9146f447d15b10bdc00e21d5f4d83e5b32bb5f8f8f5a04c75311344923a3"
+      sha256: "7471171f129768c2e0398e91d39022cf47f03e1a541bb1737760bd1b9aed6c63"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "1.2.6"
+    version: "1.3.5"
   vector_math:
     dependency: transitive
     description:
@@ -1188,6 +1283,45 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.1.0"
+  webview_flutter:
+    dependency: "direct main"
+    description:
+      name: webview_flutter
+      sha256: d53e1ccf5516f25017e3c9d44c39034db352d20fa34fe200674270242c2c5111
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "4.14.1"
+  webview_flutter_android:
+    dependency: transitive
+    description:
+      name: webview_flutter_android
+      sha256: "4de8b3d1ff4ebe1bdb42e68a5e4f809194a3cb0117a8f495f590004f00da3964"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "4.14.1"
+  webview_flutter_platform_interface:
+    dependency: transitive
+    description:
+      name: webview_flutter_platform_interface
+      sha256: "1221c1b12f5278791042f2ec2841743784cf25c5a644e23d6680e5d718824f04"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.15.1"
+  webview_flutter_wkwebview:
+    dependency: transitive
+    description:
+      name: webview_flutter_wkwebview
+      sha256: "0f784be1b080e5b918ef7c2c070c1f4616899fd23f1d001feb74b4978f92bdbc"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "3.26.2"
+  webview_windows:
+    dependency: "direct main"
+    description:
+      path: "plugins/webview_windows"
+      relative: true
+    source: path
+    version: "0.4.0"
   win32:
     dependency: transitive
     description:
@@ -1237,5 +1371,5 @@ packages:
     source: hosted
     version: "3.1.3"
 sdks:
-  dart: ">=3.12.0 <4.0.0"
+  dart: ">=3.12.2 <4.0.0"
   flutter: ">=3.44.0"
