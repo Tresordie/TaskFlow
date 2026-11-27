@@ -3,6 +3,7 @@ import 'package:markdown/markdown.dart' as md;
 
 import '../../data/services/ai_service.dart';
 import '../../data/services/figure_render_service.dart';
+import 'timeline_upgrade.dart';
 
 /// Export filename prefix / document title — verbatim port of the
 /// reference `AiPage.resultTitle`: the first H1 of the summary, stripped
@@ -190,6 +191,7 @@ String _setAttr(String tag, String name, String value) {
 /// width (~760px) and wide figures fall back to proportional scaling.
 const String _aiParseDocCss = '''
   body { font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; color: #1f2937;
+         background: #ffffff;
          line-height: 1.75; max-width: 1280px; margin: 0 auto; padding: 32px 24px; }
   body img { max-width: 100%; }
   body .md-figure { margin: 1.2em 0; overflow-x: auto; }
@@ -331,6 +333,13 @@ Future<String> wrapAiParseHtml(String markdown,
         'fontFamily: \'"PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif\' '
         '});</script>\n';
   }
+
+  // v1.15.3 reference parity (timeline.ts / renderRichMarkdown): tables
+  // with a time column and "phase emoji + date" lists become the visual
+  // timeline (inline-styled, self-contained) — same pass order as the
+  // reference: figures → tables → lists → wide marking.
+  body = upgradeTimelineTables(body);
+  body = upgradeTimelineLists(body);
 
   body = _markWideFigures(body);
   return wrapAiParseDocument(body, title: title, extraHead: extraHead);

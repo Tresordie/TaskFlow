@@ -1,7 +1,7 @@
 name: taskflow
 description: Cross-platform task management app for hardware test engineers.
 publish_to: 'none'
-version: 1.15.2+4
+version: 1.15.3+5
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -71,6 +71,7 @@ dependencies:
   audio_decoder:
     path: plugins/audio_decoder
   flutter_svg: ^2.5.1
+  html: ^0.15.7
 
 dev_dependencies:
   flutter_test:

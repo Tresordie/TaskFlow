@@ -91,4 +91,35 @@ void main() {
     expect(html, isNot(contains('<pre class="mermaid">')));
     expect(html!.length, lessThan(500000));
   }, timeout: const Timeout(Duration(minutes: 2)));
+
+  testWidgets('timeline table + emoji list upgrade to visual timelines',
+      (tester) async {
+    const md = '# 【结论】时间轴样式验证\n\n'
+        '## 发言序时间轴\n\n'
+        '| 时间 | 事件 | 说明 |\n|---|---|---|\n'
+        '| 00:10 | 不良资料交付顺序 | 先分类给客户确认约一周 |\n'
+        '| 02:30 | 接线路径比选 | 改越南自厂自行接线 |\n'
+        '| 05:40 | 固化时长未决 | 8h/4h 待验证 |\n\n'
+        '## 关键节点\n\n'
+        '- 🔵 11/23 PCB 到货　30 piece 板\n'
+        '- 🔵 11/26 开始上线　物料先到先建\n'
+        '- 🟤 12/05 ATE plan 冲突　待 Jonathan 确认\n'
+        '- 🔴 12/10 Tester 就绪　6 项卡点挡在 SAT/TP 前\n\n'
+        '## 任务状态\n\n'
+        '| 日期 | 任务 | 状态 |\n|---|---|---|\n'
+        '| 11/26 | 30 piece 上线 | 完成 |\n'
+        '| 11/28 | harness 调试 | 逾期 |\n';
+    final html = await tester.runAsync(() => wrapAiParseHtml(md,
+        title: summaryFileTitle(md)));
+    await tester.runAsync(() async {
+      final f = File('${Directory.systemTemp.path}/tf_timeline_smoke.html');
+      await f.writeAsString(html ?? '');
+    });
+    // Three visual timelines: event table, emoji list, task table.
+    expect('border-radius:999px'.allMatches(html!).length, greaterThanOrEqualTo(3));
+    expect(html, contains('text-decoration:line-through'));
+    expect(html, contains('已逾期'));
+    expect(html, isNot(contains('<table>')));
+    expect(html, isNot(contains('<ul>')));
+  }, timeout: const Timeout(Duration(minutes: 2)));
 }

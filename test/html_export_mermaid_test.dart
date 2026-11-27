@@ -45,6 +45,9 @@ void main() {
       expect(html, contains('<title>测试标题</title>'));
       // Light theme (G_SPEC ② 浅底深字) — the reference ink/paper colors.
       expect(html, contains('color: #1f2937'));
+      // Explicit paper white: dark-mode browsers must not paint the canvas
+      // black under the light ink (the reference relies on viewer default).
+      expect(html, contains('background: #ffffff'));
       expect(html, contains('max-width: 1280px'));
       expect(html, contains('body th { background: #eef2ff'));
       // Print styles reclaim A4 width and shrink wide figures.
