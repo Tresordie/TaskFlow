@@ -51,13 +51,27 @@ void main() {
     expect(findSummaryTemplate('M1')!.name, '通用会议纪要 · 全功能版');
   });
 
-  test('G_SPEC contract and TaskFlow adapter are present', () {
+  test('G_SPEC contract present; adapter line REMOVED (v1.15.2 parity)', () {
     expect(gSpec, contains('【输出契约】'));
     // Per user decision, mermaid/SVG visual directives stay.
     expect(gSpec, contains('mermaid flowchart'));
     expect(gSpec, contains('SVG'));
-    expect(templateOutputAdapter, contains('Markdown 正文'));
-    expect(templateOutputAdapter, contains('mermaid/SVG 代码块'));
+    // v1.15.2: prompts travel byte-identical to the reference — no
+    // TaskFlow adapter extra line anywhere in the dataset.
+    for (final t in summaryTemplates) {
+      expect(t.prompt, isNot(contains('【输出格式补充】')),
+          reason: '${t.id} still carries the removed adapter line');
+    }
+  });
+
+  test('M1 prompt is the reference prompt verbatim (parity anchor)', () {
+    final m1 = findSummaryTemplate('M1')!;
+    expect(m1.prompt, startsWith('你是会议纪要专家。输入：{{会议录音转写稿或笔记}}'));
+    expect(m1.prompt, contains('9 证据附录(关键摘录原话±2句+时间戳+转写链接)'));
+    expect(
+        m1.prompt,
+        endsWith(
+            '禁止臆造人名/数字/承诺；缺失写【待确认】；分歧保留，不写「大家一致同意」除非真的投票了。'));
   });
 }
 

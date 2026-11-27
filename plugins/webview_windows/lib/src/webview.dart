@@ -561,6 +561,16 @@ class WebviewController extends ValueNotifier<WebviewValue> {
     return _methodChannel
         .invokeMethod('setSize', [size.width, size.height, scaleFactor]);
   }
+
+  /// TaskFlow vendored addition (v1.15.2): sizes the offscreen surface
+  /// WITHOUT a [Webview] widget in the tree, so a controller can run as a
+  /// headless renderer (AI Parse export pre-renders mermaid/SVG figures).
+  /// The native side already creates the WebView offscreen at [initialize]
+  /// time; this only fixes the viewport bounds the widget would normally
+  /// set during layout. Scale factor 1.0 = CSS pixels.
+  Future<void> setHeadlessSize(double width, double height) {
+    return _setSize(Size(width, height), 1.0);
+  }
 }
 
 class Webview extends StatefulWidget {

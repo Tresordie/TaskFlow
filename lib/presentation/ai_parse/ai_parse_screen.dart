@@ -146,15 +146,15 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
     // v1.15.0: only READY attachments join the material (the button is
     // gated on session.attachmentsReady, this is a belt-and-braces filter).
     if (instructions.isNotEmpty || session.attachments.isNotEmpty) {
-      final buf = StringBuffer();
-      for (final a in session.attachments) {
-        if (a.status != AiParseAttachmentStatus.ready) continue;
-        buf.writeln('【附件：${a.name}】');
-        buf.writeln(a.content);
-        buf.writeln();
-      }
-      if (notes.isNotEmpty) buf.writeln(notes);
-      final content = buf.toString().trim();
+      // v1.15.2 reference parity (AiPage.tsx): notes FIRST, then the ready
+      // attachment texts, each trimmed, joined by a blank line — NO
+      // 【附件：name】 headers (they leaked into the summary and shifted
+      // the map-reduce chunk boundaries vs the reference).
+      final content = [
+        notes,
+        for (final a in session.attachments)
+          if (a.status == AiParseAttachmentStatus.ready) a.content.trim(),
+      ].where((s) => s.isNotEmpty).join('\n\n');
       final email = session.attachments
               .any((a) => a.name.toLowerCase().endsWith('.eml')) ||
           _looksLikeEmail('$instructions\n$content');
@@ -176,18 +176,20 @@ class _AiParseScreenState extends ConsumerState<AiParseScreen> {
   Future<void> _downloadSummary({required bool markdown}) async {
     final summary = ref.read(aiParseSessionProvider).summary;
     if (summary.isEmpty) return;
-    final stamp = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    // v1.15.2 reference parity (utils.timestampName + AiPage.resultTitle):
+    // <H1 title>-YYYYMMDD-HHMMSS.<ext> instead of ai-summary-YYYY-MM-DD.
+    final stamp = DateFormat('yyyyMMdd-HHmmss').format(DateTime.now());
     final ext = markdown ? 'md' : 'html';
     try {
       final path = await FilePicker.platform.saveFile(
         dialogTitle:
             markdown ? 'Save Markdown summary' : 'Save HTML summary',
-        fileName: 'ai-summary-$stamp.$ext',
+        fileName: '${summaryFileTitle(summary)}-$stamp.$ext',
       );
       if (path == null) return;
       final content = markdown
           ? summary
-          : await wrapAiParseHtml(summary);
+          : await wrapAiParseHtml(summary, title: summaryFileTitle(summary));
       await File(path).writeAsString(content);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

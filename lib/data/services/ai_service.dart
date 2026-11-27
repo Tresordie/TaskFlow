@@ -246,6 +246,10 @@ class AiService {
   /// [generateFullReport]). Throws [AiCancelledException] between
   /// continuation rounds when [isCancelled] returns true; the in-flight
   /// first request cannot be aborted.
+  ///
+  /// v1.15.2 reference parity: [maxTokens] null means the request carries
+  /// NO max_tokens field at all (the voice_transcription reference never
+  /// caps the final summarize pass — the provider default applies).
   Future<String> streamChat({
     required List<Map<String, String>> messages,
     double? temperature,
@@ -253,7 +257,7 @@ class AiService {
     void Function(String delta, String full)? onDelta,
     bool Function()? isCancelled,
   }) async {
-    final budget = maxTokens ?? (_isReasoningModel(model) ? 32768 : 16384);
+    final budget = maxTokens;
     var result = await _chatStream(
       temperature: temperature,
       maxTokens: budget,

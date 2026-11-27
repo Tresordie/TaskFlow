@@ -108,10 +108,11 @@ String buildSystemPrompt({
 
   if (template != null) {
     // The template prompt (with its own {{...}} input declaration and
-    // G-SPEC contract) travels verbatim, then the TaskFlow output-format
-    // adapter, then the main-input location note, user extras and langNote.
+    // G-SPEC contract) travels VERBATIM — same as the reference. G_SPEC ②
+    // already defaults the output medium to Markdown; the former TaskFlow
+    // adapter line is gone (v1.15.2: it also told the model to replace the
+    // SVG cover with text badges, diverging from the reference output).
     return template.prompt +
-        templateOutputAdapter +
         '\n\n【本任务说明】上文「输入：{{...}}」所指的主输入材料在用户消息中以「===== 全文内容 =====」分隔完整给出；'
             '其余占位符上下文若用户消息未提供，请按全文内容合理推断，无法推断的' +
         (language != null && language.isNotEmpty ? '用输出语言的等义占位标记标注' : '写【待确认】') +
@@ -177,9 +178,10 @@ Future<String> runSummarize(
       2,
       (chunk, i) async {
         _throwIfCancelled(isCancelled);
+        // Reference parity: the map call sends maxTokens only (no
+        // temperature — the server default applies, same as summarize.ts).
         final out = await ai.chat(
           maxTokens: 800,
-          temperature: 0.3,
           responseTimeout: const Duration(seconds: 150),
           messages: [
             {'role': 'system', 'content': kMapSystem},
@@ -214,9 +216,11 @@ Future<String> runSummarize(
     {'role': 'user', 'content': '===== 全文内容 =====\n$material'},
   ];
   onProgress?.call('生成总结', 0, 0);
+  // Reference parity: the final pass sends NO max_tokens (the reference
+  // chatLLM omits the field unless asked) — the provider default applies
+  // and streamChat's finish_reason continuation still guards truncation.
   return ai.streamChat(
     temperature: 0.3,
-    maxTokens: 8192,
     messages: messages,
     onDelta: onDelta,
     isCancelled: isCancelled,

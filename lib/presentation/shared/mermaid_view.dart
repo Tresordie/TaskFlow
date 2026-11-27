@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show rootBundle, PlatformException;
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -159,6 +159,7 @@ class _DiagramWebViewState extends State<_DiagramWebView> {
   String? _htmlPayload;
   bool? _htmlDark;
   Future<String>? _htmlFuture;
+  Future<String>? _htmlNoJsFuture;
 
   @override
   void initState() {
@@ -183,13 +184,19 @@ class _DiagramWebViewState extends State<_DiagramWebView> {
     _htmlPayload = widget.payload;
     _htmlDark = widget.dark;
     _htmlFuture = _pageHtml(widget.payload, widget.dark);
+    // v1.15.2: WebView2 NavigateToString truncates pages over 2 MB —
+    // mermaid.min.js (5.5 MB) must be injected via
+    // addScriptToExecuteOnDocumentCreated, not inlined into the page.
+    _htmlNoJsFuture = _pageHtml(widget.payload, widget.dark, inlineJs: false);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return FutureBuilder<String>(
-      future: _htmlFuture,
+      future: defaultTargetPlatform == TargetPlatform.windows
+          ? _htmlNoJsFuture
+          : _htmlFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return _scaffoldBox(theme, const Center(
@@ -245,17 +252,30 @@ class _DiagramWebViewState extends State<_DiagramWebView> {
         child: child,
       );
 
-  static Future<String> _pageHtml(String payload, bool dark) async {
-    final mermaidJs = await _loadMermaidJs();
+  static Future<String> _pageHtml(String payload, bool dark,
+      {bool inlineJs = true}) async {
+    final mermaidJs = inlineJs ? await _loadMermaidJs() : '';
     final body = '<div id="container" class="mermaid">${_escapeHtml(payload)}</div>';
+    // v1.15.2 reference parity: same mermaid.initialize config as the
+    // voice_transcription renderMermaidToSvg (CJK fontFamily shared between
+    // measurement and rendering, wrapping width / node padding for long
+    // CJK labels, gantt compressed to 1100px, 15px base font). ELK layout
+    // is a separate ESM package — without it mermaid uses dagre, the
+    // reference's own fallback when the ELK import fails.
     final initScript = '''
       const container = document.getElementById('container');
       mermaid.initialize({
         startOnLoad: false,
         theme: ${dark ? "'dark'" : "'default'"},
-        flowchart: { htmlLabels: false },
-        gantt: { fontSize: 12 },
-        securityLevel: 'strict'
+        securityLevel: 'loose',
+        fontFamily: '"PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif',
+        flowchart: { useMaxWidth: true, htmlLabels: true, wrappingWidth: 280, padding: 14 },
+        mindmap: { useMaxWidth: true, padding: 12 },
+        gantt: { useMaxWidth: true, useWidth: 1100 },
+        themeVariables: {
+          fontSize: '15px',
+          fontFamily: '"PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif'
+        }
       });
       try {
         await mermaid.run({ nodes: [container] });
@@ -415,10 +435,21 @@ class _WindowsDiagramState extends State<_WindowsDiagram> {
         widget.onFail();
         return;
       }
-      await wvw.WebviewController.initializeEnvironment();
+      try {
+        await wvw.WebviewController.initializeEnvironment();
+      } on PlatformException catch (e) {
+        // v1.15.2 fix: the environment is a shared singleton — a second
+        // MermaidView on the page (or the headless export renderer) must
+        // NOT fail just because the first one already initialized it.
+        if (e.code != 'environment_already_initialized') rethrow;
+      }
       final controller = wvw.WebviewController();
       await controller.initialize();
       await controller.setBackgroundColor(const Color(0x00000000));
+      // Inject mermaid.js outside the page string (2 MB NavigateToString
+      // limit — the library alone is 5.5 MB); runs before page scripts.
+      final mermaidJs = await _DiagramWebViewState._loadMermaidJs();
+      await controller.addScriptToExecuteOnDocumentCreated(mermaidJs);
       await controller.loadStringContent(widget.html);
       _messages = controller.webMessage;
       _messages?.listen((m) {

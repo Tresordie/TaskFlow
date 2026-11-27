@@ -1,7 +1,7 @@
 name: taskflow
 description: Cross-platform task management app for hardware test engineers.
 publish_to: 'none'
-version: 1.15.0+3
+version: 1.15.2+4
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -118,10 +118,15 @@ flutter:
     # v1.15.0 AI Parse upgrade:
     #  - mermaid.min.js renders ```mermaid / ```svg blocks of AI output
     #    inside the app WebView and in exported HTML (no CDN, offline).
+    #    v1.15.2: upgraded 11.17.2 → 12.3.0, the reference project's version.
+    #  - svg_fit.js (v1.15.2): model-SVG text-overflow repair, JS port of
+    #    the reference richRender.ts fitSvgText — runs in the headless
+    #    export renderer WebView.
     #  - SenseVoice int8 ASR model bundled with the app (user decision):
     #    fetched by scripts/fetch_asr_model.ps1 — NOT committed to git,
     #    so run the script once before building.
     - assets/mermaid/mermaid.min.js
+    - assets/mermaid/svg_fit.js
     - assets/models/sensevoice/tokens.txt
     - assets/models/sensevoice/model.int8.onnx
 

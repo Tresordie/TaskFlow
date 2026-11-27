@@ -48,14 +48,17 @@ void main() {
       expect(prompt, isNot(contains('【用户额外要求】请给出全面而精炼的总结')));
     });
 
-    test('template mode appends adapter + main-input note', () {
+    test('template mode travels VERBATIM + main-input note (reference parity)',
+        () {
+      // v1.15.2: the TaskFlow adapter line was removed — the prompt must
+      // start byte-identical to the reference template.prompt and carry
+      // only the reference's 【本任务说明】 addition.
       final template = findSummaryTemplate('M1')!;
       final prompt = buildSystemPrompt(template: template);
-      expect(prompt, startsWith('你是会议纪要专家'));
-      expect(prompt, contains(templateOutputAdapter));
+      expect(prompt, startsWith(template.prompt));
       expect(prompt, contains('【本任务说明】'));
-      expect(prompt, contains('【输出格式补充】'));
-      expect(prompt, contains('Markdown 正文'));
+      expect(prompt, isNot(contains('【输出格式补充】')));
+      expect(prompt, contains('写【待确认】'));
     });
 
     test('email mode uses the email playbook without G_SPEC', () {
@@ -107,6 +110,9 @@ void main() {
       expect(result, '-streamed-');
       expect(ai.streamCalls.length, 1);
       expect(ai.chatCalls, isEmpty); // no map phase below the threshold
+      // v1.15.2 reference parity: the final pass sends NO max_tokens cap
+      // (the reference chatLLM omits the field; provider default applies).
+      expect(ai.lastStreamMaxTokens, isNull);
       // The user message carries the full material behind the delimiter.
       expect(ai.lastStreamMessages!.last['content'],
           startsWith('===== 全文内容 ====='));
@@ -122,6 +128,10 @@ void main() {
           List.filled(3, 'z' * 5000).join('\n\n\n'); // ~15k chars
       await runSummarize(ai, content: content, templateId: 'free');
       expect(ai.chatCalls, hasLength(3));
+      // Reference parity: map calls cap at 800 tokens and send NO
+      // temperature (summarize.ts passes only maxTokens + signal).
+      expect(ai.lastChatMaxTokens, 800);
+      expect(ai.lastChatTemperature, isNull);
       // Map prompts are numbered 片段 1/3 .. 3/3.
       final fragments = ai.chatCalls
           .map((m) => m.last['content'] as String)
@@ -165,6 +175,9 @@ class _FakeAiService implements AiService {
   final chatCalls = <List<Map<String, String>>>[];
   final streamCalls = <int>[];
   List<Map<String, String>>? lastStreamMessages;
+  int? lastStreamMaxTokens;
+  int? lastChatMaxTokens;
+  double? lastChatTemperature;
   int _counter = 0;
 
   @override
@@ -175,6 +188,8 @@ class _FakeAiService implements AiService {
     dynamic responseTimeout,
   }) async {
     chatCalls.add(messages);
+    lastChatMaxTokens = maxTokens;
+    lastChatTemperature = temperature;
     return '要点${++_counter}';
   }
 
@@ -188,6 +203,7 @@ class _FakeAiService implements AiService {
   }) async {
     streamCalls.add(++_counter);
     lastStreamMessages = messages;
+    lastStreamMaxTokens = maxTokens;
     return '-streamed-';
   }
 

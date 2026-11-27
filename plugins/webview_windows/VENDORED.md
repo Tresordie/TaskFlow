@@ -15,6 +15,13 @@ Patches applied (search "Vendored patch"):
 - `windows/webview.cc` — `SetCacheDisabled` JSON via manual concatenation.
 - `windows/webview_windows_plugin.cc` — creation-error message with
   `snprintf` hex HRESULT.
+- `lib/src/webview.dart` — TaskFlow v1.15.2 addition: public
+  `WebviewController.setHeadlessSize(width, height)` wrapping the private
+  `_setSize` (native `setSize` already exists). Lets a controller run as a
+  headless figure renderer (AI Parse HTML export pre-renders mermaid/SVG to
+  static SVG) without a `Webview` widget in the tree — the native side
+  creates the WebView offscreen at `initialize()` time already; this only
+  sets the viewport bounds the widget would normally set during layout.
 
 When upstream publishes a release compatible with older toolsets (or this
 repo upgrades to MSVC ≥ 14.32), drop this directory and return to the

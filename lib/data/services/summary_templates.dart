@@ -60,14 +60,11 @@ const List<SummaryScenario> summaryScenarios = [
   SummaryScenario(id: 'WRT', label: '✉️ 邮件撰写'),
 ];
 
-/// Pinned to the END of every template prompt (TaskFlow adaptation): G_SPEC
-/// ② allows the model to emit a full HTML/DOCX document, which would break
-/// the in-app Markdown renderer — the output medium is always Markdown
-/// here, and export is the app's job (Save .md / Save .html buttons).
-const String templateOutputAdapter =
-    '\n\n【输出格式补充】本次输出一律为 Markdown 正文（图表以 mermaid/SVG 代码块表达，封面块用标题+徽章文字表达），不要输出完整 HTML/DOCX 文档；导出由应用负责。';
-
 /// The 25 templates (verbatim port of TEMPLATES — order preserved).
+/// v1.15.2: the former `templateOutputAdapter` extra line was REMOVED —
+/// prompts now travel byte-identical to the reference (G_SPEC ② already
+/// defaults to Markdown; the adapter's "封面块用标题+徽章文字表达" clause
+/// contradicted the SVG-cover directive and diverged from reference output).
 const List<SummaryTemplate> summaryTemplates = [
   SummaryTemplate(
     id: 'M1',
